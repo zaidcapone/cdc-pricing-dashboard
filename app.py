@@ -78,14 +78,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Configuration
-API_KEY = "AIzaSyA3P-ZpLjDdVtGB82_1kaWuO7lNbKDj9HU"  # Your API key
+API_KEY = "AIzaSyA3P-ZpLjDdVtGB82_1kaWuO7lNbKDj9HU"
+SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"  # Your Sheet ID
 
 def get_google_sheets_data():
     """Load data from Google Sheets using API key"""
     try:
-        # Get your Google Sheet ID from the URL: https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit
-        SHEET_ID = "your-google-sheet-id-here"  # You need to replace this!
-        
         # Load Backaldrin data
         backaldrin_url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/Backaldrin!A:Z?key={API_KEY}"
         backaldrin_response = requests.get(backaldrin_url)
@@ -185,6 +183,15 @@ def get_sample_data():
                     {"price": 2.38, "order_no": "ORD-003", "date": "2024-03-10"},
                     {"price": 2.42, "order_no": "ORD-004", "date": "2024-04-05"}
                 ]
+            },
+            "1-367": {
+                "prices": [2.55, 2.60, 2.58],
+                "names": ["Moist Muffin Chocolate", "موسيت مفن شوكولاتة"],
+                "orders": [
+                    {"price": 2.55, "order_no": "ORD-005", "date": "2024-01-20"},
+                    {"price": 2.60, "order_no": "ORD-006", "date": "2024-02-25"},
+                    {"price": 2.58, "order_no": "ORD-007", "date": "2024-03-15"}
+                ]
             }
         },
         "Bateel": {
@@ -205,8 +212,6 @@ def main():
     # Initialize session state
     if 'search_results' not in st.session_state:
         st.session_state.search_results = None
-    if 'data_source' not in st.session_state:
-        st.session_state.data_source = "sample"
     
     # Header
     st.markdown("""
@@ -270,9 +275,6 @@ def main():
     # Display results from session state
     if st.session_state.search_results:
         display_from_session_state(DATA)
-
-# ... (Keep all your existing functions: get_suggestions, handle_search, display_from_session_state)
-# Copy the exact same functions from your previous working code
 
 def get_suggestions(search_term, supplier, data):
     suggestions = []
