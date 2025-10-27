@@ -4,43 +4,39 @@ from google.oauth2 import service_account
 
 def main():
     st.title("🔗 Google Sheets Connection Test")
-    st.write("Testing connection to your CDC Pricing Database...")
+    st.write("Testing connection...")
     
     try:
-        # Test connection to Google Sheets
+        # Create credentials from secrets
         credentials = service_account.Credentials.from_service_account_info(
             st.secrets["gcp"],
             scopes=["https://www.googleapis.com/auth/spreadsheets"]
         )
+        
+        # Authorize
         gc = gspread.authorize(credentials)
+        st.success("✅ Step 1: Authorization successful!")
         
-        # Open your sheet
+        # Open sheet
         sheet = gc.open("CDC_Pricing_Database")
-        st.success("✅ SUCCESS! Connected to Google Sheets!")
-        st.write(f"**Sheet Name:** {sheet.title}")
+        st.success("✅ Step 2: Sheet opened successfully!")
+        st.write(f"**Sheet:** {sheet.title}")
         
-        # Test reading Backaldrin data
+        # Test reading worksheets
         backaldrin_ws = sheet.worksheet("Backaldrin")
         backaldrin_data = backaldrin_ws.get_all_records()
-        st.write(f"**Backaldrin Records:** {len(backaldrin_data)}")
+        st.success(f"✅ Step 3: Backaldrin data loaded! ({len(backaldrin_data)} records)")
         
-        # Test reading Bateel data  
         bateel_ws = sheet.worksheet("Bateel")
         bateel_data = bateel_ws.get_all_records()
-        st.write(f"**Bateel Records:** {len(bateel_data)}")
+        st.success(f"✅ Step 4: Bateel data loaded! ({len(bateel_data)} records)")
         
-        # Show sample data if available
-        if backaldrin_data:
-            st.write("**Sample Backaldrin Data:**")
-            st.dataframe(backaldrin_data[:3])  # Show first 3 records
+        # Show success
+        st.balloons()
+        st.success("🎉 ALL CONNECTIONS WORKING! Google Sheets is ready!")
         
-        if bateel_data:
-            st.write("**Sample Bateel Data:**")
-            st.dataframe(bateel_data[:3])  # Show first 3 records
-            
     except Exception as e:
-        st.error(f"❌ Connection failed: {str(e)}")
-        st.info("Please check: 1) Streamlit secrets are correct 2) Sheet is shared with service account")
+        st.error(f"❌ Error: {str(e)}")
 
 if __name__ == "__main__":
     main()
