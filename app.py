@@ -1,19 +1,20 @@
 import streamlit as st
 import pandas as pd
 
-# Custom CSS with proper contrast
+# Custom CSS with professional design
 st.markdown("""
 <style>
     .main-header {
-        background-color: #991B1B;
+        background: linear-gradient(135deg, #991B1B, #7F1D1D);
         color: white;
-        padding: 2rem;
-        border-radius: 10px;
-        margin-bottom: 2rem;
+        padding: 3rem 2rem;
+        border-radius: 15px;
         text-align: center;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
     .search-card {
-        background-color: #FFFFFF;
+        background: white;
         padding: 2rem;
         border-radius: 10px;
         border: 2px solid #991B1B;
@@ -21,32 +22,50 @@ st.markdown("""
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     .price-card {
-        background-color: #FEE2E2;
+        background: linear-gradient(135deg, #FEE2E2, #FECACA);
+        padding: 1.5rem;
+        border-radius: 8px;
+        border-left: 5px solid #991B1B;
+        margin: 0.5rem 0;
+        color: #1F2937;
+        font-weight: 500;
+    }
+    .stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 2px solid #991B1B;
+        text-align: center;
+        color: #1F2937;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .stat-number {
+        font-size: 2em;
+        font-weight: bold;
+        color: #991B1B;
+        margin: 0;
+    }
+    .stat-label {
+        font-size: 0.9em;
+        color: #6B7280;
+        margin: 0;
+    }
+    .price-box {
+        background: #991B1B;
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .suggestion-item {
+        background: #F8F9FA;
         padding: 1rem;
         border-radius: 8px;
         border-left: 4px solid #991B1B;
         margin: 0.5rem 0;
         color: #1F2937;
-    }
-    .stat-card {
-        background-color: #FFFFFF;
-        padding: 1.5rem;
-        border-radius: 8px;
-        border: 2px solid #991B1B;
-        text-align: center;
-        color: #1F2937;
-    }
-    .suggestion-box {
-        background-color: #FFFFFF;
-        border: 1px solid #D1D5DB;
-        border-radius: 8px;
-        padding: 1rem;
-        margin: 0.5rem 0;
-        color: #1F2937;
-    }
-    /* Make all text dark for contrast */
-    .stApp {
-        color: #1F2937;
+        cursor: pointer;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -55,25 +74,25 @@ st.markdown("""
 SAMPLE_DATA = {
     "Backaldrin": {
         "1-366": {
-            "prices": [2.40, 2.45, 2.38],
+            "prices": [2.40, 2.45, 2.38, 2.42],
             "names": ["Moist Muffin Vanilla Mix", "موسيت مفن فانيلا ميكس"]
         },
         "1-367": {
-            "prices": [2.55, 2.60],
+            "prices": [2.55, 2.60, 2.58],
             "names": ["Moist Muffin Chocolate", "موسيت مفن شوكولاتة"]
         },
         "1-368": {
-            "prices": [2.35, 2.40],
+            "prices": [2.35, 2.40, 2.38],
             "names": ["Classic Croissant Mix", "خليط كرواسون كلاسيك"]
         }
     },
     "Bateel": {
         "1001": {
-            "prices": [3.20, 3.25, 3.18],
+            "prices": [3.20, 3.25, 3.18, 3.22],
             "names": ["Premium Date Mix", "خليط التمر الفاخر"]
         },
         "1002": {
-            "prices": [4.15, 4.20],
+            "prices": [4.15, 4.20, 4.18],
             "names": ["Chocolate Date Spread", "معجون التمر بالشوكولاتة"]
         }
     }
@@ -83,23 +102,24 @@ def main():
     # Header
     st.markdown("""
     <div class="main-header">
-        <h1 style="margin:0;">📊 CDC Pricing Dashboard</h1>
-        <p style="margin:10px 0 0 0;">Backaldrin & Bateel • Historical Price Tracking</p>
+        <h1 style="margin:0; font-size:2.5em;">📊 CDC Pricing Dashboard</h1>
+        <p style="margin:10px 0 0 0; font-size:1.2em; opacity:0.9;">Real-time Price Tracking & Historical Data</p>
     </div>
     """, unsafe_allow_html=True)
 
     # Supplier selection
-    supplier = st.radio("SELECT SUPPLIER:", ["Backaldrin", "Bateel"], horizontal=True)
+    st.subheader("🏢 Select Supplier")
+    supplier = st.radio("", ["Backaldrin", "Bateel"], horizontal=True, label_visibility="collapsed")
 
     # Search section
     st.markdown('<div class="search-card">', unsafe_allow_html=True)
-    st.subheader("🔍 Search Prices")
+    st.subheader("🔍 Search Historical Prices")
     
     col1, col2 = st.columns(2)
     with col1:
-        article = st.text_input("ARTICLE NUMBER", placeholder="e.g., 1-366, 1-367...")
+        article = st.text_input("**ARTICLE NUMBER**", placeholder="e.g., 1-366, 1-367...")
     with col2:
-        product = st.text_input("PRODUCT NAME", placeholder="e.g., Moist Muffin, Date Mix...")
+        product = st.text_input("**PRODUCT NAME**", placeholder="e.g., Moist Muffin, Date Mix...")
     
     # Auto-suggestions
     search_term = article or product
@@ -108,45 +128,44 @@ def main():
         supplier_data = SAMPLE_DATA[supplier]
         
         for article_num, data in supplier_data.items():
-            # Match article number
             if search_term.lower() in article_num.lower():
                 suggestions.append(f"🔢 {article_num} - {data['names'][0]}")
-            # Match product names
             for name in data['names']:
                 if search_term.lower() in name.lower():
                     suggestions.append(f"📝 {article_num} - {name}")
         
         if suggestions:
-            st.markdown("**💡 Suggestions:**")
-            for suggestion in list(set(suggestions))[:5]:  # Remove duplicates, show top 5
-                st.markdown(f'<div class="suggestion-box">{suggestion}</div>', unsafe_allow_html=True)
+            st.markdown("**💡 Quick Suggestions:**")
+            for suggestion in list(set(suggestions))[:4]:
+                st.markdown(f'<div class="suggestion-item">{suggestion}</div>', unsafe_allow_html=True)
     
-    search_clicked = st.button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True)
+    if st.button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary"):
+        handle_search(article, product, supplier)
+    
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Handle search
-    if search_clicked:
-        search_term = article or product
-        if not search_term:
-            st.error("❌ Please enter an article number or product name")
-            return
+def handle_search(article, product, supplier):
+    search_term = article or product
+    if not search_term:
+        st.error("❌ Please enter an article number or product name")
+        return
+    
+    # Search logic
+    found = False
+    for article_num, data in SAMPLE_DATA[supplier].items():
+        article_match = article and article == article_num
+        product_match = product and any(product.lower() in name.lower() for name in data['names'])
         
-        # Search logic
-        found = False
-        for article_num, data in SAMPLE_DATA[supplier].items():
-            article_match = article and article == article_num
-            product_match = product and any(product.lower() in name.lower() for name in data['names'])
-            
-            if article_match or product_match:
-                found = True
-                display_results(article_num, data, supplier)
-                break
-        
-        if not found:
-            st.error(f"❌ No results found for '{search_term}' in {supplier}")
+        if article_match or product_match:
+            found = True
+            display_results(article_num, data, supplier)
+            break
+    
+    if not found:
+        st.error(f"❌ No results found for '{search_term}' in {supplier}")
 
 def display_results(article, data, supplier):
-    st.success(f"✅ Found in {supplier}")
+    st.success(f"✅ **Article {article}** found in **{supplier}**")
     
     # Product names
     st.subheader("📝 Product Names")
@@ -156,39 +175,52 @@ def display_results(article, data, supplier):
     # Statistics
     prices = data['prices']
     st.subheader("📊 Price Statistics")
+    
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.markdown('<div class="stat-card">', unsafe_allow_html=True)
-        st.metric("Total Records", len(prices))
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("""
+        <div class="stat-card">
+            <div class="stat-number">{}</div>
+            <div class="stat-label">Total Records</div>
+        </div>
+        """.format(len(prices)), unsafe_allow_html=True)
     
     with col2:
-        st.markdown('<div class="stat-card">', unsafe_allow_html=True)
-        st.metric("Min Price/kg", f"${min(prices):.2f}")
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("""
+        <div class="stat-card">
+            <div class="stat-number">${:.2f}</div>
+            <div class="stat-label">Min Price/kg</div>
+        </div>
+        """.format(min(prices)), unsafe_allow_html=True)
     
     with col3:
-        st.markdown('<div class="stat-card">', unsafe_allow_html=True)
-        st.metric("Max Price/kg", f"${max(prices):.2f}")
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("""
+        <div class="stat-card">
+            <div class="stat-number">${:.2f}</div>
+            <div class="stat-label">Max Price/kg</div>
+        </div>
+        """.format(max(prices)), unsafe_allow_html=True)
     
     with col4:
-        st.markdown('<div class="stat-card">', unsafe_allow_html=True)
-        st.metric("Avg Price/kg", f"${sum(prices)/len(prices):.2f}")
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("""
+        <div class="stat-card">
+            <div class="stat-number">${:.2f}</div>
+            <div class="stat-label">Avg Price/kg</div>
+        </div>
+        """.format(sum(prices)/len(prices)), unsafe_allow_html=True)
     
     # Price history
     st.subheader("💵 Historical Prices (per kg)")
     cols = st.columns(4)
     for i, price in enumerate(prices):
         with cols[i % 4]:
-            st.markdown(f'''
-            <div style="background: #991B1B; color: white; padding: 1rem; border-radius: 8px; text-align: center; margin: 0.5rem 0;">
-                <div style="font-size: 1.3em; font-weight: bold;">${price:.2f}</div>
-                <div style="font-size: 0.8em;">Record #{i+1}</div>
+            st.markdown(f"""
+            <div class="price-box">
+                <div style="font-size: 1.4em; font-weight: bold;">${price:.2f}</div>
+                <div style="font-size: 0.8em; opacity: 0.9;">Record #{i+1}</div>
             </div>
-            ''', unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
