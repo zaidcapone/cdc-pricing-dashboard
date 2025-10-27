@@ -1,6 +1,10 @@
 import streamlit as st
 import pandas as pd
 
+# Initialize session state
+if 'selected_article' not in st.session_state:
+    st.session_state.selected_article = None
+
 # Custom CSS with professional design
 st.markdown("""
 <style>
@@ -58,15 +62,6 @@ st.markdown("""
         text-align: center;
         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
-    .suggestion-item {
-        background: #F8F9FA;
-        padding: 1rem;
-        border-radius: 8px;
-        border-left: 4px solid #991B1B;
-        margin: 0.5rem 0;
-        color: #1F2937;
-        cursor: pointer;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -117,38 +112,70 @@ def main():
     
     col1, col2 = st.columns(2)
     with col1:
-        article = st.text_input("**ARTICLE NUMBER**", placeholder="e.g., 1-366, 1-367...")
+        article = st.text_input("**ARTICLE NUMBER**", placeholder="e.g., 1-366, 1-367...", value=st.session_state.selected_article or "")
     with col2:
         product = st.text_input("**PRODUCT NAME**", placeholder="e.g., Moist Muffin, Date Mix...")
     
-    # Auto-suggestions
+    # Auto-suggestions with click-to-select
     search_term = article or product
     if search_term:
         suggestions = []
         supplier_data = SAMPLE_DATA[supplier]
         
         for article_num, data in supplier_data.items():
+            # Match article number
             if search_term.lower() in article_num.lower():
-                suggestions.append(f"🔢 {article_num} - {data['names'][0]}")
+                suggestions.append({
+                    "type": "article",
+                    "value": article_num,
+                    "display": f"🔢 {article_num} - {data['names'][0]}"
+                })
+            # Match product names
             for name in data['names']:
                 if search_term.lower() in name.lower():
-                    suggestions.append(f"📝 {article_num} - {name}")
+                    suggestions.append({
+                        "type": "product", 
+                        "value": article_num,
+                        "display": f"📝 {article_num} - {name}"
+                    })
         
         if suggestions:
-            st.markdown("**💡 Quick Suggestions:**")
-            for suggestion in list(set(suggestions))[:4]:
-                st.markdown(f'<div class="suggestion-item">{suggestion}</div>', unsafe_allow_html=True)
+            st.markdown("**💡 Quick Suggestions (Click to select):**")
+            # Remove duplicates by article number
+            unique_suggestions = {}
+            for sugg in suggestions:
+                if sugg["value"] not in unique_suggestions:
+                    unique_suggestions[sugg["value"]] = sugg
+            
+            for i, suggestion in enumerate(list(unique_suggestions.values())[:4]):
+                if st.button(suggestion["display"], key=f"sugg_{i}", use_container_width=True):
+                    # Set the article number when clicked
+                    st.session_state.selected_article = suggestion["value"]
+                    st.rerun()
     
     if st.button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary"):
         handle_search(article, product, supplier)
     
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # Auto-search when suggestion is selected
+    if st.session_state.selected_article and not st.session_state.get('searched', False):
+        article_to_search = st.session_state.selected_article
+        supplier_data = SAMPLE_DATA[supplier]
+        if article_to_search in supplier_data:
+            display_results(article_to_search, supplier_data[article_to_search], supplier)
+            st.session_state.searched = True
+
 def handle_search(article, product, supplier):
     search_term = article or product
     if not search_term:
         st.error("❌ Please enter an article number or product name")
         return
+    
+    # Clear previous selection
+    if 'selected_article' in st.session_state:
+        del st.session_state.selected_article
+    st.session_state.searched = True
     
     # Search logic
     found = False
