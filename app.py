@@ -1,12 +1,6 @@
 import streamlit as st
 import pandas as pd
 
-# Initialize session state
-if 'selected_article' not in st.session_state:
-    st.session_state.selected_article = None
-if 'auto_search' not in st.session_state:
-    st.session_state.auto_search = False
-
 # Custom CSS with professional design
 st.markdown("""
 <style>
@@ -132,6 +126,10 @@ SAMPLE_DATA = {
 }
 
 def main():
+    # Initialize session state
+    if 'search_results' not in st.session_state:
+        st.session_state.search_results = None
+    
     # Header
     st.markdown("""
     <div class="main-header">
@@ -150,64 +148,62 @@ def main():
     
     col1, col2 = st.columns(2)
     with col1:
-        article = st.text_input("**ARTICLE NUMBER**", placeholder="e.g., 1-366, 1-367...", key="article_input")
+        article = st.text_input("**ARTICLE NUMBER**", placeholder="e.g., 1-366, 1-367...")
     with col2:
-        product = st.text_input("**PRODUCT NAME**", placeholder="e.g., Moist Muffin, Date Mix...", key="product_input")
+        product = st.text_input("**PRODUCT NAME**", placeholder="e.g., Moist Muffin, Date Mix...")
     
-    # Auto-suggestions with click-to-select
+    # Auto-suggestions
     search_term = article or product
     if search_term:
-        suggestions = []
-        supplier_data = SAMPLE_DATA[supplier]
-        
-        for article_num, data in supplier_data.items():
-            # Match article number
-            if search_term.lower() in article_num.lower():
-                suggestions.append({
-                    "type": "article",
-                    "value": article_num,
-                    "display": f"🔢 {article_num} - {data['names'][0]}"
-                })
-            # Match product names
-            for name in data['names']:
-                if search_term.lower() in name.lower():
-                    suggestions.append({
-                        "type": "product", 
-                        "value": article_num,
-                        "display": f"📝 {article_num} - {name}"
-                    })
-        
+        suggestions = get_suggestions(search_term, supplier)
         if suggestions:
-            st.markdown("**💡 Quick Suggestions (Click to select):**")
-            # Remove duplicates by article number
-            unique_suggestions = {}
-            for sugg in suggestions:
-                if sugg["value"] not in unique_suggestions:
-                    unique_suggestions[sugg["value"]] = sugg
-            
-            for i, suggestion in enumerate(list(unique_suggestions.values())[:4]):
-                if st.button(suggestion["display"], key=f"sugg_{i}_{suggestion['value']}", use_container_width=True):
-                    # Set the article number when clicked and trigger search
-                    st.session_state.selected_article = suggestion["value"]
-                    st.session_state.auto_search = True
-                    st.rerun()
+            st.markdown("**💡 Quick Suggestions:**")
+            for i, suggestion in enumerate(suggestions[:4]):
+                # Use form submit for better reliability
+                with st.form(key=f"form_{i}"):
+                    if st.form_submit_button(suggestion["display"], use_container_width=True):
+                        st.session_state.search_results = {
+                            "article": suggestion["value"],
+                            "supplier": supplier
+                        }
+                        st.rerun()
     
-    # Manual search button
-    if st.button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary", key="search_btn"):
-        st.session_state.auto_search = False
+    # Manual search
+    if st.button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary"):
         handle_search(article, product, supplier)
     
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Auto-search when suggestion is selected
-    if st.session_state.get('auto_search', False) and st.session_state.selected_article:
-        article_to_search = st.session_state.selected_article
-        supplier_data = SAMPLE_DATA[supplier]
-        if article_to_search in supplier_data:
-            # Update the input field
-            st.session_state.article_input = article_to_search
-            display_results(article_to_search, supplier_data[article_to_search], supplier)
-            st.session_state.auto_search = False
+    # Display results from session state
+    if st.session_state.search_results:
+        display_from_session_state()
+
+def get_suggestions(search_term, supplier):
+    suggestions = []
+    supplier_data = SAMPLE_DATA[supplier]
+    
+    for article_num, data in supplier_data.items():
+        if search_term.lower() in article_num.lower():
+            suggestions.append({
+                "type": "article",
+                "value": article_num,
+                "display": f"🔢 {article_num} - {data['names'][0]}"
+            })
+        for name in data['names']:
+            if search_term.lower() in name.lower():
+                suggestions.append({
+                    "type": "product", 
+                    "value": article_num,
+                    "display": f"📝 {article_num} - {name}"
+                })
+    
+    # Remove duplicates
+    unique_suggestions = {}
+    for sugg in suggestions:
+        if sugg["value"] not in unique_suggestions:
+            unique_suggestions[sugg["value"]] = sugg
+    
+    return list(unique_suggestions.values())
 
 def handle_search(article, product, supplier):
     search_term = article or product
@@ -215,21 +211,28 @@ def handle_search(article, product, supplier):
         st.error("❌ Please enter an article number or product name")
         return
     
-    # Search logic
     found = False
     for article_num, data in SAMPLE_DATA[supplier].items():
         article_match = article and article == article_num
         product_match = product and any(product.lower() in name.lower() for name in data['names'])
         
         if article_match or product_match:
+            st.session_state.search_results = {
+                "article": article_num,
+                "supplier": supplier
+            }
             found = True
-            display_results(article_num, data, supplier)
             break
     
     if not found:
         st.error(f"❌ No results found for '{search_term}' in {supplier}")
 
-def display_results(article, data, supplier):
+def display_from_session_state():
+    results = st.session_state.search_results
+    article = results["article"]
+    supplier = results["supplier"]
+    data = SAMPLE_DATA[supplier][article]
+    
     st.success(f"✅ **Article {article}** found in **{supplier}**")
     
     # Product names
@@ -244,36 +247,36 @@ def display_results(article, data, supplier):
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.markdown("""
+        st.markdown(f"""
         <div class="stat-card">
-            <div class="stat-number">{}</div>
+            <div class="stat-number">{len(prices)}</div>
             <div class="stat-label">Total Records</div>
         </div>
-        """.format(len(prices)), unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
     
     with col2:
-        st.markdown("""
+        st.markdown(f"""
         <div class="stat-card">
-            <div class="stat-number">${:.2f}</div>
+            <div class="stat-number">${min(prices):.2f}</div>
             <div class="stat-label">Min Price/kg</div>
         </div>
-        """.format(min(prices)), unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
     
     with col3:
-        st.markdown("""
+        st.markdown(f"""
         <div class="stat-card">
-            <div class="stat-number">${:.2f}</div>
+            <div class="stat-number">${max(prices):.2f}</div>
             <div class="stat-label">Max Price/kg</div>
         </div>
-        """.format(max(prices)), unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
     
     with col4:
-        st.markdown("""
+        st.markdown(f"""
         <div class="stat-card">
-            <div class="stat-number">${:.2f}</div>
+            <div class="stat-number">${sum(prices)/len(prices):.2f}</div>
             <div class="stat-label">Avg Price/kg</div>
         </div>
-        """.format(sum(prices)/len(prices)), unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
     
     # Price history with order numbers
     st.subheader("💵 Historical Prices with Order Details")
