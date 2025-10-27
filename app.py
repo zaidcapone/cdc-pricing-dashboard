@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import requests
+import json
 
 # Custom CSS with professional design
 st.markdown("""
@@ -67,76 +69,168 @@ st.markdown("""
         font-size: 0.8em;
         color: #6B7280;
     }
+    .refresh-btn {
+        background: #059669 !important;
+        color: white !important;
+        border: none !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Sample data with order numbers
-SAMPLE_DATA = {
-    "Backaldrin": {
-        "1-366": {
-            "prices": [2.40, 2.45, 2.38, 2.42],
-            "names": ["Moist Muffin Vanilla Mix", "موسيت مفن فانيلا ميكس"],
-            "orders": [
-                {"price": 2.40, "order_no": "ORD-001", "date": "2024-01-15"},
-                {"price": 2.45, "order_no": "ORD-002", "date": "2024-02-20"},
-                {"price": 2.38, "order_no": "ORD-003", "date": "2024-03-10"},
-                {"price": 2.42, "order_no": "ORD-004", "date": "2024-04-05"}
-            ]
+# Configuration
+API_KEY = "AIzaSyA3P-ZpLjDdVtGB82_1kaWuO7lNbKDj9HU"  # Your API key
+
+def get_google_sheets_data():
+    """Load data from Google Sheets using API key"""
+    try:
+        # Get your Google Sheet ID from the URL: https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit
+        SHEET_ID = "your-google-sheet-id-here"  # You need to replace this!
+        
+        # Load Backaldrin data
+        backaldrin_url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/Backaldrin!A:Z?key={API_KEY}"
+        backaldrin_response = requests.get(backaldrin_url)
+        
+        # Load Bateel data
+        bateel_url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/Bateel!A:Z?key={API_KEY}"
+        bateel_response = requests.get(bateel_url)
+        
+        data = {"Backaldrin": {}, "Bateel": {}}
+        
+        # Process Backaldrin data
+        if backaldrin_response.status_code == 200:
+            backaldrin_values = backaldrin_response.json().get('values', [])
+            if len(backaldrin_values) > 1:  # Has header row
+                headers = backaldrin_values[0]
+                for row in backaldrin_values[1:]:
+                    if len(row) >= 5:  # Ensure we have enough columns
+                        article = str(row[2]) if len(row) > 2 else ""  # Article_Number
+                        product_name = row[3] if len(row) > 3 else ""  # Product_Name
+                        price = row[4] if len(row) > 4 else ""  # Price_per_kg
+                        order_no = row[0] if len(row) > 0 else ""  # Order_Number
+                        order_date = row[1] if len(row) > 1 else ""  # Order_Date
+                        
+                        if article and price:
+                            if article not in data["Backaldrin"]:
+                                data["Backaldrin"][article] = {
+                                    "prices": [],
+                                    "names": [],
+                                    "orders": []
+                                }
+                            
+                            try:
+                                price_float = float(price)
+                                data["Backaldrin"][article]["prices"].append(price_float)
+                                data["Backaldrin"][article]["orders"].append({
+                                    "price": price_float,
+                                    "order_no": order_no,
+                                    "date": order_date
+                                })
+                                
+                                if product_name and product_name not in data["Backaldrin"][article]["names"]:
+                                    data["Backaldrin"][article]["names"].append(product_name)
+                            except ValueError:
+                                continue
+        
+        # Process Bateel data
+        if bateel_response.status_code == 200:
+            bateel_values = bateel_response.json().get('values', [])
+            if len(bateel_values) > 1:  # Has header row
+                headers = bateel_values[0]
+                for row in bateel_values[1:]:
+                    if len(row) >= 5:
+                        article = str(row[2]) if len(row) > 2 else ""
+                        product_name = row[3] if len(row) > 3 else ""
+                        price = row[4] if len(row) > 4 else ""
+                        order_no = row[0] if len(row) > 0 else ""
+                        order_date = row[1] if len(row) > 1 else ""
+                        
+                        if article and price:
+                            if article not in data["Bateel"]:
+                                data["Bateel"][article] = {
+                                    "prices": [],
+                                    "names": [],
+                                    "orders": []
+                                }
+                            
+                            try:
+                                price_float = float(price)
+                                data["Bateel"][article]["prices"].append(price_float)
+                                data["Bateel"][article]["orders"].append({
+                                    "price": price_float,
+                                    "order_no": order_no,
+                                    "date": order_date
+                                })
+                                
+                                if product_name and product_name not in data["Bateel"][article]["names"]:
+                                    data["Bateel"][article]["names"].append(product_name)
+                            except ValueError:
+                                continue
+        
+        return data
+        
+    except Exception as e:
+        st.error(f"❌ Google Sheets error: {str(e)}")
+        return get_sample_data()
+
+def get_sample_data():
+    """Fallback sample data"""
+    return {
+        "Backaldrin": {
+            "1-366": {
+                "prices": [2.40, 2.45, 2.38, 2.42],
+                "names": ["Moist Muffin Vanilla Mix", "موسيت مفن فانيلا ميكس"],
+                "orders": [
+                    {"price": 2.40, "order_no": "ORD-001", "date": "2024-01-15"},
+                    {"price": 2.45, "order_no": "ORD-002", "date": "2024-02-20"},
+                    {"price": 2.38, "order_no": "ORD-003", "date": "2024-03-10"},
+                    {"price": 2.42, "order_no": "ORD-004", "date": "2024-04-05"}
+                ]
+            }
         },
-        "1-367": {
-            "prices": [2.55, 2.60, 2.58],
-            "names": ["Moist Muffin Chocolate", "موسيت مفن شوكولاتة"],
-            "orders": [
-                {"price": 2.55, "order_no": "ORD-005", "date": "2024-01-20"},
-                {"price": 2.60, "order_no": "ORD-006", "date": "2024-02-25"},
-                {"price": 2.58, "order_no": "ORD-007", "date": "2024-03-15"}
-            ]
-        },
-        "1-368": {
-            "prices": [2.35, 2.40, 2.38],
-            "names": ["Classic Croissant Mix", "خليط كرواسون كلاسيك"],
-            "orders": [
-                {"price": 2.35, "order_no": "ORD-008", "date": "2024-01-10"},
-                {"price": 2.40, "order_no": "ORD-009", "date": "2024-02-15"},
-                {"price": 2.38, "order_no": "ORD-010", "date": "2024-03-20"}
-            ]
-        }
-    },
-    "Bateel": {
-        "1001": {
-            "prices": [3.20, 3.25, 3.18, 3.22],
-            "names": ["Premium Date Mix", "خليط التمر الفاخر"],
-            "orders": [
-                {"price": 3.20, "order_no": "ORD-101", "date": "2024-01-18"},
-                {"price": 3.25, "order_no": "ORD-102", "date": "2024-02-22"},
-                {"price": 3.18, "order_no": "ORD-103", "date": "2024-03-12"},
-                {"price": 3.22, "order_no": "ORD-104", "date": "2024-04-08"}
-            ]
-        },
-        "1002": {
-            "prices": [4.15, 4.20, 4.18],
-            "names": ["Chocolate Date Spread", "معجون التمر بالشوكولاتة"],
-            "orders": [
-                {"price": 4.15, "order_no": "ORD-105", "date": "2024-01-25"},
-                {"price": 4.20, "order_no": "ORD-106", "date": "2024-02-28"},
-                {"price": 4.18, "order_no": "ORD-107", "date": "2024-03-18"}
-            ]
+        "Bateel": {
+            "1001": {
+                "prices": [3.20, 3.25, 3.18, 3.22],
+                "names": ["Premium Date Mix", "خليط التمر الفاخر"],
+                "orders": [
+                    {"price": 3.20, "order_no": "ORD-101", "date": "2024-01-18"},
+                    {"price": 3.25, "order_no": "ORD-102", "date": "2024-02-22"},
+                    {"price": 3.18, "order_no": "ORD-103", "date": "2024-03-12"},
+                    {"price": 3.22, "order_no": "ORD-104", "date": "2024-04-08"}
+                ]
+            }
         }
     }
-}
 
 def main():
     # Initialize session state
     if 'search_results' not in st.session_state:
         st.session_state.search_results = None
+    if 'data_source' not in st.session_state:
+        st.session_state.data_source = "sample"
     
     # Header
     st.markdown("""
     <div class="main-header">
         <h1 style="margin:0; font-size:2.5em;">📊 CDC Pricing Dashboard</h1>
-        <p style="margin:10px 0 0 0; font-size:1.2em; opacity:0.9;">Professional Price Tracking • Ready for Business Use</p>
+        <p style="margin:10px 0 0 0; font-size:1.2em; opacity:0.9;">Live Google Sheets Data • Professional Price Tracking</p>
     </div>
     """, unsafe_allow_html=True)
+
+    # Data source selection
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        data_source = st.radio("Data Source:", ["Sample Data", "Google Sheets"], horizontal=True)
+    with col2:
+        if st.button("🔄 Refresh Data", use_container_width=True, type="secondary"):
+            st.rerun()
+    
+    # Load data
+    if data_source == "Google Sheets":
+        DATA = get_google_sheets_data()
+        st.success("✅ Connected to Google Sheets - Live Data!")
+    else:
+        DATA = get_sample_data()
+        st.info("📊 Using sample data - Switch to Google Sheets for live data")
 
     # Supplier selection
     st.subheader("🏢 Select Supplier")
@@ -155,7 +249,7 @@ def main():
     # Auto-suggestions
     search_term = article or product
     if search_term:
-        suggestions = get_suggestions(search_term, supplier, SAMPLE_DATA)
+        suggestions = get_suggestions(search_term, supplier, DATA)
         if suggestions:
             st.markdown("**💡 Quick Suggestions:**")
             for i, suggestion in enumerate(suggestions[:4]):
@@ -169,13 +263,16 @@ def main():
     
     # Manual search
     if st.button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary"):
-        handle_search(article, product, supplier, SAMPLE_DATA)
+        handle_search(article, product, supplier, DATA)
     
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Display results from session state
     if st.session_state.search_results:
-        display_from_session_state(SAMPLE_DATA)
+        display_from_session_state(DATA)
+
+# ... (Keep all your existing functions: get_suggestions, handle_search, display_from_session_state)
+# Copy the exact same functions from your previous working code
 
 def get_suggestions(search_term, supplier, data):
     suggestions = []
