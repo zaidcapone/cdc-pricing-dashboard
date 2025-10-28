@@ -625,14 +625,13 @@ def cdc_dashboard(client):
     </div>
     """, unsafe_allow_html=True)
 
-# Load data directly from Google Sheets
-DATA = get_google_sheets_data(client)
-st.success(f"✅ Connected to Google Sheets - Live Data for {client}!")
+    # Load data directly from Google Sheets
+    DATA = get_google_sheets_data(client)
+    st.success(f"✅ Connected to Google Sheets - Live Data for {client}!")
 
-# Refresh button
-if st.button("🔄 Refresh Data", use_container_width=True, type="secondary", key=f"{client}_refresh"):
-    st.rerun()
-    
+    # Refresh button
+    if st.button("🔄 Refresh Data", use_container_width=True, type="secondary", key=f"{client}_refresh"):
+        st.rerun()
 
     # Supplier selection
     st.subheader("🏢 Select Supplier")
@@ -673,7 +672,7 @@ if st.button("🔄 Refresh Data", use_container_width=True, type="secondary", ke
     # Display results from session state
     if st.session_state.search_results and st.session_state.search_results.get("client") == client:
         display_from_session_state(DATA, client)
-
+        
 def get_suggestions(search_term, supplier, data):
     suggestions = []
     supplier_data = data[supplier]
