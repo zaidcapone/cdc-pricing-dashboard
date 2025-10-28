@@ -625,21 +625,14 @@ def cdc_dashboard(client):
     </div>
     """, unsafe_allow_html=True)
 
-    # Data source selection
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        data_source = st.radio("Data Source:", ["Sample Data", "Google Sheets"], horizontal=True, key=f"{client}_data_source")
-    with col2:
-        if st.button("🔄 Refresh Data", use_container_width=True, type="secondary", key=f"{client}_refresh"):
-            st.rerun()
+# Load data directly from Google Sheets
+DATA = get_google_sheets_data(client)
+st.success(f"✅ Connected to Google Sheets - Live Data for {client}!")
+
+# Refresh button
+if st.button("🔄 Refresh Data", use_container_width=True, type="secondary", key=f"{client}_refresh"):
+    st.rerun()
     
-    # Load data
-    if data_source == "Google Sheets":
-        DATA = get_google_sheets_data(client)
-        st.success(f"✅ Connected to Google Sheets - Live Data for {client}!")
-    else:
-        DATA = get_sample_data()
-        st.info("📊 Using sample data - Switch to Google Sheets for live data")
 
     # Supplier selection
     st.subheader("🏢 Select Supplier")
