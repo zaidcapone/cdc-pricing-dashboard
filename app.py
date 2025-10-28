@@ -746,9 +746,10 @@ def display_from_session_state(data, client):
     
     st.success(f"✅ **Article {article}** found in **{supplier}** for **{client}**")
     
-    # Product names
+    # Product names - SHOW ONLY UNIQUE NAMES
     st.subheader("📝 Product Names")
-    for name in article_data['names']:
+    unique_names = list(set(article_data['names']))  # Remove duplicates
+    for name in unique_names:
         st.markdown(f'<div class="price-card">{name}</div>', unsafe_allow_html=True)
     
     # Statistics
