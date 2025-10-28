@@ -199,6 +199,8 @@ def ceo_specials_tab():
            - Article_Number
            - Product_Name  
            - Special_Price
+           - Currency
+           - Incoterm
            - Notes
            - Effective_Date
            - Expiry_Date
@@ -215,8 +217,17 @@ def ceo_specials_tab():
         active_offers = len(ceo_data[ceo_data['Expiry_Date'] >= datetime.now().strftime('%Y-%m-%d')])
         st.metric("Active Offers", active_offers)
     with col3:
-        avg_discount = "N/A"  # Could calculate if we had regular prices
-        st.metric("Avg Special Price", f"${ceo_data['Special_Price'].mean():.2f}")
+        # SAFE AVERAGE CALCULATION - handles multiple currencies and formats
+        try:
+            # Convert to numeric, coerce errors to NaN
+            prices = pd.to_numeric(ceo_data['Special_Price'], errors='coerce')
+            avg_price = prices.mean()
+            if pd.notna(avg_price):
+                st.metric("Avg Special Price", f"${avg_price:.2f}")
+            else:
+                st.metric("Avg Special Price", "N/A")
+        except:
+            st.metric("Avg Special Price", "N/A")
     with col4:
         expiring_soon = len(ceo_data[
             (ceo_data['Expiry_Date'] >= datetime.now().strftime('%Y-%m-%d')) &
@@ -227,11 +238,13 @@ def ceo_specials_tab():
     # Search and Filter
     st.subheader("🔍 Search CEO Special Prices")
     
-    col1, col2 = st.columns([2, 1])
+    col1, col2, col3 = st.columns([2, 1, 1])
     with col1:
         search_term = st.text_input("Search by article or product name...", key="ceo_search")
     with col2:
         show_active = st.checkbox("Show Active Only", value=True, key="ceo_active")
+    with col3:
+        currency_filter = st.selectbox("Currency", ["All"] + list(ceo_data['Currency'].unique()), key="ceo_currency")
     
     # Filter data
     filtered_data = ceo_data.copy()
@@ -245,6 +258,9 @@ def ceo_specials_tab():
     if show_active:
         filtered_data = filtered_data[filtered_data['Expiry_Date'] >= datetime.now().strftime('%Y-%m-%d')]
     
+    if currency_filter != "All":
+        filtered_data = filtered_data[filtered_data['Currency'] == currency_filter]
+    
     # Display CEO Special Prices
     st.subheader("🎯 Special Price List")
     
@@ -255,16 +271,23 @@ def ceo_specials_tab():
             status_color = "🟢" if is_active else "🔴"
             status_text = "Active" if is_active else "Expired"
             
+            # Safe price display - show raw value if numeric conversion fails
+            try:
+                price_display = f"{float(special['Special_Price']):.2f}"
+            except:
+                price_display = str(special['Special_Price'])
+            
             st.markdown(f"""
             <div class="special-price-card">
                 <div style="display: flex; justify-content: between; align-items: center;">
                     <div>
                         <h3 style="margin:0; color: #D97706;">{special['Article_Number']} - {special['Product_Name']}</h3>
                         <p style="margin:0; font-size: 1.2em; font-weight: bold; color: #B45309;">
-                            Special Price: ${float(special['Special_Price']):.2f}/kg
+                            Special Price: {price_display} {special['Currency']}/kg
                         </p>
                         <p style="margin:0; color: #6B7280;">
                             {status_color} {status_text} • Valid until: {special['Expiry_Date']}
+                            {f" • Incoterm: {special['Incoterm']}" if pd.notna(special['Incoterm']) and special['Incoterm'] != '' else ''}
                         </p>
                         {f"<p style='margin:5px 0 0 0; color: #6B7280;'><strong>Notes:</strong> {special['Notes']}</p>" if pd.notna(special['Notes']) and special['Notes'] != '' else ''}
                     </div>
@@ -300,7 +323,7 @@ Total Offers: {len(filtered_data)}
 Active Offers: {len(filtered_data[filtered_data['Expiry_Date'] >= datetime.now().strftime('%Y-%m-%d')])}
 
 Special Prices:
-{chr(10).join([f"• {row['Article_Number']} - {row['Product_Name']}: ${float(row['Special_Price']):.2f} (Until: {row['Expiry_Date']})" for _, row in filtered_data.iterrows()])}
+{chr(10).join([f"• {row['Article_Number']} - {row['Product_Name']}: {row['Special_Price']} {row['Currency']} (Incoterm: {row['Incoterm']}, Until: {row['Expiry_Date']})" for _, row in filtered_data.iterrows()])}
                 """,
                 file_name=f"ceo_specials_summary_{datetime.now().strftime('%Y%m%d')}.txt",
                 mime="text/plain",
@@ -313,7 +336,7 @@ Special Prices:
         st.info("No CEO special prices match your search criteria.")
 
 def load_ceo_special_prices():
-    """Load CEO special prices from Google Sheets"""
+    """Load CEO special prices from Google Sheets - UPDATED FOR 8 COLUMNS"""
     try:
         ceo_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/CEO_Special_Prices!A:Z?key={API_KEY}"
         response = requests.get(ceo_url)
@@ -329,21 +352,24 @@ def load_ceo_special_prices():
                 # Create DataFrame
                 df = pd.DataFrame(rows, columns=headers)
                 
-                # Ensure required columns exist
-                required_cols = ['Article_Number', 'Product_Name', 'Special_Price']
+                # UPDATED: Ensure required columns exist (now 8 columns)
+                required_cols = ['Article_Number', 'Product_Name', 'Special_Price', 'Currency', 'Incoterm']
                 if all(col in df.columns for col in required_cols):
-                    # Clean up data
+                    # Clean up data - include all 8 columns
                     df = df[required_cols + [col for col in df.columns if col not in required_cols]]
                     
-                    # Add default dates if missing
+                    # Add default values if missing
+                    if 'Notes' not in df.columns:
+                        df['Notes'] = ''
                     if 'Effective_Date' not in df.columns:
                         df['Effective_Date'] = datetime.now().strftime('%Y-%m-%d')
                     if 'Expiry_Date' not in df.columns:
                         df['Expiry_Date'] = (datetime.now() + pd.Timedelta(days=365)).strftime('%Y-%m-%d')
-                    if 'Notes' not in df.columns:
-                        df['Notes'] = ''
                     
                     return df
+                else:
+                    st.error(f"Missing required columns. Found: {list(df.columns)}")
+                    return pd.DataFrame()
                 
         return pd.DataFrame()
         
@@ -351,7 +377,7 @@ def load_ceo_special_prices():
         st.error(f"Error loading CEO special prices: {str(e)}")
         return pd.DataFrame()
 
-# [KEEP ALL YOUR EXISTING FUNCTIONS BELOW]
+# [KEEP ALL YOUR EXISTING FUNCTIONS BELOW - NO CHANGES NEEDED]
 # get_google_sheets_data, get_sample_data, cdc_dashboard, 
 # get_suggestions, handle_search, display_from_session_state, 
 # create_export_data
