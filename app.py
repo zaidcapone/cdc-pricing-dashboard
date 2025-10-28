@@ -728,7 +728,9 @@ for client_supplier in all_results.keys():
                     'Average_Price': result['avg_price'],
                     'Min_Price': result['min_price'],
                     'Max_Price': result['max_price'],
-                    'Price_Range': result['max_price'] - result['min_price'],
+                    'Min_Price': result['min_price'],
+'Max_Price': result['max_price'], 
+'Avg_Price': result['avg_price'],
                     'Records_Count': result['records'],
                     'Status': 'Available',
                     'Analysis_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
