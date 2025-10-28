@@ -63,16 +63,6 @@ st.markdown("""
         font-weight: 500;
         border: 2px solid #D97706;
     }
-    .intelligence-card {
-        background: linear-gradient(135deg, #D1FAE5, #A7F3D0);
-        padding: 1.5rem;
-        border-radius: 8px;
-        border-left: 5px solid #059669;
-        margin: 0.5rem 0;
-        color: #1F2937;
-        font-weight: 500;
-        border: 2px solid #059669;
-    }
     .stat-card {
         background: white;
         padding: 1.5rem;
@@ -173,14 +163,6 @@ st.markdown("""
         border-radius: 10px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         border: 2px solid #991B1B;
-    }
-    .best-price {
-        background: #10B981 !important;
-        border: 2px solid #047857 !important;
-    }
-    .worst-price {
-        background: #EF4444 !important;
-        border: 2px solid #DC2626 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -603,7 +585,7 @@ def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="
         with col4:
             st.metric("Highest Price", f"${overall_max:.2f}/kg")
     
-    # Display detailed comparison
+    # Display detailed comparison using NATIVE STREAMLIT COMPONENTS
     st.subheader("🏢 Client-by-Client Price Comparison")
     
     for client_supplier, results in all_results.items():
@@ -616,45 +598,28 @@ def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="
             is_best = result['min_price'] == overall_min if all_prices else False
             is_worst = result['max_price'] == overall_max if all_prices else False
             
-            price_class = ""
-            if is_best:
-                price_class = "best-price"
-            elif is_worst:
-                price_class = "worst-price"
-            
-            # Build the HTML content safely
-card_html = f"""
-<div class="intelligence-card {price_class}">
-    <div style="display: flex; justify-content: between; align-items: start;">
-        <div style="flex: 1;">
-            <h4 style="margin:0; color: #059669;">{result['article']}</h4>
-            <p style="margin:0; color: #6B7280; font-size: 0.9em;">
-                {', '.join(result['product_names'])}
-            </p>
-        </div>
-        <div style="text-align: right;">
-            <p style="margin:0; font-size: 1.1em; font-weight: bold; color: #059669;">
-                ${result['avg_price']:.2f}/kg avg
-            </p>
-            <p style="margin:0; color: #6B7280; font-size: 0.9em;">
-                Range: ${result['min_price']:.2f} - ${result['max_price']:.2f}
-            </p>
-            <p style="margin:0; color: #6B7280; font-size: 0.8em;">
-                {result['records']} records
-            </p>
-        </div>
-    </div>
-"""
-
-# Add best/worst price badges safely
-if is_best:
-    card_html += '<p style="margin:5px 0 0 0; color: #047857; font-weight: bold;">🎯 BEST PRICE</p>'
-if is_worst:
-    card_html += '<p style="margin:5px 0 0 0; color: #DC2626; font-weight: bold;">⚠️ HIGHEST PRICE</p>'
-
-card_html += "</div>"
-
-st.markdown(card_html, unsafe_allow_html=True)
+            # Create card using native Streamlit components
+            with st.container():
+                st.markdown("---")
+                col1, col2 = st.columns([3, 1])
+                
+                with col1:
+                    st.markdown(f"**{result['article']}**")
+                    st.caption(f"{', '.join(result['product_names'])}")
+                    
+                with col2:
+                    st.markdown(f"**${result['avg_price']:.2f}**/kg avg")
+                    st.caption(f"Range: ${result['min_price']:.2f} - ${result['max_price']:.2f}")
+                    st.caption(f"{result['records']} records")
+                
+                # Show best/worst price badges
+                badge_col1, badge_col2 = st.columns(2)
+                with badge_col1:
+                    if is_best:
+                        st.success("🎯 BEST PRICE")
+                with badge_col2:
+                    if is_worst:
+                        st.error("⚠️ HIGHEST PRICE")
             
             # Show detailed price history for this article
             with st.expander(f"📈 View detailed price history for {result['article']}"):
