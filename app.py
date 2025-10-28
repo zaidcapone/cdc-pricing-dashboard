@@ -866,4 +866,30 @@ Price Statistics:
 Orders Included: {', '.join(export_df['Order_Number'].tolist())}
                 """,
                 file_name=f"{client}_summary_{article}_{datetime.now().strftime('%Y%m%d')}.txt",
-                mime="text/plain
+                mime="text/plain",
+                use_container_width=True
+            )
+        
+        # Show export preview
+        with st.expander("👀 Preview Export Data"):
+            st.dataframe(export_df, use_container_width=True)
+            
+    else:
+        st.info("Search for an article to enable export options")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+def convert_df_to_excel(df):
+    """Convert DataFrame to Excel format"""
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Price_History')
+    processed_data = output.getvalue()
+    return processed_data
+
+# Run the main dashboard
+if __name__ == "__main__":
+    if not check_login():
+        login_page()
+    else:
+        main_dashboard()
