@@ -3,7 +3,7 @@ import pandas as pd
 import requests
 import json
 from datetime import datetime
-import base64
+from io import BytesIO
 
 # Page config
 st.set_page_config(
@@ -30,6 +30,13 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 1rem;
     }
+    .ceo-header {
+        background: linear-gradient(135deg, #D97706, #B45309);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
     .search-card {
         background: white;
         padding: 2rem;
@@ -46,6 +53,16 @@ st.markdown("""
         margin: 0.5rem 0;
         color: #1F2937;
         font-weight: 500;
+    }
+    .special-price-card {
+        background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+        padding: 1.5rem;
+        border-radius: 8px;
+        border-left: 5px solid #D97706;
+        margin: 0.5rem 0;
+        color: #1F2937;
+        font-weight: 500;
+        border: 2px solid #D97706;
     }
     .stat-card {
         background: white;
@@ -76,6 +93,16 @@ st.markdown("""
         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         margin: 0.5rem 0;
     }
+    .special-price-box {
+        background: #D97706;
+        color: white;
+        padding: 1rem;
+        border-radius: 8px;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        margin: 0.5rem 0;
+        border: 2px solid #B45309;
+    }
     .order-info {
         background: #F3F4F6;
         padding: 0.5rem;
@@ -91,10 +118,12 @@ st.markdown("""
         border: 2px solid #0EA5E9;
         margin: 1rem 0;
     }
-    .export-btn {
-        background: #059669 !important;
-        color: white !important;
-        border: none !important;
+    .ceo-section {
+        background: #FFFBEB;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 2px solid #D97706;
+        margin: 1rem 0;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -114,14 +143,17 @@ def main_dashboard():
     </div>
     """, unsafe_allow_html=True)
     
-    # Create tabs
-    tab1, tab2 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET"])
+    # Create tabs - ADDED CEO SPECIALS TAB
+    tab1, tab2, tab3 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES"])
     
     with tab1:
         clients_tab()
     
     with tab2:
         etd_tab()
+        
+    with tab3:
+        ceo_specials_tab()
 
 def clients_tab():
     """Clients management tab"""
@@ -145,7 +177,184 @@ def etd_tab():
     st.info("🔧 ETD Sheet integration will be added when ready")
     st.write("This tab will display your live ETD data when available")
 
-# [KEEP ALL YOUR EXISTING FUNCTIONS: get_google_sheets_data, get_sample_data, get_suggestions, handle_search]
+def ceo_specials_tab():
+    """CEO Special Prices tab"""
+    st.markdown("""
+    <div class="ceo-header">
+        <h2 style="margin:0;">⭐ CEO Special Prices</h2>
+        <p style="margin:0; opacity:0.9;">Exclusive Pricing • Limited Time Offers • VIP Client Rates</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Load CEO special prices
+    ceo_data = load_ceo_special_prices()
+    
+    if ceo_data.empty:
+        st.warning("⚠️ No CEO special prices found. Please add data to 'CEO_Special_Prices' sheet.")
+        st.info("""
+        **To add CEO special prices:**
+        1. Go to your Google Sheet
+        2. Add a new tab called **'CEO_Special_Prices'**
+        3. Use these columns:
+           - Article_Number
+           - Product_Name  
+           - Special_Price
+           - Notes
+           - Effective_Date
+           - Expiry_Date
+        """)
+        return
+    
+    # CEO Special Prices Overview
+    st.subheader("📊 CEO Specials Overview")
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("Total Special Offers", len(ceo_data))
+    with col2:
+        active_offers = len(ceo_data[ceo_data['Expiry_Date'] >= datetime.now().strftime('%Y-%m-%d')])
+        st.metric("Active Offers", active_offers)
+    with col3:
+        avg_discount = "N/A"  # Could calculate if we had regular prices
+        st.metric("Avg Special Price", f"${ceo_data['Special_Price'].mean():.2f}")
+    with col4:
+        expiring_soon = len(ceo_data[
+            (ceo_data['Expiry_Date'] >= datetime.now().strftime('%Y-%m-%d')) &
+            (ceo_data['Expiry_Date'] <= (datetime.now() + pd.Timedelta(days=30)).strftime('%Y-%m-%d'))
+        ])
+        st.metric("Expiring Soon", expiring_soon)
+    
+    # Search and Filter
+    st.subheader("🔍 Search CEO Special Prices")
+    
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        search_term = st.text_input("Search by article or product name...", key="ceo_search")
+    with col2:
+        show_active = st.checkbox("Show Active Only", value=True, key="ceo_active")
+    
+    # Filter data
+    filtered_data = ceo_data.copy()
+    
+    if search_term:
+        mask = filtered_data.astype(str).apply(
+            lambda x: x.str.contains(search_term, case=False, na=False)
+        ).any(axis=1)
+        filtered_data = filtered_data[mask]
+    
+    if show_active:
+        filtered_data = filtered_data[filtered_data['Expiry_Date'] >= datetime.now().strftime('%Y-%m-%d')]
+    
+    # Display CEO Special Prices
+    st.subheader("🎯 Special Price List")
+    
+    if not filtered_data.empty:
+        for _, special in filtered_data.iterrows():
+            # Check if offer is active
+            is_active = special['Expiry_Date'] >= datetime.now().strftime('%Y-%m-%d')
+            status_color = "🟢" if is_active else "🔴"
+            status_text = "Active" if is_active else "Expired"
+            
+            st.markdown(f"""
+            <div class="special-price-card">
+                <div style="display: flex; justify-content: between; align-items: center;">
+                    <div>
+                        <h3 style="margin:0; color: #D97706;">{special['Article_Number']} - {special['Product_Name']}</h3>
+                        <p style="margin:0; font-size: 1.2em; font-weight: bold; color: #B45309;">
+                            Special Price: ${float(special['Special_Price']):.2f}/kg
+                        </p>
+                        <p style="margin:0; color: #6B7280;">
+                            {status_color} {status_text} • Valid until: {special['Expiry_Date']}
+                        </p>
+                        {f"<p style='margin:5px 0 0 0; color: #6B7280;'><strong>Notes:</strong> {special['Notes']}</p>" if pd.notna(special['Notes']) and special['Notes'] != '' else ''}
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Export CEO Specials
+        st.markdown('<div class="export-section">', unsafe_allow_html=True)
+        st.subheader("📤 Export CEO Special Prices")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            csv = filtered_data.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv,
+                file_name=f"ceo_special_prices_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+        
+        with col2:
+            st.download_button(
+                label="📄 Download Summary",
+                data=f"""
+CEO Special Prices Summary
+==========================
+
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Total Offers: {len(filtered_data)}
+Active Offers: {len(filtered_data[filtered_data['Expiry_Date'] >= datetime.now().strftime('%Y-%m-%d')])}
+
+Special Prices:
+{chr(10).join([f"• {row['Article_Number']} - {row['Product_Name']}: ${float(row['Special_Price']):.2f} (Until: {row['Expiry_Date']})" for _, row in filtered_data.iterrows()])}
+                """,
+                file_name=f"ceo_specials_summary_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True
+            )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    else:
+        st.info("No CEO special prices match your search criteria.")
+
+def load_ceo_special_prices():
+    """Load CEO special prices from Google Sheets"""
+    try:
+        ceo_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/CEO_Special_Prices!A:Z?key={API_KEY}"
+        response = requests.get(ceo_url)
+        
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if values and len(values) > 1:
+                headers = values[0]
+                rows = values[1:]
+                
+                # Create DataFrame
+                df = pd.DataFrame(rows, columns=headers)
+                
+                # Ensure required columns exist
+                required_cols = ['Article_Number', 'Product_Name', 'Special_Price']
+                if all(col in df.columns for col in required_cols):
+                    # Clean up data
+                    df = df[required_cols + [col for col in df.columns if col not in required_cols]]
+                    
+                    # Add default dates if missing
+                    if 'Effective_Date' not in df.columns:
+                        df['Effective_Date'] = datetime.now().strftime('%Y-%m-%d')
+                    if 'Expiry_Date' not in df.columns:
+                        df['Expiry_Date'] = (datetime.now() + pd.Timedelta(days=365)).strftime('%Y-%m-%d')
+                    if 'Notes' not in df.columns:
+                        df['Notes'] = ''
+                    
+                    return df
+                
+        return pd.DataFrame()
+        
+    except Exception as e:
+        st.error(f"Error loading CEO special prices: {str(e)}")
+        return pd.DataFrame()
+
+# [KEEP ALL YOUR EXISTING FUNCTIONS BELOW]
+# get_google_sheets_data, get_sample_data, cdc_dashboard, 
+# get_suggestions, handle_search, display_from_session_state, 
+# create_export_data
 
 def get_google_sheets_data():
     """Load data from Google Sheets using API key"""
@@ -245,15 +454,6 @@ def get_sample_data():
                     {"price": 2.45, "order_no": "ORD-002", "date": "2024-02-20"},
                     {"price": 2.38, "order_no": "ORD-003", "date": "2024-03-10"},
                     {"price": 2.42, "order_no": "ORD-004", "date": "2024-04-05"}
-                ]
-            },
-            "1-367": {
-                "prices": [2.55, 2.60, 2.58],
-                "names": ["Moist Muffin Chocolate", "موسيت مفن شوكولاتة"],
-                "orders": [
-                    {"price": 2.55, "order_no": "ORD-005", "date": "2024-01-20"},
-                    {"price": 2.60, "order_no": "ORD-006", "date": "2024-02-25"},
-                    {"price": 2.58, "order_no": "ORD-007", "date": "2024-03-15"}
                 ]
             }
         },
@@ -481,7 +681,7 @@ def display_from_session_state(data):
             </div>
             """, unsafe_allow_html=True)
     
-    # EXPORT SECTION - NEW FEATURE!
+    # EXPORT SECTION
     st.markdown('<div class="export-section">', unsafe_allow_html=True)
     st.subheader("📤 Export Data")
     
@@ -504,14 +704,6 @@ def display_from_session_state(data):
         
         with col2:
             # Excel Export
-            @st.cache_data
-            def convert_df_to_excel(df):
-                output = BytesIO()
-                with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    df.to_excel(writer, index=False, sheet_name='Price_History')
-                processed_data = output.getvalue()
-                return processed_data
-            
             try:
                 excel_data = convert_df_to_excel(export_df)
                 st.download_button(
@@ -559,8 +751,13 @@ Orders Included: {', '.join(export_df['Order_Number'].tolist())}
     
     st.markdown('</div>', unsafe_allow_html=True)
 
-# Add this import at the top
-from io import BytesIO
+def convert_df_to_excel(df):
+    """Convert DataFrame to Excel format"""
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Price_History')
+    processed_data = output.getvalue()
+    return processed_data
 
 # Run the main dashboard
 if __name__ == "__main__":
