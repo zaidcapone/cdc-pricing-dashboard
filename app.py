@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import requests
 import json
+from datetime import datetime
+import base64
 
 # Page config
 st.set_page_config(
@@ -82,12 +84,17 @@ st.markdown("""
         font-size: 0.8em;
         color: #6B7280;
     }
-    .etd-header {
-        background: linear-gradient(135deg, #1E40AF, #1E3A8A);
-        color: white;
+    .export-section {
+        background: #F0F9FF;
         padding: 1.5rem;
         border-radius: 10px;
-        margin-bottom: 1rem;
+        border: 2px solid #0EA5E9;
+        margin: 1rem 0;
+    }
+    .export-btn {
+        background: #059669 !important;
+        color: white !important;
+        border: none !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -95,7 +102,6 @@ st.markdown("""
 # Configuration
 API_KEY = "AIzaSyA3P-ZpLjDdVtGB82_1kaWuO7lNbKDj9HU"
 CDC_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"
-ETD_SHEET_ID = "1UpcibID2KszAUet04FcAvzJi0VZmmrqz"  # Your ETD Sheet ID
 
 def main_dashboard():
     """Main dashboard with tabs"""
@@ -115,7 +121,7 @@ def main_dashboard():
         clients_tab()
     
     with tab2:
-        etd_dashboard()
+        etd_tab()
 
 def clients_tab():
     """Clients management tab"""
@@ -133,129 +139,13 @@ def clients_tab():
     else:
         st.info(f"🔧 {client} dashboard coming soon...")
 
-def etd_dashboard():
-    """ETD Sheet - Live Data Dashboard"""
-    st.markdown("""
-    <div class="etd-header">
-        <h2 style="margin:0;">📅 ETD Sheet - Live Data</h2>
-        <p style="margin:0; opacity:0.9;">Real-time ETD Data • Professional Analytics</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    try:
-        # Load ETD data - try different sheet names
-        sheet_names = ["Sheet1", "ETD", "Data", "Sheet 1"]
-        etd_data = None
-        
-        for sheet_name in sheet_names:
-            try:
-                etd_url = f"https://sheets.googleapis.com/v4/spreadsheets/{ETD_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
-                response = requests.get(etd_url)
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    values = data.get('values', [])
-                    
-                    if values and len(values) > 1:
-                        etd_data = values
-                        st.success(f"✅ ETD Sheet Connected! Using sheet: '{sheet_name}'")
-                        break
-            except:
-                continue
-        
-        if etd_data:
-            headers = etd_data[0]
-            rows = etd_data[1:]
-            
-            df = pd.DataFrame(rows, columns=headers)
-            
-            # ETD Analytics
-            st.subheader("📊 ETD Overview")
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("Total Records", len(df))
-            with col2:
-                st.metric("Columns", len(df.columns))
-            with col3:
-                # Show sample of first few column names
-                sample_cols = ", ".join(df.columns[:3]) + "..." if len(df.columns) > 3 else ", ".join(df.columns)
-                st.metric("Columns Sample", sample_cols)
-            with col4:
-                st.metric("Status", "✅ Connected")
-            
-            # Search and Filters
-            st.subheader("🔍 Search & Filter ETD Data")
-            search_col1, search_col2 = st.columns([2, 1])
-            
-            with search_col1:
-                search_term = st.text_input("Search across all columns...", key="etd_search")
-            
-            with search_col2:
-                show_records = st.selectbox("Show records:", ["All Records", "First 50", "First 100"], key="etd_show")
-            
-            # Filter data
-            if search_term:
-                mask = df.astype(str).apply(lambda x: x.str.contains(search_term, case=False, na=False)).any(axis=1)
-                filtered_df = df[mask]
-                st.write(f"**Filtered Results ({len(filtered_df)} records):**")
-                display_df = filtered_df
-            else:
-                display_df = df
-            
-            # Limit records if selected
-            if show_records == "First 50":
-                display_df = display_df.head(50)
-            elif show_records == "First 100":
-                display_df = display_df.head(100)
-            
-            # Display data
-            st.dataframe(display_df, use_container_width=True, height=400)
-            
-            # Data Summary
-            with st.expander("📋 Data Summary & Export"):
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.write("**Dataset Info:**")
-                    st.write(f"• **Total Rows:** {len(df)}")
-                    st.write(f"• **Total Columns:** {len(df.columns)}")
-                    st.write(f"• **Memory Usage:** {df.memory_usage(deep=True).sum() / 1024**2:.2f} MB")
-                    
-                with col2:
-                    st.write("**Columns:**")
-                    for col in df.columns:
-                        st.write(f"• {col}")
-                
-                # Export options
-                st.write("**Export Data:**")
-                csv = df.to_csv(index=False)
-                st.download_button(
-                    label="📥 Download as CSV",
-                    data=csv,
-                    file_name="etd_data.csv",
-                    mime="text/csv",
-                )
-                
-        else:
-            st.error("❌ Could not load ETD data. Please check:")
-            st.info("""
-            1. **Sheet is public** (Share → Anyone with link can view)
-            2. **Sheet has data** (not empty)
-            3. **Sheet tab name** is one of: Sheet1, ETD, Data, Sheet 1
-            """)
-            
-    except Exception as e:
-        st.error(f"❌ ETD connection error: {str(e)}")
-        st.info("""
-        **Quick Fixes:**
-        • Make sure ETD Sheet is **public** (Share → Anyone with link)
-        • Check the sheet has **data rows**
-        • Verify the **sheet tab name** at the bottom
-        """)
+def etd_tab():
+    """ETD Sheet tab"""
+    st.subheader("📅 ETD Sheet - Live View")
+    st.info("🔧 ETD Sheet integration will be added when ready")
+    st.write("This tab will display your live ETD data when available")
 
-# [KEEP ALL YOUR EXISTING CDC FUNCTIONS HERE]
-# get_google_sheets_data, get_sample_data, cdc_dashboard, 
-# get_suggestions, handle_search, display_from_session_state
+# [KEEP ALL YOUR EXISTING FUNCTIONS: get_google_sheets_data, get_sample_data, get_suggestions, handle_search]
 
 def get_google_sheets_data():
     """Load data from Google Sheets using API key"""
@@ -356,6 +246,15 @@ def get_sample_data():
                     {"price": 2.38, "order_no": "ORD-003", "date": "2024-03-10"},
                     {"price": 2.42, "order_no": "ORD-004", "date": "2024-04-05"}
                 ]
+            },
+            "1-367": {
+                "prices": [2.55, 2.60, 2.58],
+                "names": ["Moist Muffin Chocolate", "موسيت مفن شوكولاتة"],
+                "orders": [
+                    {"price": 2.55, "order_no": "ORD-005", "date": "2024-01-20"},
+                    {"price": 2.60, "order_no": "ORD-006", "date": "2024-02-25"},
+                    {"price": 2.58, "order_no": "ORD-007", "date": "2024-03-15"}
+                ]
             }
         },
         "Bateel": {
@@ -372,17 +271,36 @@ def get_sample_data():
         }
     }
 
+def create_export_data(article_data, article, supplier):
+    """Create export data in different formats"""
+    # Create DataFrame for export
+    export_data = []
+    for order in article_data['orders']:
+        export_data.append({
+            'Article_Number': article,
+            'Supplier': supplier,
+            'Product_Name': article_data['names'][0] if article_data['names'] else 'N/A',
+            'Price_per_kg': order['price'],
+            'Order_Number': order['order_no'],
+            'Order_Date': order['date'],
+            'Export_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+    
+    return pd.DataFrame(export_data)
+
 def cdc_dashboard():
-    """Your complete functional CDC pricing dashboard"""
+    """Your complete functional CDC pricing dashboard with export features"""
     
     # Initialize session state
     if 'search_results' not in st.session_state:
         st.session_state.search_results = None
+    if 'export_data' not in st.session_state:
+        st.session_state.export_data = None
     
     st.markdown("""
     <div class="cdc-header">
         <h2 style="margin:0;">📊 CDC Pricing Dashboard</h2>
-        <p style="margin:0; opacity:0.9;">Backaldrin & Bateel • Live Google Sheets Data</p>
+        <p style="margin:0; opacity:0.9;">Backaldrin & Bateel • Live Google Sheets Data • Export Ready</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -484,6 +402,8 @@ def handle_search(article, product, supplier, data):
                 "article": article_num,
                 "supplier": supplier
             }
+            # Prepare export data
+            st.session_state.export_data = create_export_data(article_data, article_num, supplier)
             found = True
             break
     
@@ -560,6 +480,87 @@ def display_from_session_state(data):
                 </div>
             </div>
             """, unsafe_allow_html=True)
+    
+    # EXPORT SECTION - NEW FEATURE!
+    st.markdown('<div class="export-section">', unsafe_allow_html=True)
+    st.subheader("📤 Export Data")
+    
+    if st.session_state.export_data is not None:
+        export_df = st.session_state.export_data
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            # CSV Export
+            csv = export_df.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv,
+                file_name=f"cdc_pricing_{article}_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                type="primary"
+            )
+        
+        with col2:
+            # Excel Export
+            @st.cache_data
+            def convert_df_to_excel(df):
+                output = BytesIO()
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    df.to_excel(writer, index=False, sheet_name='Price_History')
+                processed_data = output.getvalue()
+                return processed_data
+            
+            try:
+                excel_data = convert_df_to_excel(export_df)
+                st.download_button(
+                    label="📊 Download Excel",
+                    data=excel_data,
+                    file_name=f"cdc_pricing_{article}_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                    mime="application/vnd.ms-excel",
+                    use_container_width=True
+                )
+            except:
+                st.info("📊 Excel export requires openpyxl package")
+        
+        with col3:
+            # Quick Stats Summary
+            st.download_button(
+                label="📄 Download Summary",
+                data=f"""
+CDC Pricing Summary Report
+==========================
+
+Article: {article}
+Supplier: {supplier}
+Product: {export_df['Product_Name'].iloc[0]}
+Report Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+Price Statistics:
+• Total Records: {len(export_df)}
+• Minimum Price: ${min(prices):.2f}/kg
+• Maximum Price: ${max(prices):.2f}/kg  
+• Average Price: ${sum(prices)/len(prices):.2f}/kg
+
+Orders Included: {', '.join(export_df['Order_Number'].tolist())}
+                """,
+                file_name=f"cdc_summary_{article}_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True
+            )
+        
+        # Show export preview
+        with st.expander("👀 Preview Export Data"):
+            st.dataframe(export_df, use_container_width=True)
+            
+    else:
+        st.info("Search for an article to enable export options")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# Add this import at the top
+from io import BytesIO
 
 # Run the main dashboard
 if __name__ == "__main__":
