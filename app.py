@@ -125,6 +125,15 @@ st.markdown("""
         border: 2px solid #D97706;
         margin: 1rem 0;
     }
+    .login-container {
+        max-width: 400px;
+        margin: 100px auto;
+        padding: 2rem;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        border: 2px solid #991B1B;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -132,8 +141,67 @@ st.markdown("""
 API_KEY = "AIzaSyA3P-ZpLjDdVtGB82_1kaWuO7lNbKDj9HU"
 CDC_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"
 
+# User authentication
+USERS = {
+    "admin": "admin123",  # Change this password!
+    "ceo": "ceo123",      # Change this password!
+    "user": "user123"     # Change this password!
+}
+
+# Client CEO Special Prices sheets mapping
+CLIENT_CEO_SHEETS = {
+    "CDC": "CDC_CEO_Special_Prices",
+    "Client 2": "Client2_CEO_Special_Prices", 
+    "Client 3": "Client3_CEO_Special_Prices",
+    "Client 4": "Client4_CEO_Special_Prices"
+}
+
+def check_login():
+    """Check if user is logged in"""
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+    if 'username' not in st.session_state:
+        st.session_state.username = ""
+    
+    return st.session_state.logged_in
+
+def login_page():
+    """Login page"""
+    st.markdown("""
+    <div class="login-container">
+        <h2 style="text-align: center; color: #991B1B;">🔐 Multi-Client Dashboard</h2>
+        <p style="text-align: center; color: #6B7280;">Please login to continue</p>
+    """, unsafe_allow_html=True)
+    
+    with st.form("login_form"):
+        username = st.text_input("👤 Username")
+        password = st.text_input("🔒 Password", type="password")
+        submit = st.form_submit_button("🚀 Login", use_container_width=True)
+        
+        if submit:
+            if username in USERS and USERS[username] == password:
+                st.session_state.logged_in = True
+                st.session_state.username = username
+                st.success(f"✅ Welcome back, {username}!")
+                st.rerun()
+            else:
+                st.error("❌ Invalid username or password")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+def logout_button():
+    """Logout button in sidebar"""
+    if st.sidebar.button("🚪 Logout", use_container_width=True):
+        st.session_state.logged_in = False
+        st.session_state.username = ""
+        st.rerun()
+
 def main_dashboard():
     """Main dashboard with tabs"""
+    
+    # Display user info in sidebar
+    st.sidebar.markdown(f"**👤 Welcome, {st.session_state.username}**")
+    logout_button()
     
     # Header
     st.markdown("""
@@ -178,7 +246,7 @@ def etd_tab():
     st.write("This tab will display your live ETD data when available")
 
 def ceo_specials_tab():
-    """CEO Special Prices tab"""
+    """CEO Special Prices tab - NOW CLIENT SPECIFIC"""
     st.markdown("""
     <div class="ceo-header">
         <h2 style="margin:0;">⭐ CEO Special Prices</h2>
@@ -186,15 +254,24 @@ def ceo_specials_tab():
     </div>
     """, unsafe_allow_html=True)
     
-    # Load CEO special prices
-    ceo_data = load_ceo_special_prices()
+    # Client selection for CEO specials
+    client = st.selectbox(
+        "Select Client for CEO Special Prices:",
+        ["CDC", "Client 2", "Client 3", "Client 4"],
+        key="ceo_client_select"
+    )
+    
+    st.info(f"📊 Showing CEO Special Prices for **{client}**")
+    
+    # Load CEO special prices for selected client
+    ceo_data = load_ceo_special_prices(client)
     
     if ceo_data.empty:
-        st.warning("⚠️ No CEO special prices found. Please add data to 'CEO_Special_Prices' sheet.")
-        st.info("""
-        **To add CEO special prices:**
+        st.warning(f"⚠️ No CEO special prices found for {client}. Please add data to '{CLIENT_CEO_SHEETS[client]}' sheet.")
+        st.info(f"""
+        **To add CEO special prices for {client}:**
         1. Go to your Google Sheet
-        2. Add a new tab called **'CEO_Special_Prices'**
+        2. Add a new tab called **'{CLIENT_CEO_SHEETS[client]}'**
         3. Use these columns:
            - Article_Number
            - Product_Name  
@@ -208,7 +285,7 @@ def ceo_specials_tab():
         return
     
     # CEO Special Prices Overview
-    st.subheader("📊 CEO Specials Overview")
+    st.subheader(f"📊 {client} CEO Specials Overview")
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
@@ -262,7 +339,7 @@ def ceo_specials_tab():
         filtered_data = filtered_data[filtered_data['Currency'] == currency_filter]
     
     # Display CEO Special Prices
-    st.subheader("🎯 Special Price List")
+    st.subheader(f"🎯 {client} Special Price List")
     
     if not filtered_data.empty:
         for _, special in filtered_data.iterrows():
@@ -306,7 +383,7 @@ def ceo_specials_tab():
             st.download_button(
                 label="📥 Download CSV",
                 data=csv,
-                file_name=f"ceo_special_prices_{datetime.now().strftime('%Y%m%d')}.csv",
+                file_name=f"{client}_ceo_special_prices_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
                 use_container_width=True
             )
@@ -315,8 +392,8 @@ def ceo_specials_tab():
             st.download_button(
                 label="📄 Download Summary",
                 data=f"""
-CEO Special Prices Summary
-==========================
+{client} CEO Special Prices Summary
+===================================
 
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 Total Offers: {len(filtered_data)}
@@ -325,7 +402,7 @@ Active Offers: {len(filtered_data[filtered_data['Expiry_Date'] >= datetime.now()
 Special Prices:
 {chr(10).join([f"• {row['Article_Number']} - {row['Product_Name']}: {row['Special_Price']} {row['Currency']} (Incoterm: {row['Incoterm']}, Until: {row['Expiry_Date']})" for _, row in filtered_data.iterrows()])}
                 """,
-                file_name=f"ceo_specials_summary_{datetime.now().strftime('%Y%m%d')}.txt",
+                file_name=f"{client}_ceo_specials_summary_{datetime.now().strftime('%Y%m%d')}.txt",
                 mime="text/plain",
                 use_container_width=True
             )
@@ -335,10 +412,11 @@ Special Prices:
     else:
         st.info("No CEO special prices match your search criteria.")
 
-def load_ceo_special_prices():
-    """Load CEO special prices from Google Sheets - UPDATED FOR 8 COLUMNS"""
+def load_ceo_special_prices(client="CDC"):
+    """Load CEO special prices from Google Sheets for specific client"""
     try:
-        ceo_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/CEO_Special_Prices!A:Z?key={API_KEY}"
+        sheet_name = CLIENT_CEO_SHEETS[client]
+        ceo_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
         response = requests.get(ceo_url)
         
         if response.status_code == 200:
@@ -368,19 +446,19 @@ def load_ceo_special_prices():
                     
                     return df
                 else:
-                    st.error(f"Missing required columns. Found: {list(df.columns)}")
+                    st.error(f"Missing required columns in {sheet_name}. Found: {list(df.columns)}")
                     return pd.DataFrame()
                 
         return pd.DataFrame()
         
     except Exception as e:
-        st.error(f"Error loading CEO special prices: {str(e)}")
+        st.error(f"Error loading CEO special prices for {client}: {str(e)}")
         return pd.DataFrame()
 
 # [KEEP ALL YOUR EXISTING FUNCTIONS BELOW - NO CHANGES NEEDED]
 # get_google_sheets_data, get_sample_data, cdc_dashboard, 
 # get_suggestions, handle_search, display_from_session_state, 
-# create_export_data
+# create_export_data, convert_df_to_excel
 
 def get_google_sheets_data():
     """Load data from Google Sheets using API key"""
@@ -787,4 +865,7 @@ def convert_df_to_excel(df):
 
 # Run the main dashboard
 if __name__ == "__main__":
-    main_dashboard()
+    if not check_login():
+        login_page()
+    else:
+        main_dashboard()
