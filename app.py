@@ -633,12 +633,11 @@ def cdc_dashboard(client):
     if st.button("🔄 Refresh Data", use_container_width=True, type="secondary", key=f"{client}_refresh"):
         st.rerun()
 
-    # Supplier selection
+    # Supplier selection - CLEAN VERSION (no white box)
     st.subheader("🏢 Select Supplier")
     supplier = st.radio("", ["Backaldrin", "Bateel"], horizontal=True, label_visibility="collapsed", key=f"{client}_supplier")
 
-    # Search section
-    st.markdown('<div class="search-card">', unsafe_allow_html=True)
+    # Search section - CLEAN VERSION (no white box)
     st.subheader("🔍 Search Historical Prices")
     
     col1, col2 = st.columns(2)
@@ -666,12 +665,11 @@ def cdc_dashboard(client):
     # Manual search
     if st.button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary", key=f"{client}_search"):
         handle_search(article, product, supplier, DATA, client)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
     # Display results from session state
     if st.session_state.search_results and st.session_state.search_results.get("client") == client:
         display_from_session_state(DATA, client)
+        
         
 def get_suggestions(search_term, supplier, data):
     suggestions = []
