@@ -141,19 +141,26 @@ st.markdown("""
 API_KEY = "AIzaSyA3P-ZpLjDdVtGB82_1kaWuO7lNbKDj9HU"
 CDC_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"
 
-# User authentication
+# User authentication - UPDATED WITH NEW USERS
 USERS = {
-    "admin": "admin123",  # Change this password!
-    "ceo": "ceo123",      # Change this password!
-    "user": "user123"     # Change this password!
+    "admin": {"password": "admin123", "clients": ["CDC", "CoteDivoire"]},
+    "ceo": {"password": "ceo123", "clients": ["CDC", "CoteDivoire"]},
+    "zaid": {"password": "zaid123", "clients": ["CDC"]},
+    "mohammad": {"password": "mohammad123", "clients": ["CoteDivoire"]}
 }
 
-# Client CEO Special Prices sheets mapping
-CLIENT_CEO_SHEETS = {
-    "CDC": "CDC_CEO_Special_Prices",
-    "Client 2": "Client2_CEO_Special_Prices", 
-    "Client 3": "Client3_CEO_Special_Prices",
-    "Client 4": "Client4_CEO_Special_Prices"
+# Client data sheets mapping - UPDATED WITH COTEDIVOIRE
+CLIENT_SHEETS = {
+    "CDC": {
+        "backaldrin": "Backaldrin_CDC",
+        "bateel": "Bateel_CDC",
+        "ceo_special": "CDC_CEO_Special_Prices"
+    },
+    "CoteDivoire": {
+        "backaldrin": "Backaldrin_CoteDivoire",
+        "bateel": "Bateel_CoteDivoire", 
+        "ceo_special": "CoteDivoire_CEO_Special_Prices"
+    }
 }
 
 def check_login():
@@ -162,6 +169,8 @@ def check_login():
         st.session_state.logged_in = False
     if 'username' not in st.session_state:
         st.session_state.username = ""
+    if 'user_clients' not in st.session_state:
+        st.session_state.user_clients = []
     
     return st.session_state.logged_in
 
@@ -179,9 +188,10 @@ def login_page():
         submit = st.form_submit_button("🚀 Login", use_container_width=True)
         
         if submit:
-            if username in USERS and USERS[username] == password:
+            if username in USERS and USERS[username]["password"] == password:
                 st.session_state.logged_in = True
                 st.session_state.username = username
+                st.session_state.user_clients = USERS[username]["clients"]
                 st.success(f"✅ Welcome back, {username}!")
                 st.rerun()
             else:
@@ -194,6 +204,7 @@ def logout_button():
     if st.sidebar.button("🚪 Logout", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.username = ""
+        st.session_state.user_clients = []
         st.rerun()
 
 def main_dashboard():
@@ -201,6 +212,7 @@ def main_dashboard():
     
     # Display user info in sidebar
     st.sidebar.markdown(f"**👤 Welcome, {st.session_state.username}**")
+    st.sidebar.markdown(f"**🏢 Access to:** {', '.join(st.session_state.user_clients)}")
     logout_button()
     
     # Header
@@ -211,7 +223,7 @@ def main_dashboard():
     </div>
     """, unsafe_allow_html=True)
     
-    # Create tabs - ADDED CEO SPECIALS TAB
+    # Create tabs
     tab1, tab2, tab3 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES"])
     
     with tab1:
@@ -227,17 +239,16 @@ def clients_tab():
     """Clients management tab"""
     st.subheader("Client Selection")
     
-    # Client selection
+    # Client selection - only show clients user has access to
+    available_clients = st.session_state.user_clients
     client = st.selectbox(
         "Select Client:",
-        ["CDC", "Client 2", "Client 3", "Client 4"],
+        available_clients,
         key="client_select"
     )
     
-    if client == "CDC":
-        cdc_dashboard()
-    else:
-        st.info(f"🔧 {client} dashboard coming soon...")
+    if client:
+        cdc_dashboard(client)
 
 def etd_tab():
     """ETD Sheet tab"""
@@ -254,24 +265,30 @@ def ceo_specials_tab():
     </div>
     """, unsafe_allow_html=True)
     
-    # Client selection for CEO specials
+    # Client selection for CEO specials - only show clients user has access to
+    available_clients = st.session_state.user_clients
     client = st.selectbox(
         "Select Client for CEO Special Prices:",
-        ["CDC", "Client 2", "Client 3", "Client 4"],
+        available_clients,
         key="ceo_client_select"
     )
     
+    if not client:
+        st.warning("No clients available for your account")
+        return
+        
     st.info(f"📊 Showing CEO Special Prices for **{client}**")
     
     # Load CEO special prices for selected client
     ceo_data = load_ceo_special_prices(client)
     
     if ceo_data.empty:
-        st.warning(f"⚠️ No CEO special prices found for {client}. Please add data to '{CLIENT_CEO_SHEETS[client]}' sheet.")
+        sheet_name = CLIENT_SHEETS[client]["ceo_special"]
+        st.warning(f"⚠️ No CEO special prices found for {client}. Please add data to '{sheet_name}' sheet.")
         st.info(f"""
         **To add CEO special prices for {client}:**
         1. Go to your Google Sheet
-        2. Add a new tab called **'{CLIENT_CEO_SHEETS[client]}'**
+        2. Add a new tab called **'{sheet_name}'**
         3. Use these columns:
            - Article_Number
            - Product_Name  
@@ -415,7 +432,7 @@ Special Prices:
 def load_ceo_special_prices(client="CDC"):
     """Load CEO special prices from Google Sheets for specific client"""
     try:
-        sheet_name = CLIENT_CEO_SHEETS[client]
+        sheet_name = CLIENT_SHEETS[client]["ceo_special"]
         ceo_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
         response = requests.get(ceo_url)
         
@@ -455,20 +472,18 @@ def load_ceo_special_prices(client="CDC"):
         st.error(f"Error loading CEO special prices for {client}: {str(e)}")
         return pd.DataFrame()
 
-# [KEEP ALL YOUR EXISTING FUNCTIONS BELOW - NO CHANGES NEEDED]
-# get_google_sheets_data, get_sample_data, cdc_dashboard, 
-# get_suggestions, handle_search, display_from_session_state, 
-# create_export_data, convert_df_to_excel
-
-def get_google_sheets_data():
-    """Load data from Google Sheets using API key"""
+def get_google_sheets_data(client="CDC"):
+    """Load data from Google Sheets using API key - NOW CLIENT SPECIFIC"""
     try:
-        # Load Backaldrin data
-        backaldrin_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/Backaldrin!A:Z?key={API_KEY}"
+        # Get client-specific sheet names
+        client_sheets = CLIENT_SHEETS[client]
+        
+        # Load Backaldrin data for specific client
+        backaldrin_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{client_sheets['backaldrin']}!A:Z?key={API_KEY}"
         backaldrin_response = requests.get(backaldrin_url)
         
-        # Load Bateel data
-        bateel_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/Bateel!A:Z?key={API_KEY}"
+        # Load Bateel data for specific client
+        bateel_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{client_sheets['bateel']}!A:Z?key={API_KEY}"
         bateel_response = requests.get(bateel_url)
         
         data = {"Backaldrin": {}, "Bateel": {}}
@@ -506,6 +521,8 @@ def get_google_sheets_data():
                                     data["Backaldrin"][article]["names"].append(product_name)
                             except ValueError:
                                 continue
+        else:
+            st.warning(f"Could not load Backaldrin data for {client}. Sheet '{client_sheets['backaldrin']}' may not exist.")
         
         # Process Bateel data
         if bateel_response.status_code == 200:
@@ -540,10 +557,13 @@ def get_google_sheets_data():
                                     data["Bateel"][article]["names"].append(product_name)
                             except ValueError:
                                 continue
+        else:
+            st.warning(f"Could not load Bateel data for {client}. Sheet '{client_sheets['bateel']}' may not exist.")
         
         return data
         
     except Exception as e:
+        st.error(f"Error loading data for {client}: {str(e)}")
         return get_sample_data()
 
 def get_sample_data():
@@ -575,12 +595,13 @@ def get_sample_data():
         }
     }
 
-def create_export_data(article_data, article, supplier):
+def create_export_data(article_data, article, supplier, client):
     """Create export data in different formats"""
     # Create DataFrame for export
     export_data = []
     for order in article_data['orders']:
         export_data.append({
+            'Client': client,
             'Article_Number': article,
             'Supplier': supplier,
             'Product_Name': article_data['names'][0] if article_data['names'] else 'N/A',
@@ -592,8 +613,8 @@ def create_export_data(article_data, article, supplier):
     
     return pd.DataFrame(export_data)
 
-def cdc_dashboard():
-    """Your complete functional CDC pricing dashboard with export features"""
+def cdc_dashboard(client):
+    """Client pricing dashboard with export features - NOW CLIENT SPECIFIC"""
     
     # Initialize session state
     if 'search_results' not in st.session_state:
@@ -601,9 +622,9 @@ def cdc_dashboard():
     if 'export_data' not in st.session_state:
         st.session_state.export_data = None
     
-    st.markdown("""
+    st.markdown(f"""
     <div class="cdc-header">
-        <h2 style="margin:0;">📊 CDC Pricing Dashboard</h2>
+        <h2 style="margin:0;">📊 {client} Pricing Dashboard</h2>
         <p style="margin:0; opacity:0.9;">Backaldrin & Bateel • Live Google Sheets Data • Export Ready</p>
     </div>
     """, unsafe_allow_html=True)
@@ -611,22 +632,22 @@ def cdc_dashboard():
     # Data source selection
     col1, col2 = st.columns([3, 1])
     with col1:
-        data_source = st.radio("Data Source:", ["Sample Data", "Google Sheets"], horizontal=True, key="cdc_data_source")
+        data_source = st.radio("Data Source:", ["Sample Data", "Google Sheets"], horizontal=True, key=f"{client}_data_source")
     with col2:
-        if st.button("🔄 Refresh Data", use_container_width=True, type="secondary", key="cdc_refresh"):
+        if st.button("🔄 Refresh Data", use_container_width=True, type="secondary", key=f"{client}_refresh"):
             st.rerun()
     
     # Load data
     if data_source == "Google Sheets":
-        DATA = get_google_sheets_data()
-        st.success("✅ Connected to Google Sheets - Live Data!")
+        DATA = get_google_sheets_data(client)
+        st.success(f"✅ Connected to Google Sheets - Live Data for {client}!")
     else:
         DATA = get_sample_data()
         st.info("📊 Using sample data - Switch to Google Sheets for live data")
 
     # Supplier selection
     st.subheader("🏢 Select Supplier")
-    supplier = st.radio("", ["Backaldrin", "Bateel"], horizontal=True, label_visibility="collapsed", key="cdc_supplier")
+    supplier = st.radio("", ["Backaldrin", "Bateel"], horizontal=True, label_visibility="collapsed", key=f"{client}_supplier")
 
     # Search section
     st.markdown('<div class="search-card">', unsafe_allow_html=True)
@@ -634,9 +655,9 @@ def cdc_dashboard():
     
     col1, col2 = st.columns(2)
     with col1:
-        article = st.text_input("**ARTICLE NUMBER**", placeholder="e.g., 1-366, 1-367...", key="cdc_article")
+        article = st.text_input("**ARTICLE NUMBER**", placeholder="e.g., 1-366, 1-367...", key=f"{client}_article")
     with col2:
-        product = st.text_input("**PRODUCT NAME**", placeholder="e.g., Moist Muffin, Date Mix...", key="cdc_product")
+        product = st.text_input("**PRODUCT NAME**", placeholder="e.g., Moist Muffin, Date Mix...", key=f"{client}_product")
     
     # Auto-suggestions
     search_term = article or product
@@ -645,23 +666,24 @@ def cdc_dashboard():
         if suggestions:
             st.markdown("**💡 Quick Suggestions:**")
             for i, suggestion in enumerate(suggestions[:4]):
-                with st.form(key=f"cdc_form_{i}"):
+                with st.form(key=f"{client}_form_{i}"):
                     if st.form_submit_button(suggestion["display"], use_container_width=True):
                         st.session_state.search_results = {
                             "article": suggestion["value"],
-                            "supplier": supplier
+                            "supplier": supplier,
+                            "client": client
                         }
                         st.rerun()
     
     # Manual search
-    if st.button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary", key="cdc_search"):
-        handle_search(article, product, supplier, DATA)
+    if st.button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary", key=f"{client}_search"):
+        handle_search(article, product, supplier, DATA, client)
     
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Display results from session state
-    if st.session_state.search_results:
-        display_from_session_state(DATA)
+    if st.session_state.search_results and st.session_state.search_results.get("client") == client:
+        display_from_session_state(DATA, client)
 
 def get_suggestions(search_term, supplier, data):
     suggestions = []
@@ -690,7 +712,7 @@ def get_suggestions(search_term, supplier, data):
     
     return list(unique_suggestions.values())
 
-def handle_search(article, product, supplier, data):
+def handle_search(article, product, supplier, data, client):
     search_term = article or product
     if not search_term:
         st.error("❌ Please enter an article number or product name")
@@ -704,17 +726,18 @@ def handle_search(article, product, supplier, data):
         if article_match or product_match:
             st.session_state.search_results = {
                 "article": article_num,
-                "supplier": supplier
+                "supplier": supplier,
+                "client": client
             }
             # Prepare export data
-            st.session_state.export_data = create_export_data(article_data, article_num, supplier)
+            st.session_state.export_data = create_export_data(article_data, article_num, supplier, client)
             found = True
             break
     
     if not found:
         st.error(f"❌ No results found for '{search_term}' in {supplier}")
 
-def display_from_session_state(data):
+def display_from_session_state(data, client):
     results = st.session_state.search_results
     article = results["article"]
     supplier = results["supplier"]
@@ -725,7 +748,7 @@ def display_from_session_state(data):
         
     article_data = data[supplier][article]
     
-    st.success(f"✅ **Article {article}** found in **{supplier}**")
+    st.success(f"✅ **Article {article}** found in **{supplier}** for **{client}**")
     
     # Product names
     st.subheader("📝 Product Names")
@@ -800,7 +823,7 @@ def display_from_session_state(data):
             st.download_button(
                 label="📥 Download CSV",
                 data=csv,
-                file_name=f"cdc_pricing_{article}_{datetime.now().strftime('%Y%m%d')}.csv",
+                file_name=f"{client}_pricing_{article}_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
                 use_container_width=True,
                 type="primary"
@@ -813,7 +836,7 @@ def display_from_session_state(data):
                 st.download_button(
                     label="📊 Download Excel",
                     data=excel_data,
-                    file_name=f"cdc_pricing_{article}_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                    file_name=f"{client}_pricing_{article}_{datetime.now().strftime('%Y%m%d')}.xlsx",
                     mime="application/vnd.ms-excel",
                     use_container_width=True
                 )
@@ -825,11 +848,12 @@ def display_from_session_state(data):
             st.download_button(
                 label="📄 Download Summary",
                 data=f"""
-CDC Pricing Summary Report
-==========================
+{client} Pricing Summary Report
+===============================
 
 Article: {article}
 Supplier: {supplier}
+Client: {client}
 Product: {export_df['Product_Name'].iloc[0]}
 Report Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 
@@ -841,31 +865,5 @@ Price Statistics:
 
 Orders Included: {', '.join(export_df['Order_Number'].tolist())}
                 """,
-                file_name=f"cdc_summary_{article}_{datetime.now().strftime('%Y%m%d')}.txt",
-                mime="text/plain",
-                use_container_width=True
-            )
-        
-        # Show export preview
-        with st.expander("👀 Preview Export Data"):
-            st.dataframe(export_df, use_container_width=True)
-            
-    else:
-        st.info("Search for an article to enable export options")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-
-def convert_df_to_excel(df):
-    """Convert DataFrame to Excel format"""
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Price_History')
-    processed_data = output.getvalue()
-    return processed_data
-
-# Run the main dashboard
-if __name__ == "__main__":
-    if not check_login():
-        login_page()
-    else:
-        main_dashboard()
+                file_name=f"{client}_summary_{article}_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain
