@@ -473,7 +473,7 @@ def load_ceo_special_prices(client="CDC"):
         return pd.DataFrame()
 
 def get_google_sheets_data(client="CDC"):
-    """Load data from Google Sheets using API key - NOW WITH ENHANCED DEBUGGING"""
+    """Load data from Google Sheets using API key - CLEAN VERSION"""
     try:
         # Get client-specific sheet names
         client_sheets = CLIENT_SHEETS[client]
@@ -491,19 +491,10 @@ def get_google_sheets_data(client="CDC"):
         def process_sheet_data(values, supplier_name, sheet_name):
             """Process sheet data using header names instead of positions"""
             if not values or len(values) < 2:
-                st.warning(f"⚠️ No data found in {sheet_name} - sheet may be empty")
                 return
                 
             headers = [str(h).strip().lower() for h in values[0]]
             rows = values[1:]
-            
-            # DEBUG: Show what we found
-            st.write(f"🔍 **{sheet_name} Debug:**")
-            st.write(f"Headers found: {headers}")
-            st.write(f"Number of data rows: {len(rows)}")
-            
-            if len(rows) > 0:
-                st.write(f"First data row: {rows[0]}")
             
             # Find column indices by header name
             try:
@@ -512,30 +503,29 @@ def get_google_sheets_data(client="CDC"):
                 article_idx = headers.index("article_number")
                 product_idx = headers.index("product_name")
                 price_idx = headers.index("price_per_kg")
-                
-                st.success(f"✅ All required columns found in {sheet_name}")
-                
-            except ValueError as e:
-                st.error(f"❌ Missing required column in {sheet_name}: {e}")
-                st.info(f"Available columns: {headers}")
+            except ValueError:
                 return
             
-            articles_found = 0
-            articles_with_names = 0
-            
-            for i, row in enumerate(rows):
+            for row in rows:
                 if len(row) > max(order_no_idx, order_date_idx, article_idx, product_idx, price_idx):
                     article = str(row[article_idx]).strip() if article_idx < len(row) and row[article_idx] else ""
                     product_name = row[product_idx] if product_idx < len(row) and row[product_idx] else ""
-                    price = row[price_idx] if price_idx < len(row) and row[price_idx] else ""
+                    price_str = row[price_idx] if price_idx < len(row) and row[price_idx] else ""
                     order_no = row[order_no_idx] if order_no_idx < len(row) and row[order_no_idx] else ""
                     order_date = row[order_date_idx] if order_date_idx < len(row) and row[order_date_idx] else ""
                     
-                    # DEBUG: Show what we're extracting
-                    if i < 3:  # Show first 3 rows for debugging
-                        st.write(f"Row {i+1} - Article: '{article}', Product: '{product_name}', Price: '{price}'")
-                    
-                    if article and price and article != "":
+                    if article and price_str and article != "":
+                        # CLEAN THE PRICE - remove currency and other text
+                        try:
+                            # Remove currency symbols and text, keep only numbers and decimals
+                            cleaned_price = ''.join(c for c in price_str if c.isdigit() or c == '.' or c == '-')
+                            if cleaned_price and cleaned_price != '.':
+                                price_float = float(cleaned_price)
+                            else:
+                                continue
+                        except ValueError:
+                            continue
+                        
                         if article not in data[supplier_name]:
                             data[supplier_name][article] = {
                                 "prices": [],
@@ -543,41 +533,28 @@ def get_google_sheets_data(client="CDC"):
                                 "orders": []
                             }
                         
-                        try:
-                            price_float = float(price)
-                            data[supplier_name][article]["prices"].append(price_float)
-                            data[supplier_name][article]["orders"].append({
-                                "price": price_float,
-                                "order_no": order_no,
-                                "date": order_date
-                            })
-                            
-                            if product_name and product_name.strip() != "":
-                                data[supplier_name][article]["names"].append(product_name)
-                                articles_with_names += 1
-                            else:
-                                # If no product name, add a placeholder
-                                data[supplier_name][article]["names"].append("No Name")
-                            
-                            articles_found += 1
-                        except ValueError:
-                            continue
-            
-            st.success(f"✅ Loaded {articles_found} articles from {sheet_name} ({articles_with_names} with product names)")
+                        data[supplier_name][article]["prices"].append(price_float)
+                        data[supplier_name][article]["orders"].append({
+                            "price": price_float,
+                            "order_no": order_no,
+                            "date": order_date
+                        })
+                        
+                        if product_name and product_name.strip() != "":
+                            data[supplier_name][article]["names"].append(product_name)
+                        else:
+                            # If no product name, add a placeholder
+                            data[supplier_name][article]["names"].append("No Name")
         
         # Process Backaldrin data
         if backaldrin_response.status_code == 200:
             backaldrin_values = backaldrin_response.json().get('values', [])
             process_sheet_data(backaldrin_values, "Backaldrin", client_sheets['backaldrin'])
-        else:
-            st.error(f"❌ Could not load Backaldrin data for {client}. HTTP {backaldrin_response.status_code}")
         
         # Process Bateel data
         if bateel_response.status_code == 200:
             bateel_values = bateel_response.json().get('values', [])
             process_sheet_data(bateel_values, "Bateel", client_sheets['bateel'])
-        else:
-            st.error(f"❌ Could not load Bateel data for {client}. HTTP {bateel_response.status_code}")
         
         return data
         
