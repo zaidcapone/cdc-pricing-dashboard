@@ -37,13 +37,12 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 1rem;
     }
-    .search-card {
-        background: white;
-        padding: 2rem;
+    .intelligence-header {
+        background: linear-gradient(135deg, #059669, #047857);
+        color: white;
+        padding: 1.5rem;
         border-radius: 10px;
-        border: 2px solid #991B1B;
-        margin-bottom: 2rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 1rem;
     }
     .price-card {
         background: linear-gradient(135deg, #FEE2E2, #FECACA);
@@ -64,11 +63,30 @@ st.markdown("""
         font-weight: 500;
         border: 2px solid #D97706;
     }
+    .intelligence-card {
+        background: linear-gradient(135deg, #D1FAE5, #A7F3D0);
+        padding: 1.5rem;
+        border-radius: 8px;
+        border-left: 5px solid #059669;
+        margin: 0.5rem 0;
+        color: #1F2937;
+        font-weight: 500;
+        border: 2px solid #059669;
+    }
     .stat-card {
         background: white;
         padding: 1.5rem;
         border-radius: 10px;
         border: 2px solid #991B1B;
+        text-align: center;
+        color: #1F2937;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .intelligence-stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 2px solid #059669;
         text-align: center;
         color: #1F2937;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -79,6 +97,12 @@ st.markdown("""
         color: #991B1B;
         margin: 0;
     }
+    .intelligence-stat-number {
+        font-size: 2em;
+        font-weight: bold;
+        color: #059669;
+        margin: 0;
+    }
     .stat-label {
         font-size: 0.9em;
         color: #6B7280;
@@ -86,6 +110,15 @@ st.markdown("""
     }
     .price-box {
         background: #991B1B;
+        color: white;
+        padding: 1rem;
+        border-radius: 8px;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        margin: 0.5rem 0;
+    }
+    .intelligence-price-box {
+        background: #059669;
         color: white;
         padding: 1rem;
         border-radius: 8px;
@@ -125,6 +158,13 @@ st.markdown("""
         border: 2px solid #D97706;
         margin: 1rem 0;
     }
+    .intelligence-section {
+        background: #ECFDF5;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 2px solid #059669;
+        margin: 1rem 0;
+    }
     .login-container {
         max-width: 400px;
         margin: 100px auto;
@@ -134,6 +174,14 @@ st.markdown("""
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         border: 2px solid #991B1B;
     }
+    .best-price {
+        background: #10B981 !important;
+        border: 2px solid #047857 !important;
+    }
+    .worst-price {
+        background: #EF4444 !important;
+        border: 2px solid #DC2626 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -141,7 +189,7 @@ st.markdown("""
 API_KEY = "AIzaSyA3P-ZpLjDdVtGB82_1kaWuO7lNbKDj9HU"
 CDC_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"
 
-# User authentication - UPDATED WITH NEW USERS
+# User authentication
 USERS = {
     "admin": {"password": "admin123", "clients": ["CDC", "CoteDivoire"]},
     "ceo": {"password": "ceo123", "clients": ["CDC", "CoteDivoire"]},
@@ -149,7 +197,7 @@ USERS = {
     "mohammad": {"password": "mohammad123", "clients": ["CoteDivoire"]}
 }
 
-# Client data sheets mapping - UPDATED WITH COTEDIVOIRE
+# Client data sheets mapping
 CLIENT_SHEETS = {
     "CDC": {
         "backaldrin": "Backaldrin_CDC",
@@ -223,8 +271,11 @@ def main_dashboard():
     </div>
     """, unsafe_allow_html=True)
     
-    # Create tabs
-    tab1, tab2, tab3 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES"])
+    # Create tabs - ADDED PRICE INTELLIGENCE TAB
+    if st.session_state.username in ["ceo", "admin"]:
+        tab1, tab2, tab3, tab4 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE"])
+    else:
+        tab1, tab2, tab3 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES"])
     
     with tab1:
         clients_tab()
@@ -234,6 +285,11 @@ def main_dashboard():
         
     with tab3:
         ceo_specials_tab()
+    
+    # Only show Price Intelligence tab for CEO/Admin
+    if st.session_state.username in ["ceo", "admin"]:
+        with tab4:
+            price_intelligence_tab()
 
 def clients_tab():
     """Clients management tab"""
@@ -429,6 +485,253 @@ Special Prices:
     else:
         st.info("No CEO special prices match your search criteria.")
 
+def price_intelligence_tab():
+    """CEO Price Intelligence - Cross-client price comparison"""
+    st.markdown("""
+    <div class="intelligence-header">
+        <h2 style="margin:0;">💰 CEO Price Intelligence</h2>
+        <p style="margin:0; opacity:0.9;">Cross-Client Price Comparison • Market Intelligence • Strategic Insights</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.info("🔍 **Search across selected clients to compare pricing strategies and identify opportunities**")
+    
+    # Client selection - CEO can select specific clients or all
+    available_clients = ["CDC", "CoteDivoire"]
+    
+    col1, col2, col3 = st.columns([2, 2, 1])
+    
+    with col1:
+        client_selection = st.multiselect(
+            "**SELECT CLIENTS TO ANALYZE**",
+            options=available_clients,
+            default=available_clients,  # Default to all clients
+            key="intelligence_clients"
+        )
+    
+    with col2:
+        search_term = st.text_input("**ENTER ARTICLE NUMBER OR PRODUCT NAME**", 
+                                  placeholder="e.g., 281, Chocolate, Date Mix...", 
+                                  key="intelligence_search")
+    
+    with col3:
+        supplier_filter = st.selectbox("**SUPPLIER**", ["All", "Backaldrin", "Bateel"], key="intelligence_supplier")
+    
+    if st.button("🚀 ANALYZE PRICES ACROSS SELECTED CLIENTS", use_container_width=True, type="primary", key="intelligence_analyze"):
+        if search_term and client_selection:
+            analyze_cross_client_prices(search_term, client_selection, supplier_filter)
+        else:
+            if not search_term:
+                st.error("❌ Please enter an article number or product name to analyze")
+            if not client_selection:
+                st.error("❌ Please select at least one client to analyze")
+
+def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="All"):
+    """Analyze prices across selected clients for a given search term"""
+    st.markdown('<div class="intelligence-section">', unsafe_allow_html=True)
+    st.subheader(f"🔍 Price Intelligence: '{search_term}'")
+    st.info(f"**Analyzing across:** {', '.join(selected_clients)}")
+    
+    all_results = {}
+    total_records = 0
+    
+    # Search across selected clients
+    for client in selected_clients:
+        client_data = get_google_sheets_data(client)
+        
+        for supplier in ["Backaldrin", "Bateel"]:
+            if supplier_filter != "All" and supplier != supplier_filter:
+                continue
+                
+            supplier_data = client_data[supplier]
+            client_results = []
+            
+            for article_num, article_data in supplier_data.items():
+                # Check if search term matches article number or product name
+                article_match = search_term.lower() in article_num.lower()
+                product_match = any(search_term.lower() in name.lower() for name in article_data['names'])
+                
+                if article_match or product_match:
+                    if article_data['prices']:  # Only include if we have price data
+                        avg_price = sum(article_data['prices']) / len(article_data['prices'])
+                        min_price = min(article_data['prices'])
+                        max_price = max(article_data['prices'])
+                        
+                        client_results.append({
+                            'article': article_num,
+                            'product_names': list(set(article_data['names'])),
+                            'avg_price': avg_price,
+                            'min_price': min_price,
+                            'max_price': max_price,
+                            'records': len(article_data['prices']),
+                            'supplier': supplier,
+                            'all_prices': article_data['prices'],
+                            'orders': article_data['orders']
+                        })
+                        total_records += len(article_data['prices'])
+            
+            if client_results:
+                all_results[f"{client} - {supplier}"] = client_results
+    
+    if not all_results:
+        st.warning(f"❌ No results found for '{search_term}' across selected clients")
+        st.markdown('</div>', unsafe_allow_html=True)
+        return
+    
+    # Calculate overall statistics
+    all_prices = []
+    for client_supplier, results in all_results.items():
+        for result in results:
+            all_prices.extend(result['all_prices'])
+    
+    if all_prices:
+        overall_min = min(all_prices)
+        overall_max = max(all_prices)
+        price_range = overall_max - overall_min
+        price_variation = (price_range / overall_min) * 100 if overall_min > 0 else 0
+        
+        # Display overview statistics
+        st.subheader("📊 Cross-Client Price Overview")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Price Records", total_records)
+        with col2:
+            st.metric("Price Range", f"${price_range:.2f}/kg")
+        with col3:
+            st.metric("Lowest Price", f"${overall_min:.2f}/kg")
+        with col4:
+            st.metric("Highest Price", f"${overall_max:.2f}/kg")
+    
+    # Display detailed comparison
+    st.subheader("🏢 Client-by-Client Price Comparison")
+    
+    for client_supplier, results in all_results.items():
+        client_name, supplier_name = client_supplier.split(" - ")
+        
+        st.markdown(f"### {client_name} - {supplier_name}")
+        
+        for result in results:
+            # Determine if this is best/worst price
+            is_best = result['min_price'] == overall_min if all_prices else False
+            is_worst = result['max_price'] == overall_max if all_prices else False
+            
+            price_class = ""
+            if is_best:
+                price_class = "best-price"
+            elif is_worst:
+                price_class = "worst-price"
+            
+            st.markdown(f"""
+            <div class="intelligence-card {price_class}">
+                <div style="display: flex; justify-content: between; align-items: start;">
+                    <div style="flex: 1;">
+                        <h4 style="margin:0; color: #059669;">{result['article']}</h4>
+                        <p style="margin:0; color: #6B7280; font-size: 0.9em;">
+                            {', '.join(result['product_names'])}
+                        </p>
+                    </div>
+                    <div style="text-align: right;">
+                        <p style="margin:0; font-size: 1.1em; font-weight: bold; color: #059669;">
+                            ${result['avg_price']:.2f}/kg avg
+                        </p>
+                        <p style="margin:0; color: #6B7280; font-size: 0.9em;">
+                            Range: ${result['min_price']:.2f} - ${result['max_price']:.2f}
+                        </p>
+                        <p style="margin:0; color: #6B7280; font-size: 0.8em;">
+                            {result['records']} records
+                        </p>
+                    </div>
+                </div>
+                {f'<p style="margin:5px 0 0 0; color: #047857; font-weight: bold;">🎯 BEST PRICE</p>' if is_best else ''}
+                {f'<p style="margin:5px 0 0 0; color: #DC2626; font-weight: bold;">⚠️ HIGHEST PRICE</p>' if is_worst else ''}
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Show detailed price history for this article
+            with st.expander(f"📈 View detailed price history for {result['article']}"):
+                st.write(f"**Price History for {result['article']} in {client_name} - {supplier_name}**")
+                
+                # Display individual orders
+                cols = st.columns(2)
+                for i, order in enumerate(result['orders']):
+                    with cols[i % 2]:
+                        st.markdown(f"""
+                        <div class="price-box">
+                            <div style="font-size: 1.1em; font-weight: bold;">${order['price']:.2f}/kg</div>
+                            <div class="order-info">
+                                <strong>Order:</strong> {order['order_no']}<br>
+                                <strong>Date:</strong> {order['date']}
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+    
+    # Export intelligence report
+    st.markdown('<div class="export-section">', unsafe_allow_html=True)
+    st.subheader("📤 Export Price Intelligence Report")
+    
+    # Create export data
+    export_data = []
+    for client_supplier, results in all_results.items():
+        client_name, supplier_name = client_supplier.split(" - ")
+        for result in results:
+            export_data.append({
+                'Client': client_name,
+                'Supplier': supplier_name,
+                'Article_Number': result['article'],
+                'Product_Names': ', '.join(result['product_names']),
+                'Average_Price': result['avg_price'],
+                'Min_Price': result['min_price'],
+                'Max_Price': result['max_price'],
+                'Price_Range': result['max_price'] - result['min_price'],
+                'Records_Count': result['records'],
+                'Analysis_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+    
+    if export_data:
+        export_df = pd.DataFrame(export_data)
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            csv = export_df.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV Report",
+                data=csv,
+                file_name=f"price_intelligence_{search_term}_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+        
+        with col2:
+            st.download_button(
+                label="📄 Download Summary",
+                data=f"""
+Price Intelligence Report
+=========================
+
+Search Term: {search_term}
+Clients Analyzed: {', '.join(selected_clients)}
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Total Records Analyzed: {total_records}
+
+Overall Price Range: ${overall_min:.2f} - ${overall_max:.2f}/kg
+Price Variation: {price_variation:.1f}%
+
+Detailed Findings:
+{chr(10).join([f"• {row['Client']} - {row['Supplier']}: {row['Article_Number']} - ${row['Average_Price']:.2f}/kg avg (Range: ${row['Min_Price']:.2f}-${row['Max_Price']:.2f})" for row in export_data])}
+
+Best Price: ${overall_min:.2f}/kg
+Highest Price: ${overall_max:.2f}/kg
+                """,
+                file_name=f"price_intelligence_summary_{search_term}_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True
+            )
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
 def load_ceo_special_prices(client="CDC"):
     """Load CEO special prices from Google Sheets for specific client"""
     try:
@@ -560,7 +863,7 @@ def get_google_sheets_data(client="CDC"):
         
     except Exception as e:
         st.error(f"Error loading data for {client}: {str(e)}")
-        return get_sample_data()
+        return {"Backaldrin": {}, "Bateel": {}}
 
 def get_sample_data():
     """Fallback sample data"""
@@ -669,8 +972,7 @@ def cdc_dashboard(client):
     # Display results from session state
     if st.session_state.search_results and st.session_state.search_results.get("client") == client:
         display_from_session_state(DATA, client)
-        
-        
+
 def get_suggestions(search_term, supplier, data):
     suggestions = []
     supplier_data = data[supplier]
