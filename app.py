@@ -628,33 +628,33 @@ def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="
         st.markdown(f"### 📦 Article: {article_num}")
         st.caption(f"**Product Names:** {', '.join(article_data['product_names'])}")
         
-# Create comparison table for this article across clients
-comparison_data = []
+        # Create comparison table for this article across clients - UPDATED VERSION
+        comparison_data = []
 
-for client_supplier in all_results.keys():
-    client_name, supplier_name = client_supplier.split(" - ")
-    result = article_data['client_data'].get(client_supplier)
-    
-    if result and result['has_data']:
-        comparison_data.append({
-            'Client': client_name,
-            'Supplier': supplier_name,
-            'Min Price': f"${result['min_price']:.2f}",
-            'Max Price': f"${result['max_price']:.2f}",
-            'Avg Price': f"${result['avg_price']:.2f}",
-            'Records': result['records'],
-            'Status': '✅ Available'
-        })
-    else:
-        comparison_data.append({
-            'Client': client_name,
-            'Supplier': supplier_name,
-            'Min Price': "N/A",
-            'Max Price': "N/A", 
-            'Avg Price': "N/A",
-            'Records': "0",
-            'Status': '❌ Not Available'
-        })
+        for client_supplier in all_results.keys():
+            client_name, supplier_name = client_supplier.split(" - ")
+            result = article_data['client_data'].get(client_supplier)
+            
+            if result and result['has_data']:
+                comparison_data.append({
+                    'Client': client_name,
+                    'Supplier': supplier_name,
+                    'Min Price': f"${result['min_price']:.2f}",
+                    'Max Price': f"${result['max_price']:.2f}",
+                    'Avg Price': f"${result['avg_price']:.2f}",
+                    'Records': result['records'],
+                    'Status': '✅ Available'
+                })
+            else:
+                comparison_data.append({
+                    'Client': client_name,
+                    'Supplier': supplier_name,
+                    'Min Price': "N/A",
+                    'Max Price': "N/A", 
+                    'Avg Price': "N/A",
+                    'Records': "0",
+                    'Status': '❌ Not Available'
+                })
         
         # Display comparison table
         comparison_df = pd.DataFrame(comparison_data)
@@ -713,7 +713,7 @@ for client_supplier in all_results.keys():
     # Export intelligence report
     st.subheader("📤 Export Price Intelligence Report")
     
-    # Create export data
+    # Create export data - UPDATED VERSION
     export_data = []
     for article_num, article_data in articles_data.items():
         for client_supplier, result in article_data['client_data'].items():
@@ -725,12 +725,9 @@ for client_supplier in all_results.keys():
                     'Product_Names': ', '.join(result['product_names']),
                     'Client': client_name,
                     'Supplier': supplier_name,
-                    'Average_Price': result['avg_price'],
                     'Min_Price': result['min_price'],
-                    'Max_Price': result['max_price'],
-                    'Min_Price': result['min_price'],
-'Max_Price': result['max_price'], 
-'Avg_Price': result['avg_price'],
+                    'Max_Price': result['max_price'], 
+                    'Avg_Price': result['avg_price'],
                     'Records_Count': result['records'],
                     'Status': 'Available',
                     'Analysis_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -741,10 +738,9 @@ for client_supplier in all_results.keys():
                     'Product_Names': ', '.join(result['product_names']),
                     'Client': client_name,
                     'Supplier': supplier_name,
-                    'Average_Price': 'N/A',
                     'Min_Price': 'N/A',
                     'Max_Price': 'N/A',
-                    'Price_Range': 'N/A',
+                    'Avg_Price': 'N/A',
                     'Records_Count': 0,
                     'Status': 'Not Available',
                     'Analysis_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -780,7 +776,7 @@ Total Records Analyzed: {total_records}
 Overall Price Range: ${overall_min if all_prices else 'N/A'} - ${overall_max if all_prices else 'N/A'}/kg
 
 Detailed Findings:
-{chr(10).join([f"• {row['Client']} - {row['Supplier']}: {row['Article_Number']} - {row['Average_Price']}/kg avg ({row['Status']})" for row in export_data])}
+{chr(10).join([f"• {row['Client']} - {row['Supplier']}: {row['Article_Number']} - Min:${row['Min_Price'] if row['Status'] == 'Available' else 'N/A'}, Max:${row['Max_Price'] if row['Status'] == 'Available' else 'N/A'}, Avg:${row['Avg_Price'] if row['Status'] == 'Available' else 'N/A'}/kg ({row['Status']})" for row in export_data])}
                 """,
                 file_name=f"price_intelligence_summary_{search_term}_{datetime.now().strftime('%Y%m%d')}.txt",
                 mime="text/plain",
@@ -788,7 +784,6 @@ Detailed Findings:
             )
             
     
-    st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 def load_ceo_special_prices(client="CDC"):
