@@ -473,7 +473,7 @@ def load_ceo_special_prices(client="CDC"):
         return pd.DataFrame()
 
 def get_google_sheets_data(client="CDC"):
-    """Load data from Google Sheets using API key - NOW CLIENT SPECIFIC"""
+    """Load data from Google Sheets using API key - NOW HEADER-BASED"""
     try:
         # Get client-specific sheet names
         client_sheets = CLIENT_SHEETS[client]
@@ -488,75 +488,66 @@ def get_google_sheets_data(client="CDC"):
         
         data = {"Backaldrin": {}, "Bateel": {}}
         
+        def process_sheet_data(values, supplier_name):
+            """Process sheet data using header names instead of positions"""
+            if not values or len(values) < 2:
+                return
+                
+            headers = [h.strip().lower() for h in values[0]]
+            rows = values[1:]
+            
+            # Find column indices by header name
+            try:
+                order_no_idx = headers.index("order_number")
+                order_date_idx = headers.index("order_date") 
+                article_idx = headers.index("article_number")
+                product_idx = headers.index("product_name")
+                price_idx = headers.index("price_per_kg")
+            except ValueError as e:
+                st.warning(f"Missing required column in {supplier_name}: {e}")
+                return
+            
+            for row in rows:
+                if len(row) > max(order_no_idx, order_date_idx, article_idx, product_idx, price_idx):
+                    article = str(row[article_idx]) if row[article_idx] else ""
+                    product_name = row[product_idx] if product_idx < len(row) else ""
+                    price = row[price_idx] if price_idx < len(row) else ""
+                    order_no = row[order_no_idx] if order_no_idx < len(row) else ""
+                    order_date = row[order_date_idx] if order_date_idx < len(row) else ""
+                    
+                    if article and price:
+                        if article not in data[supplier_name]:
+                            data[supplier_name][article] = {
+                                "prices": [],
+                                "names": [],
+                                "orders": []
+                            }
+                        
+                        try:
+                            price_float = float(price)
+                            data[supplier_name][article]["prices"].append(price_float)
+                            data[supplier_name][article]["orders"].append({
+                                "price": price_float,
+                                "order_no": order_no,
+                                "date": order_date
+                            })
+                            
+                            if product_name and product_name not in data[supplier_name][article]["names"]:
+                                data[supplier_name][article]["names"].append(product_name)
+                        except ValueError:
+                            continue
+        
         # Process Backaldrin data
         if backaldrin_response.status_code == 200:
             backaldrin_values = backaldrin_response.json().get('values', [])
-            if len(backaldrin_values) > 1:
-                for row in backaldrin_values[1:]:
-                    if len(row) >= 5:
-                        article = str(row[2]) if len(row) > 2 else ""
-                        product_name = row[3] if len(row) > 3 else ""
-                        price = row[4] if len(row) > 4 else ""
-                        order_no = row[0] if len(row) > 0 else ""
-                        order_date = row[1] if len(row) > 1 else ""
-                        
-                        if article and price:
-                            if article not in data["Backaldrin"]:
-                                data["Backaldrin"][article] = {
-                                    "prices": [],
-                                    "names": [],
-                                    "orders": []
-                                }
-                            
-                            try:
-                                price_float = float(price)
-                                data["Backaldrin"][article]["prices"].append(price_float)
-                                data["Backaldrin"][article]["orders"].append({
-                                    "price": price_float,
-                                    "order_no": order_no,
-                                    "date": order_date
-                                })
-                                
-                                if product_name and product_name not in data["Backaldrin"][article]["names"]:
-                                    data["Backaldrin"][article]["names"].append(product_name)
-                            except ValueError:
-                                continue
+            process_sheet_data(backaldrin_values, "Backaldrin")
         else:
             st.warning(f"Could not load Backaldrin data for {client}. Sheet '{client_sheets['backaldrin']}' may not exist.")
         
         # Process Bateel data
         if bateel_response.status_code == 200:
             bateel_values = bateel_response.json().get('values', [])
-            if len(bateel_values) > 1:
-                for row in bateel_values[1:]:
-                    if len(row) >= 5:
-                        article = str(row[2]) if len(row) > 2 else ""
-                        product_name = row[3] if len(row) > 3 else ""
-                        price = row[4] if len(row) > 4 else ""
-                        order_no = row[0] if len(row) > 0 else ""
-                        order_date = row[1] if len(row) > 1 else ""
-                        
-                        if article and price:
-                            if article not in data["Bateel"]:
-                                data["Bateel"][article] = {
-                                    "prices": [],
-                                    "names": [],
-                                    "orders": []
-                                }
-                            
-                            try:
-                                price_float = float(price)
-                                data["Bateel"][article]["prices"].append(price_float)
-                                data["Bateel"][article]["orders"].append({
-                                    "price": price_float,
-                                    "order_no": order_no,
-                                    "date": order_date
-                                })
-                                
-                                if product_name and product_name not in data["Bateel"][article]["names"]:
-                                    data["Bateel"][article]["names"].append(product_name)
-                            except ValueError:
-                                continue
+            process_sheet_data(bateel_values, "Bateel")
         else:
             st.warning(f"Could not load Bateel data for {client}. Sheet '{client_sheets['bateel']}' may not exist.")
         
