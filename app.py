@@ -628,31 +628,33 @@ def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="
         st.markdown(f"### 📦 Article: {article_num}")
         st.caption(f"**Product Names:** {', '.join(article_data['product_names'])}")
         
-        # Create comparison table for this article across clients
-        comparison_data = []
-        
-        for client_supplier in all_results.keys():
-            client_name, supplier_name = client_supplier.split(" - ")
-            result = article_data['client_data'].get(client_supplier)
-            
-            if result and result['has_data']:
-                comparison_data.append({
-                    'Client': client_name,
-                    'Supplier': supplier_name,
-                    'Avg Price': f"${result['avg_price']:.2f}",
-                    'Price Range': f"${result['min_price']:.2f} - ${result['max_price']:.2f}",
-                    'Records': result['records'],
-                    'Status': '✅ Available'
-                })
-            else:
-                comparison_data.append({
-                    'Client': client_name,
-                    'Supplier': supplier_name,
-                    'Avg Price': "N/A",
-                    'Price Range': "N/A",
-                    'Records': "0",
-                    'Status': '❌ Not Available'
-                })
+# Create comparison table for this article across clients
+comparison_data = []
+
+for client_supplier in all_results.keys():
+    client_name, supplier_name = client_supplier.split(" - ")
+    result = article_data['client_data'].get(client_supplier)
+    
+    if result and result['has_data']:
+        comparison_data.append({
+            'Client': client_name,
+            'Supplier': supplier_name,
+            'Min Price': f"${result['min_price']:.2f}",
+            'Max Price': f"${result['max_price']:.2f}",
+            'Avg Price': f"${result['avg_price']:.2f}",
+            'Records': result['records'],
+            'Status': '✅ Available'
+        })
+    else:
+        comparison_data.append({
+            'Client': client_name,
+            'Supplier': supplier_name,
+            'Min Price': "N/A",
+            'Max Price': "N/A", 
+            'Avg Price': "N/A",
+            'Records': "0",
+            'Status': '❌ Not Available'
+        })
         
         # Display comparison table
         comparison_df = pd.DataFrame(comparison_data)
