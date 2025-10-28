@@ -488,12 +488,13 @@ def get_google_sheets_data(client="CDC"):
         
         data = {"Backaldrin": {}, "Bateel": {}}
         
-        def process_sheet_data(values, supplier_name):
+        def process_sheet_data(values, supplier_name, sheet_name):
             """Process sheet data using header names instead of positions"""
             if not values or len(values) < 2:
+                st.warning(f"No data found in {sheet_name}")
                 return
                 
-            headers = [h.strip().lower() for h in values[0]]
+            headers = [str(h).strip().lower() for h in values[0]]
             rows = values[1:]
             
             # Find column indices by header name
@@ -504,18 +505,20 @@ def get_google_sheets_data(client="CDC"):
                 product_idx = headers.index("product_name")
                 price_idx = headers.index("price_per_kg")
             except ValueError as e:
-                st.warning(f"Missing required column in {supplier_name}: {e}")
+                st.warning(f"Missing required column in {sheet_name}: {e}")
+                st.info(f"Available columns: {headers}")
                 return
             
+            articles_found = 0
             for row in rows:
                 if len(row) > max(order_no_idx, order_date_idx, article_idx, product_idx, price_idx):
-                    article = str(row[article_idx]) if row[article_idx] else ""
+                    article = str(row[article_idx]).strip() if article_idx < len(row) and row[article_idx] else ""
                     product_name = row[product_idx] if product_idx < len(row) else ""
                     price = row[price_idx] if price_idx < len(row) else ""
                     order_no = row[order_no_idx] if order_no_idx < len(row) else ""
                     order_date = row[order_date_idx] if order_date_idx < len(row) else ""
                     
-                    if article and price:
+                    if article and price and article != "":
                         if article not in data[supplier_name]:
                             data[supplier_name][article] = {
                                 "prices": [],
@@ -534,20 +537,24 @@ def get_google_sheets_data(client="CDC"):
                             
                             if product_name and product_name not in data[supplier_name][article]["names"]:
                                 data[supplier_name][article]["names"].append(product_name)
+                            
+                            articles_found += 1
                         except ValueError:
                             continue
+            
+            st.success(f"✅ Loaded {articles_found} articles from {sheet_name}")
         
         # Process Backaldrin data
         if backaldrin_response.status_code == 200:
             backaldrin_values = backaldrin_response.json().get('values', [])
-            process_sheet_data(backaldrin_values, "Backaldrin")
+            process_sheet_data(backaldrin_values, "Backaldrin", client_sheets['backaldrin'])
         else:
             st.warning(f"Could not load Backaldrin data for {client}. Sheet '{client_sheets['backaldrin']}' may not exist.")
         
         # Process Bateel data
         if bateel_response.status_code == 200:
             bateel_values = bateel_response.json().get('values', [])
-            process_sheet_data(bateel_values, "Bateel")
+            process_sheet_data(bateel_values, "Bateel", client_sheets['bateel'])
         else:
             st.warning(f"Could not load Bateel data for {client}. Sheet '{client_sheets['bateel']}' may not exist.")
         
