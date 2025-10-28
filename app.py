@@ -622,31 +622,39 @@ def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="
             elif is_worst:
                 price_class = "worst-price"
             
-            st.markdown(f"""
-            <div class="intelligence-card {price_class}">
-                <div style="display: flex; justify-content: between; align-items: start;">
-                    <div style="flex: 1;">
-                        <h4 style="margin:0; color: #059669;">{result['article']}</h4>
-                        <p style="margin:0; color: #6B7280; font-size: 0.9em;">
-                            {', '.join(result['product_names'])}
-                        </p>
-                    </div>
-                    <div style="text-align: right;">
-                        <p style="margin:0; font-size: 1.1em; font-weight: bold; color: #059669;">
-                            ${result['avg_price']:.2f}/kg avg
-                        </p>
-                        <p style="margin:0; color: #6B7280; font-size: 0.9em;">
-                            Range: ${result['min_price']:.2f} - ${result['max_price']:.2f}
-                        </p>
-                        <p style="margin:0; color: #6B7280; font-size: 0.8em;">
-                            {result['records']} records
-                        </p>
-                    </div>
-                </div>
-                {f'<p style="margin:5px 0 0 0; color: #047857; font-weight: bold;">🎯 BEST PRICE</p>' if is_best else ''}
-                {f'<p style="margin:5px 0 0 0; color: #DC2626; font-weight: bold;">⚠️ HIGHEST PRICE</p>' if is_worst else ''}
-            </div>
-            """, unsafe_allow_html=True)
+            # Build the HTML content safely
+card_html = f"""
+<div class="intelligence-card {price_class}">
+    <div style="display: flex; justify-content: between; align-items: start;">
+        <div style="flex: 1;">
+            <h4 style="margin:0; color: #059669;">{result['article']}</h4>
+            <p style="margin:0; color: #6B7280; font-size: 0.9em;">
+                {', '.join(result['product_names'])}
+            </p>
+        </div>
+        <div style="text-align: right;">
+            <p style="margin:0; font-size: 1.1em; font-weight: bold; color: #059669;">
+                ${result['avg_price']:.2f}/kg avg
+            </p>
+            <p style="margin:0; color: #6B7280; font-size: 0.9em;">
+                Range: ${result['min_price']:.2f} - ${result['max_price']:.2f}
+            </p>
+            <p style="margin:0; color: #6B7280; font-size: 0.8em;">
+                {result['records']} records
+            </p>
+        </div>
+    </div>
+"""
+
+# Add best/worst price badges safely
+if is_best:
+    card_html += '<p style="margin:5px 0 0 0; color: #047857; font-weight: bold;">🎯 BEST PRICE</p>'
+if is_worst:
+    card_html += '<p style="margin:5px 0 0 0; color: #DC2626; font-weight: bold;">⚠️ HIGHEST PRICE</p>'
+
+card_html += "</div>"
+
+st.markdown(card_html, unsafe_allow_html=True)
             
             # Show detailed price history for this article
             with st.expander(f"📈 View detailed price history for {result['article']}"):
