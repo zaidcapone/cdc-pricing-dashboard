@@ -171,15 +171,16 @@ st.markdown("""
 API_KEY = "AIzaSyA3P-ZpLjDdVtGB82_1kaWuO7lNbKDj9HU"
 CDC_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"
 
-# User authentication
+# User authentication - UPDATED: cakeart_user changed to Khalid
 USERS = {
     "admin": {"password": "admin123", "clients": ["CDC", "CoteDivoire", "CakeArt"]},
     "ceo": {"password": "ceo123", "clients": ["CDC", "CoteDivoire", "CakeArt"]},
     "zaid": {"password": "zaid123", "clients": ["CDC"]},
     "mohammad": {"password": "mohammad123", "clients": ["CoteDivoire"]},
-    "cakeart_user": {"password": "cakeart123", "clients": ["CakeArt"]}  # Optional: Add dedicated user
+    "Khalid": {"password": "khalid123", "clients": ["CakeArt"]}  # CHANGED: cakeart_user to Khalid
 }
-# Client data sheets mapping
+
+# Client data sheets mapping - UPDATED WITH CakeArt
 CLIENT_SHEETS = {
     "CDC": {
         "backaldrin": "Backaldrin_CDC",
@@ -483,10 +484,8 @@ def price_intelligence_tab():
     
     st.info("🔍 **Search across selected clients to compare pricing strategies and identify opportunities**")
     
-    # Client selection - CEO can select specific clients or all
-    available_clients = ["CDC", "CoteDivoire", "CakeArt"]  # ADD CakeArt HERE
-    
-    # ... rest of the function remains the same
+    # Client selection - CEO can select specific clients or all - UPDATED WITH CakeArt
+    available_clients = ["CDC", "CoteDivoire", "CakeArt"]
     
     # Search Configuration Section
     st.subheader("🔧 Search Configuration")
