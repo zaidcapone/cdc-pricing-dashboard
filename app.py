@@ -199,28 +199,8 @@ CLIENT_SHEETS = {
     }
 }
 
-# Client data sheets mapping - UPDATED WITH CakeArt
-CLIENT_SHEETS = {
-    "CDC": {
-        "backaldrin": "Backaldrin_CDC",
-        "bateel": "Bateel_CDC",
-        "ceo_special": "CDC_CEO_Special_Prices"
-    },
-    "CoteDivoire": {
-        "backaldrin": "Backaldrin_CoteDivoire",
-        "bateel": "Bateel_CoteDivoire", 
-        "ceo_special": "CoteDivoire_CEO_Special_Prices"
-    },
-    "CakeArt": {
-        "backaldrin": "Backaldrin_CakeArt",
-        "bateel": "Bateel_CakeArt",
-        "ceo_special": "CakeArt_CEO_Special_Prices"
-    }
-}
-
 # Product Catalog Sheet Name
 PRODUCT_CATALOG_SHEET = "FullProductList"
-
 
 def check_login():
     """Check if user is logged in"""
@@ -1006,7 +986,7 @@ def display_product_card(product):
 def load_product_catalog():
     """Load product catalog from Google Sheets"""
     try:
-sheet_name = PRODUCT_CATALOG_SHEET
+        sheet_name = PRODUCT_CATALOG_SHEET
         catalog_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
         response = requests.get(catalog_url)
         
@@ -1036,6 +1016,7 @@ sheet_name = PRODUCT_CATALOG_SHEET
     except Exception as e:
         st.error(f"Error loading product catalog: {str(e)}")
         return pd.DataFrame()
+
 def load_ceo_special_prices(client="CDC"):
     """Load CEO special prices from Google Sheets for specific client"""
     try:
