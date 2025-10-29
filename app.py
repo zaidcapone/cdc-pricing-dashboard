@@ -674,7 +674,6 @@ def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="
                 with col1:
                     st.markdown(f"**{client_name} - {supplier_name}**")
                     
-                with col2:
 with col2:
     st.markdown(f"**${result['min_price']:.2f} - ${result['max_price']:.2f}**/kg")
     st.caption(f"Range: ${result['max_price'] - result['min_price']:.2f}")
