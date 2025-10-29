@@ -354,18 +354,10 @@ def ceo_specials_tab():
     with col2:
         active_offers = len(ceo_data[ceo_data['Expiry_Date'] >= datetime.now().strftime('%Y-%m-%d')])
         st.metric("Active Offers", active_offers)
-    with col3:
-        # SAFE AVERAGE CALCULATION - handles multiple currencies and formats
-        try:
-            # Convert to numeric, coerce errors to NaN
-            prices = pd.to_numeric(ceo_data['Special_Price'], errors='coerce')
-            avg_price = prices.mean()
-            if pd.notna(avg_price):
-                st.metric("Avg Special Price", f"${avg_price:.2f}")
-            else:
-                st.metric("Avg Special Price", "N/A")
-        except:
-            st.metric("Avg Special Price", "N/A")
+with col3:
+    # Count unique currencies instead of average price
+    unique_currencies = ceo_data['Currency'].nunique()
+    st.metric("Currencies Used", unique_currencies)
     with col4:
         expiring_soon = len(ceo_data[
             (ceo_data['Expiry_Date'] >= datetime.now().strftime('%Y-%m-%d')) &
@@ -647,7 +639,7 @@ def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="
                     'Supplier': supplier_name,
                     'Min Price': f"${result['min_price']:.2f}",
                     'Max Price': f"${result['max_price']:.2f}",
-                    'Avg Price': f"${result['avg_price']:.2f}",
+'Price Range': f"${result['max_price'] - result['min_price']:.2f}",
                     'Records': result['records'],
                     'Status': '✅ Available'
                 })
@@ -683,8 +675,9 @@ def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="
                     st.markdown(f"**{client_name} - {supplier_name}**")
                     
                 with col2:
-                    st.markdown(f"**${result['avg_price']:.2f}**/kg avg")
-                    st.caption(f"Range: ${result['min_price']:.2f} - ${result['max_price']:.2f}")
+with col2:
+    st.markdown(f"**${result['min_price']:.2f} - ${result['max_price']:.2f}**/kg")
+    st.caption(f"Range: ${result['max_price'] - result['min_price']:.2f}")
                     st.caption(f"{result['records']} records")
                 
                 # Show best/worst price badges
@@ -1134,13 +1127,13 @@ def display_from_session_state(data, client):
         </div>
         """, unsafe_allow_html=True)
     
-    with col4:
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-number">${sum(prices)/len(prices):.2f}</div>
-            <div class="stat-label">Avg Price/kg</div>
-        </div>
-        """, unsafe_allow_html=True)
+with col4:
+    st.markdown(f"""
+    <div class="stat-card">
+        <div class="stat-number">${max(prices) - min(prices):.2f}</div>
+        <div class="stat-label">Price Range/kg</div>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Price history with order numbers
     st.subheader("💵 Historical Prices with Order Details")
