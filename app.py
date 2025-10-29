@@ -199,6 +199,29 @@ CLIENT_SHEETS = {
     }
 }
 
+# Client data sheets mapping - UPDATED WITH CakeArt
+CLIENT_SHEETS = {
+    "CDC": {
+        "backaldrin": "Backaldrin_CDC",
+        "bateel": "Bateel_CDC",
+        "ceo_special": "CDC_CEO_Special_Prices"
+    },
+    "CoteDivoire": {
+        "backaldrin": "Backaldrin_CoteDivoire",
+        "bateel": "Bateel_CoteDivoire", 
+        "ceo_special": "CoteDivoire_CEO_Special_Prices"
+    },
+    "CakeArt": {
+        "backaldrin": "Backaldrin_CakeArt",
+        "bateel": "Bateel_CakeArt",
+        "ceo_special": "CakeArt_CEO_Special_Prices"
+    }
+}
+
+# Product Catalog Sheet Name
+PRODUCT_CATALOG_SHEET = "FullProductList"
+
+
 def check_login():
     """Check if user is logged in"""
     if 'logged_in' not in st.session_state:
@@ -798,18 +821,221 @@ def product_catalog_tab():
     </div>
     """, unsafe_allow_html=True)
     
-    st.info("🔧 **Product Catalog coming soon!** Add your 'FullProductList' sheet to Google Sheets to enable this feature.")
+    # Load product catalog data
+    catalog_data = load_product_catalog()
     
-    # You can add the basic structure here
-    st.subheader("📋 Planned Features:")
-    st.write("""
-    - **Browse all products** with complete specifications
-    - **Advanced filtering** by category, supplier, ingredients
-    - **Search** by article number, product name, description
-    - **Technical datasheets** integration (future)
-    - **Export product catalog** in multiple formats
-    """)
+    if catalog_data.empty:
+        st.warning("""
+        ⚠️ **Product catalog not found or empty!**
+        
+        **To get started:**
+        1. Go to your Google Sheet
+        2. Add a new tab called **'FullProductList'**
+        3. Use these columns:
+           - Article_Number
+           - Product_Name
+           - Category
+           - Sub_Category
+           - Sub_Sub_Category
+           - UOM
+           - Unit_Weight
+           - Common_Description
+           - Purpose_Of_Use
+           - Dosage
+           - Ingredients
+           - Supplier
+           - Datasheet_Link
+        """)
+        return
+    
+    # Catalog Overview
+    st.subheader("📊 Catalog Overview")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("Total Products", len(catalog_data))
+    
+    with col2:
+        suppliers = catalog_data['Supplier'].nunique()
+        st.metric("Suppliers", suppliers)
+    
+    with col3:
+        categories = catalog_data['Category'].nunique()
+        st.metric("Categories", categories)
+    
+    with col4:
+        articles_with_data = catalog_data['Article_Number'].nunique()
+        st.metric("Unique Articles", articles_with_data)
+    
+    # Search and Filter Section
+    st.subheader("🔍 Search & Filter Products")
+    
+    col1, col2, col3 = st.columns([2, 1, 1])
+    
+    with col1:
+        search_term = st.text_input("Search by article, product name, or description...", key="catalog_search")
+    
+    with col2:
+        supplier_filter = st.selectbox("Supplier", ["All"] + list(catalog_data['Supplier'].unique()), key="catalog_supplier")
+    
+    with col3:
+        category_filter = st.selectbox("Category", ["All"] + list(catalog_data['Category'].unique()), key="catalog_category")
+    
+    # Filter data
+    filtered_data = catalog_data.copy()
+    
+    if search_term:
+        mask = filtered_data.astype(str).apply(
+            lambda x: x.str.contains(search_term, case=False, na=False)
+        ).any(axis=1)
+        filtered_data = filtered_data[mask]
+    
+    if supplier_filter != "All":
+        filtered_data = filtered_data[filtered_data['Supplier'] == supplier_filter]
+    
+    if category_filter != "All":
+        filtered_data = filtered_data[filtered_data['Category'] == category_filter]
+    
+    # Display Results
+    st.subheader(f"📋 Products Found: {len(filtered_data)}")
+    
+    if not filtered_data.empty:
+        # Show product cards
+        for _, product in filtered_data.iterrows():
+            display_product_card(product)
+        
+        # Export Section
+        st.markdown('<div class="export-section">', unsafe_allow_html=True)
+        st.subheader("📤 Export Product Catalog")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            csv = filtered_data.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv,
+                file_name=f"product_catalog_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+        
+        with col2:
+            # Create a simplified version for text export
+            export_text = f"""Product Catalog Export
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Total Products: {len(filtered_data)}
 
+Products:
+{chr(10).join([f"• {row['Article_Number']} - {row['Product_Name']} ({row['Supplier']}) - Category: {row['Category']}" for _, row in filtered_data.iterrows()])}
+"""
+            st.download_button(
+                label="📄 Download Summary",
+                data=export_text,
+                file_name=f"product_catalog_summary_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True
+            )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    else:
+        st.info("No products match your search criteria.")
+
+def display_product_card(product):
+    """Display individual product card with all details"""
+    
+    # Determine card color based on supplier
+    if product['Supplier'] == 'Backaldrin':
+        card_class = "price-card"
+        border_color = "#991B1B"
+    elif product['Supplier'] == 'Bateel':
+        card_class = "special-price-card"
+        border_color = "#D97706"
+    else:
+        card_class = "intelligence-stat-card"
+        border_color = "#059669"
+    
+    with st.expander(f"📦 {product['Article_Number']} - {product['Product_Name']}", expanded=False):
+        st.markdown(f"""
+        <div class="{card_class}">
+            <div style="border-left: 5px solid {border_color}; padding-left: 1rem;">
+                <h3 style="margin:0; color: {border_color};">{product['Article_Number']} - {product['Product_Name']}</h3>
+                <p style="margin:0; font-weight: bold; color: #6B7280;">Supplier: {product['Supplier']}</p>
+                
+                <div style="margin-top: 1rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div>
+                            <p style="margin:0;"><strong>Category:</strong> {product['Category']}</p>
+                            <p style="margin:0;"><strong>Sub-Category:</strong> {product['Sub_Category']}</p>
+                            <p style="margin:0;"><strong>Sub-Sub-Category:</strong> {product['Sub_Sub_Category']}</p>
+                        </div>
+                        <div>
+                            <p style="margin:0;"><strong>UOM:</strong> {product['UOM']}</p>
+                            <p style="margin:0;"><strong>Unit Weight:</strong> {product['Unit_Weight']}</p>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 1rem;">
+                        <p style="margin:0;"><strong>Description:</strong></p>
+                        <p style="margin:0; color: #6B7280;">{product['Common_Description']}</p>
+                    </div>
+                    
+                    <div style="margin-top: 1rem;">
+                        <p style="margin:0;"><strong>Purpose of Use:</strong></p>
+                        <p style="margin:0; color: #6B7280;">{product['Purpose_Of_Use']}</p>
+                    </div>
+                    
+                    <div style="margin-top: 1rem;">
+                        <p style="margin:0;"><strong>Dosage:</strong></p>
+                        <p style="margin:0; color: #6B7280;">{product['Dosage']}</p>
+                    </div>
+                    
+                    <div style="margin-top: 1rem;">
+                        <p style="margin:0;"><strong>Ingredients:</strong></p>
+                        <p style="margin:0; color: #6B7280;">{product['Ingredients']}</p>
+                    </div>
+                    
+                    {f'<div style="margin-top: 1rem;"><p style="margin:0;"><strong>Datasheet:</strong> <a href="{product["Datasheet_Link"]}" target="_blank">View Datasheet</a></p></div>' if pd.notna(product['Datasheet_Link']) and product['Datasheet_Link'] != '' else ''}
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+def load_product_catalog():
+    """Load product catalog from Google Sheets"""
+    try:
+sheet_name = PRODUCT_CATALOG_SHEET
+        catalog_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
+        response = requests.get(catalog_url)
+        
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if values and len(values) > 1:
+                headers = values[0]
+                rows = values[1:]
+                
+                # Create DataFrame
+                df = pd.DataFrame(rows, columns=headers)
+                
+                # Required columns check
+                required_cols = ['Article_Number', 'Product_Name', 'Supplier']
+                if all(col in df.columns for col in required_cols):
+                    # Fill missing values with empty strings
+                    df = df.fillna('')
+                    return df
+                else:
+                    st.error(f"Missing required columns in {sheet_name}. Found: {list(df.columns)}")
+                    return pd.DataFrame()
+                
+        return pd.DataFrame()
+        
+    except Exception as e:
+        st.error(f"Error loading product catalog: {str(e)}")
+        return pd.DataFrame()
 def load_ceo_special_prices(client="CDC"):
     """Load CEO special prices from Google Sheets for specific client"""
     try:
