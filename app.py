@@ -259,11 +259,11 @@ def main_dashboard():
     </div>
     """, unsafe_allow_html=True)
     
-    # Create tabs - ADDED PRICE INTELLIGENCE TAB
-    if st.session_state.username in ["ceo", "admin"]:
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG"])
-    else:
-tab1, tab2, tab3, tab4 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES", "📦 PRODUCT CATALOG"])
+   # Create tabs - ADDED PRODUCT CATALOG TAB
+if st.session_state.username in ["ceo", "admin"]:
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG"])
+else:
+    tab1, tab2, tab3, tab4 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES", "📦 PRODUCT CATALOG"])
     
     with tab1:
         clients_tab()
