@@ -945,7 +945,6 @@ def get_sample_data():
             }
         }
     }
-}
 
 def create_export_data(article_data, article, supplier, client):
     """Create export data in different formats"""
