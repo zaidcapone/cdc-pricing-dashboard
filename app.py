@@ -715,18 +715,18 @@ for client_supplier in all_results.keys():
         for client_supplier, result in article_data['client_data'].items():
             client_name, supplier_name = client_supplier.split(" - ")
             
-            if result['has_data']:
-export_data.append({
-    'Article_Number': article_num,
-    'Product_Names': ', '.join(result['product_names']),
-    'Client': client_name,
-    'Supplier': supplier_name,
-    'Min_Price': result['min_price'],
-    'Max_Price': result['max_price'], 
-    'Records_Count': result['records'],
-    'Status': 'Available',
-    'Analysis_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-})
+if result['has_data']:
+    export_data.append({
+        'Article_Number': article_num,
+        'Product_Names': ', '.join(result['product_names']),
+        'Client': client_name,
+        'Supplier': supplier_name,
+        'Min_Price': result['min_price'],
+        'Max_Price': result['max_price'], 
+        'Records_Count': result['records'],
+        'Status': 'Available',
+        'Analysis_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
             else:
                 export_data.append({
                     'Article_Number': article_num,
