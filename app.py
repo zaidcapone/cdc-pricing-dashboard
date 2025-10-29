@@ -811,24 +811,17 @@ def product_catalog_tab():
         **To get started:**
         1. Go to your Google Sheet
         2. Add a new tab called **'FullProductList'**
-        3. Use these columns:
+        3. Use these columns (at minimum):
            - Article_Number
            - Product_Name
-           - Category
-           - Sub_Category
-           - Sub_Sub_Category
-           - UOM
-           - Unit_Weight
-           - Common_Description
-           - Purpose_Of_Use
-           - Dosage
-           - Ingredients
            - Supplier
-           - Datasheet_Link
         """)
         return
     
-    # Catalog Overview
+    # Show available columns for debugging
+    st.info(f"📋 **Available columns in your data:** {', '.join(catalog_data.columns)}")
+    
+    # Catalog Overview - DYNAMIC based on available columns
     st.subheader("📊 Catalog Overview")
     
     col1, col2, col3, col4 = st.columns(4)
@@ -837,18 +830,24 @@ def product_catalog_tab():
         st.metric("Total Products", len(catalog_data))
     
     with col2:
-        suppliers = catalog_data['Supplier'].nunique()
-        st.metric("Suppliers", suppliers)
+        if 'Supplier' in catalog_data.columns:
+            suppliers = catalog_data['Supplier'].nunique()
+            st.metric("Suppliers", suppliers)
+        else:
+            st.metric("Suppliers", "N/A")
     
     with col3:
-        categories = catalog_data['Category'].nunique()
-        st.metric("Categories", categories)
+        if 'Category' in catalog_data.columns:
+            categories = catalog_data['Category'].nunique()
+            st.metric("Categories", categories)
+        else:
+            st.metric("Categories", "N/A")
     
     with col4:
         articles_with_data = catalog_data['Article_Number'].nunique()
         st.metric("Unique Articles", articles_with_data)
     
-    # Search and Filter Section
+    # Search and Filter Section - DYNAMIC based on available columns
     st.subheader("🔍 Search & Filter Products")
     
     col1, col2, col3 = st.columns([2, 1, 1])
@@ -857,10 +856,18 @@ def product_catalog_tab():
         search_term = st.text_input("Search by article, product name, or description...", key="catalog_search")
     
     with col2:
-        supplier_filter = st.selectbox("Supplier", ["All"] + list(catalog_data['Supplier'].unique()), key="catalog_supplier")
+        if 'Supplier' in catalog_data.columns:
+            supplier_filter = st.selectbox("Supplier", ["All"] + list(catalog_data['Supplier'].unique()), key="catalog_supplier")
+        else:
+            supplier_filter = "All"
+            st.selectbox("Supplier", ["No supplier data"], key="catalog_supplier", disabled=True)
     
     with col3:
-        category_filter = st.selectbox("Category", ["All"] + list(catalog_data['Category'].unique()), key="catalog_category")
+        if 'Category' in catalog_data.columns:
+            category_filter = st.selectbox("Category", ["All"] + list(catalog_data['Category'].unique()), key="catalog_category")
+        else:
+            category_filter = "All"
+            st.selectbox("Category", ["No category data"], key="catalog_category", disabled=True)
     
     # Filter data
     filtered_data = catalog_data.copy()
@@ -871,10 +878,10 @@ def product_catalog_tab():
         ).any(axis=1)
         filtered_data = filtered_data[mask]
     
-    if supplier_filter != "All":
+    if supplier_filter != "All" and 'Supplier' in catalog_data.columns:
         filtered_data = filtered_data[filtered_data['Supplier'] == supplier_filter]
     
-    if category_filter != "All":
+    if category_filter != "All" and 'Category' in catalog_data.columns:
         filtered_data = filtered_data[filtered_data['Category'] == category_filter]
     
     # Display Results
@@ -883,7 +890,7 @@ def product_catalog_tab():
     if not filtered_data.empty:
         # Show product cards
         for _, product in filtered_data.iterrows():
-            display_product_card(product)
+            display_product_card_flexible(product, catalog_data.columns)
         
         # Export Section
         st.markdown('<div class="export-section">', unsafe_allow_html=True)
@@ -908,7 +915,7 @@ Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 Total Products: {len(filtered_data)}
 
 Products:
-{chr(10).join([f"• {row['Article_Number']} - {row['Product_Name']} ({row['Supplier']}) - Category: {row['Category']}" for _, row in filtered_data.iterrows()])}
+{chr(10).join([f"• {row['Article_Number']} - {row['Product_Name']} " + (f"({row['Supplier']})" if 'Supplier' in row and row['Supplier'] else '') for _, row in filtered_data.iterrows()])}
 """
             st.download_button(
                 label="📄 Download Summary",
@@ -923,14 +930,14 @@ Products:
     else:
         st.info("No products match your search criteria.")
 
-def display_product_card(product):
-    """Display individual product card with all details"""
+def display_product_card_flexible(product, available_columns):
+    """Display individual product card with available columns only"""
     
-    # Determine card color based on supplier
-    if product['Supplier'] == 'Backaldrin':
+    # Determine card color based on supplier if available
+    if 'Supplier' in available_columns and product['Supplier'] == 'Backaldrin':
         card_class = "price-card"
         border_color = "#991B1B"
-    elif product['Supplier'] == 'Bateel':
+    elif 'Supplier' in available_columns and product['Supplier'] == 'Bateel':
         card_class = "special-price-card"
         border_color = "#D97706"
     else:
@@ -938,53 +945,83 @@ def display_product_card(product):
         border_color = "#059669"
     
     with st.expander(f"📦 {product['Article_Number']} - {product['Product_Name']}", expanded=False):
-        st.markdown(f"""
+        # Build the card content dynamically based on available columns
+        card_content = f"""
         <div class="{card_class}">
             <div style="border-left: 5px solid {border_color}; padding-left: 1rem;">
                 <h3 style="margin:0; color: {border_color};">{product['Article_Number']} - {product['Product_Name']}</h3>
-                <p style="margin:0; font-weight: bold; color: #6B7280;">Supplier: {product['Supplier']}</p>
-                
-                <div style="margin-top: 1rem;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                        <div>
-                            <p style="margin:0;"><strong>Category:</strong> {product['Category']}</p>
-                            <p style="margin:0;"><strong>Sub-Category:</strong> {product['Sub_Category']}</p>
-                            <p style="margin:0;"><strong>Sub-Sub-Category:</strong> {product['Sub_Sub_Category']}</p>
-                        </div>
-                        <div>
-                            <p style="margin:0;"><strong>UOM:</strong> {product['UOM']}</p>
-                            <p style="margin:0;"><strong>Unit Weight:</strong> {product['Unit_Weight']}</p>
-                        </div>
-                    </div>
-                    
-                    <div style="margin-top: 1rem;">
-                        <p style="margin:0;"><strong>Description:</strong></p>
-                        <p style="margin:0; color: #6B7280;">{product['Common_Description']}</p>
-                    </div>
-                    
-                    <div style="margin-top: 1rem;">
-                        <p style="margin:0;"><strong>Purpose of Use:</strong></p>
-                        <p style="margin:0; color: #6B7280;">{product['Purpose_Of_Use']}</p>
-                    </div>
-                    
-                    <div style="margin-top: 1rem;">
-                        <p style="margin:0;"><strong>Dosage:</strong></p>
-                        <p style="margin:0; color: #6B7280;">{product['Dosage']}</p>
-                    </div>
-                    
-                    <div style="margin-top: 1rem;">
-                        <p style="margin:0;"><strong>Ingredients:</strong></p>
-                        <p style="margin:0; color: #6B7280;">{product['Ingredients']}</p>
-                    </div>
-                    
-                    {f'<div style="margin-top: 1rem;"><p style="margin:0;"><strong>Datasheet:</strong> <a href="{product["Datasheet_Link"]}" target="_blank">View Datasheet</a></p></div>' if pd.notna(product['Datasheet_Link']) and product['Datasheet_Link'] != '' else ''}
-                </div>
+        """
+        
+        # Add Supplier if available
+        if 'Supplier' in available_columns:
+            card_content += f"""<p style="margin:0; font-weight: bold; color: #6B7280;">Supplier: {product['Supplier']}</p>"""
+        
+        card_content += """<div style="margin-top: 1rem;"><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">"""
+        
+        # Left column - Category information
+        left_column = ""
+        if 'Category' in available_columns:
+            left_column += f"""<p style="margin:0;"><strong>Main Category:</strong> {product['Category']}</p>"""
+        if 'Sub_Category' in available_columns:
+            left_column += f"""<p style="margin:0;"><strong>Sub Category:</strong> {product['Sub_Category']}</p>"""
+        if 'Sub_Sub_Category' in available_columns:
+            left_column += f"""<p style="margin:0;"><strong>Sub-Sub Category:</strong> {product['Sub_Sub_Category']}</p>"""
+        
+        # Right column - Technical information
+        right_column = ""
+        if 'UOM' in available_columns:
+            right_column += f"""<p style="margin:0;"><strong>UOM:</strong> {product['UOM']}</p>"""
+        if 'Unit_Weight' in available_columns:
+            right_column += f"""<p style="margin:0;"><strong>Unit Weight:</strong> {product['Unit_Weight']}</p>"""
+        
+        card_content += f"""<div>{left_column}</div><div>{right_column}</div></div>"""
+        
+        # Additional information sections
+        if 'Common_Description' in available_columns and product['Common_Description']:
+            card_content += f"""
+            <div style="margin-top: 1rem;">
+                <p style="margin:0;"><strong>Description:</strong></p>
+                <p style="margin:0; color: #6B7280;">{product['Common_Description']}</p>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """
+        
+        if 'Purpose_Of_Use' in available_columns and product['Purpose_Of_Use']:
+            card_content += f"""
+            <div style="margin-top: 1rem;">
+                <p style="margin:0;"><strong>Purpose of Use:</strong></p>
+                <p style="margin:0; color: #6B7280;">{product['Purpose_Of_Use']}</p>
+            </div>
+            """
+        
+        if 'Dosage' in available_columns and product['Dosage']:
+            card_content += f"""
+            <div style="margin-top: 1rem;">
+                <p style="margin:0;"><strong>Dosage:</strong></p>
+                <p style="margin:0; color: #6B7280;">{product['Dosage']}</p>
+            </div>
+            """
+        
+        if 'Ingredients' in available_columns and product['Ingredients']:
+            card_content += f"""
+            <div style="margin-top: 1rem;">
+                <p style="margin:0;"><strong>Ingredients:</strong></p>
+                <p style="margin:0; color: #6B7280;">{product['Ingredients']}</p>
+            </div>
+            """
+        
+        if 'Datasheet_Link' in available_columns and product['Datasheet_Link']:
+            card_content += f"""
+            <div style="margin-top: 1rem;">
+                <p style="margin:0;"><strong>Datasheet:</strong> <a href="{product['Datasheet_Link']}" target="_blank">View Datasheet</a></p>
+            </div>
+            """
+        
+        card_content += "</div></div>"
+        
+        st.markdown(card_content, unsafe_allow_html=True)
 
 def load_product_catalog():
-    """Load product catalog from Google Sheets"""
+    """Load product catalog from Google Sheets - FLEXIBLE VERSION"""
     try:
         sheet_name = PRODUCT_CATALOG_SHEET
         catalog_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
@@ -998,20 +1035,25 @@ def load_product_catalog():
                 headers = values[0]
                 rows = values[1:]
                 
-                # Create DataFrame
+                # Create DataFrame with available columns only
                 df = pd.DataFrame(rows, columns=headers)
                 
-                # Required columns check
-                required_cols = ['Article_Number', 'Product_Name', 'Supplier']
-                if all(col in df.columns for col in required_cols):
-                    # Fill missing values with empty strings
-                    df = df.fillna('')
+                # Fill missing values with empty strings
+                df = df.fillna('')
+                
+                # Check if we have at least the basic required data
+                if len(df) > 0 and 'Article_Number' in df.columns:
+                    st.success(f"✅ Loaded {len(df)} products from catalog!")
                     return df
                 else:
-                    st.error(f"Missing required columns in {sheet_name}. Found: {list(df.columns)}")
+                    st.error(f"Product catalog loaded but missing required columns. Found: {list(df.columns)}")
                     return pd.DataFrame()
-                
-        return pd.DataFrame()
+            else:
+                st.warning("Product catalog sheet exists but has no data or only headers")
+                return pd.DataFrame()
+        else:
+            st.error(f"Failed to load product catalog. HTTP Status: {response.status_code}")
+            return pd.DataFrame()
         
     except Exception as e:
         st.error(f"Error loading product catalog: {str(e)}")
