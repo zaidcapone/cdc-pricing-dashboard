@@ -354,10 +354,10 @@ def ceo_specials_tab():
     with col2:
         active_offers = len(ceo_data[ceo_data['Expiry_Date'] >= datetime.now().strftime('%Y-%m-%d')])
         st.metric("Active Offers", active_offers)
-with col3:
-    # Count unique currencies instead of average price
-    unique_currencies = ceo_data['Currency'].nunique()
-    st.metric("Currencies Used", unique_currencies)
+    with col3:
+        # Count unique currencies instead of average price
+        unique_currencies = ceo_data['Currency'].nunique()
+        st.metric("Currencies Used", unique_currencies)
     with col4:
         expiring_soon = len(ceo_data[
             (ceo_data['Expiry_Date'] >= datetime.now().strftime('%Y-%m-%d')) &
@@ -639,7 +639,7 @@ def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="
                     'Supplier': supplier_name,
                     'Min Price': f"${result['min_price']:.2f}",
                     'Max Price': f"${result['max_price']:.2f}",
-'Price Range': f"${result['max_price'] - result['min_price']:.2f}",
+                    'Price Range': f"${result['max_price'] - result['min_price']:.2f}",
                     'Records': result['records'],
                     'Status': '✅ Available'
                 })
@@ -649,7 +649,7 @@ def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="
                     'Supplier': supplier_name,
                     'Min Price': "N/A",
                     'Max Price': "N/A", 
-                    'Avg Price': "N/A",
+                    'Price Range': "N/A",
                     'Records': "0",
                     'Status': '❌ Not Available'
                 })
@@ -658,35 +658,35 @@ def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="
         comparison_df = pd.DataFrame(comparison_data)
         st.dataframe(comparison_df, use_container_width=True)
         
-# Show detailed view for each client that has data
-st.markdown("#### 📈 Detailed Price History")
-
-for client_supplier, result in article_data['client_data'].items():
-    client_name, supplier_name = client_supplier.split(" - ")
-    
-    if result['has_data']:
-        # Determine if this is best/worst price
-        is_best = result['min_price'] == overall_min if all_prices else False
-        is_worst = result['max_price'] == overall_max if all_prices else False
+        # Show detailed view for each client that has data
+        st.markdown("#### 📈 Detailed Price History")
         
-        col1, col2 = st.columns([3, 1])
-        
-        with col1:
-            st.markdown(f"**{client_name} - {supplier_name}**")
+        for client_supplier, result in article_data['client_data'].items():
+            client_name, supplier_name = client_supplier.split(" - ")
             
-        with col2:
-            st.markdown(f"**${result['min_price']:.2f} - ${result['max_price']:.2f}**/kg")
-            st.caption(f"Range: ${result['max_price'] - result['min_price']:.2f}")
-            st.caption(f"{result['records']} records")
-        
-        # Show best/worst price badges
-        badge_col1, badge_col2 = st.columns(2)
-        with badge_col1:
-            if is_best:
-                st.success("🎯 BEST PRICE")
-        with badge_col2:
-            if is_worst:
-                st.error("⚠️ HIGHEST PRICE")
+            if result['has_data']:
+                # Determine if this is best/worst price
+                is_best = result['min_price'] == overall_min if all_prices else False
+                is_worst = result['max_price'] == overall_max if all_prices else False
+                
+                col1, col2 = st.columns([3, 1])
+                
+                with col1:
+                    st.markdown(f"**{client_name} - {supplier_name}**")
+                    
+                with col2:
+                    st.markdown(f"**${result['min_price']:.2f} - ${result['max_price']:.2f}**/kg")
+                    st.caption(f"Range: ${result['max_price'] - result['min_price']:.2f}")
+                    st.caption(f"{result['records']} records")
+                
+                # Show best/worst price badges
+                badge_col1, badge_col2 = st.columns(2)
+                with badge_col1:
+                    if is_best:
+                        st.success("🎯 BEST PRICE")
+                with badge_col2:
+                    if is_worst:
+                        st.error("⚠️ HIGHEST PRICE")
                 
                 # Show detailed price history
                 with st.expander(f"View price history for {client_name}"):
@@ -725,7 +725,7 @@ for client_supplier, result in article_data['client_data'].items():
                     'Supplier': supplier_name,
                     'Min_Price': result['min_price'],
                     'Max_Price': result['max_price'], 
-                    'Avg_Price': result['avg_price'],
+                    'Price_Range': result['max_price'] - result['min_price'],
                     'Records_Count': result['records'],
                     'Status': 'Available',
                     'Analysis_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -738,7 +738,7 @@ for client_supplier, result in article_data['client_data'].items():
                     'Supplier': supplier_name,
                     'Min_Price': 'N/A',
                     'Max_Price': 'N/A',
-                    'Avg_Price': 'N/A',
+                    'Price_Range': 'N/A',
                     'Records_Count': 0,
                     'Status': 'Not Available',
                     'Analysis_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -774,7 +774,7 @@ Total Records Analyzed: {total_records}
 Overall Price Range: ${overall_min if all_prices else 'N/A'} - ${overall_max if all_prices else 'N/A'}/kg
 
 Detailed Findings:
-{chr(10).join([f"• {row['Client']} - {row['Supplier']}: {row['Article_Number']} - Min:${row['Min_Price'] if row['Status'] == 'Available' else 'N/A'}, Max:${row['Max_Price'] if row['Status'] == 'Available' else 'N/A'}, Avg:${row['Avg_Price'] if row['Status'] == 'Available' else 'N/A'}/kg ({row['Status']})" for row in export_data])}
+{chr(10).join([f"• {row['Client']} - {row['Supplier']}: {row['Article_Number']} - Min:${row['Min_Price'] if row['Status'] == 'Available' else 'N/A'}, Max:${row['Max_Price'] if row['Status'] == 'Available' else 'N/A'}, Range:${row['Price_Range'] if row['Status'] == 'Available' else 'N/A'}/kg ({row['Status']})" for row in export_data])}
                 """,
                 file_name=f"price_intelligence_summary_{search_term}_{datetime.now().strftime('%Y%m%d')}.txt",
                 mime="text/plain",
@@ -856,381 +856,4 @@ def get_google_sheets_data(client="CDC"):
                 order_no_idx = headers.index("order_number")
                 order_date_idx = headers.index("order_date") 
                 article_idx = headers.index("article_number")
-                product_idx = headers.index("product_name")
-                price_idx = headers.index("price_per_kg")
-            except ValueError:
-                return
-            
-            for row in rows:
-                if len(row) > max(order_no_idx, order_date_idx, article_idx, product_idx, price_idx):
-                    article = str(row[article_idx]).strip() if article_idx < len(row) and row[article_idx] else ""
-                    product_name = row[product_idx] if product_idx < len(row) and row[product_idx] else ""
-                    price_str = row[price_idx] if price_idx < len(row) and row[price_idx] else ""
-                    order_no = row[order_no_idx] if order_no_idx < len(row) and row[order_no_idx] else ""
-                    order_date = row[order_date_idx] if order_date_idx < len(row) and row[order_date_idx] else ""
-                    
-                    if article and price_str and article != "":
-                        # CLEAN THE PRICE - remove currency and other text
-                        try:
-                            # Remove currency symbols and text, keep only numbers and decimals
-                            cleaned_price = ''.join(c for c in price_str if c.isdigit() or c == '.' or c == '-')
-                            if cleaned_price and cleaned_price != '.':
-                                price_float = float(cleaned_price)
-                            else:
-                                continue
-                        except ValueError:
-                            continue
-                        
-                        if article not in data[supplier_name]:
-                            data[supplier_name][article] = {
-                                "prices": [],
-                                "names": [],
-                                "orders": []
-                            }
-                        
-                        data[supplier_name][article]["prices"].append(price_float)
-                        data[supplier_name][article]["orders"].append({
-                            "price": price_float,
-                            "order_no": order_no,
-                            "date": order_date
-                        })
-                        
-                        if product_name and product_name.strip() != "":
-                            data[supplier_name][article]["names"].append(product_name)
-                        else:
-                            # If no product name, add a placeholder
-                            data[supplier_name][article]["names"].append("No Name")
-        
-        # Process Backaldrin data
-        if backaldrin_response.status_code == 200:
-            backaldrin_values = backaldrin_response.json().get('values', [])
-            process_sheet_data(backaldrin_values, "Backaldrin", client_sheets['backaldrin'])
-        
-        # Process Bateel data
-        if bateel_response.status_code == 200:
-            bateel_values = bateel_response.json().get('values', [])
-            process_sheet_data(bateel_values, "Bateel", client_sheets['bateel'])
-        
-        return data
-        
-    except Exception as e:
-        st.error(f"Error loading data for {client}: {str(e)}")
-        return {"Backaldrin": {}, "Bateel": {}}
-
-def get_sample_data():
-    """Fallback sample data"""
-    return {
-        "Backaldrin": {
-            "1-366": {
-                "prices": [2.40, 2.45, 2.38, 2.42],
-                "names": ["Moist Muffin Vanilla Mix", "موسيت مفن فانيلا ميكس"],
-                "orders": [
-                    {"price": 2.40, "order_no": "ORD-001", "date": "2024-01-15"},
-                    {"price": 2.45, "order_no": "ORD-002", "date": "2024-02-20"},
-                    {"price": 2.38, "order_no": "ORD-003", "date": "2024-03-10"},
-                    {"price": 2.42, "order_no": "ORD-004", "date": "2024-04-05"}
-                ]
-            }
-        },
-        "Bateel": {
-            "1001": {
-                "prices": [3.20, 3.25, 3.18, 3.22],
-                "names": ["Premium Date Mix", "خليط التمر الفاخر"],
-                "orders": [
-                    {"price": 3.20, "order_no": "ORD-101", "date": "2024-01-18"},
-                    {"price": 3.25, "order_no": "ORD-102", "date": "2024-02-22"},
-                    {"price": 3.18, "order_no": "ORD-103", "date": "2024-03-12"},
-                    {"price": 3.22, "order_no": "ORD-104", "date": "2024-04-08"}
-                ]
-            }
-        }
-    }
-
-def create_export_data(article_data, article, supplier, client):
-    """Create export data in different formats"""
-    # Create DataFrame for export
-    export_data = []
-    for order in article_data['orders']:
-        export_data.append({
-            'Client': client,
-            'Article_Number': article,
-            'Supplier': supplier,
-            'Product_Name': article_data['names'][0] if article_data['names'] else 'N/A',
-            'Price_per_kg': order['price'],
-            'Order_Number': order['order_no'],
-            'Order_Date': order['date'],
-            'Export_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        })
-    
-    return pd.DataFrame(export_data)
-
-def cdc_dashboard(client):
-    """Client pricing dashboard with export features - NOW CLIENT SPECIFIC"""
-    
-    # Initialize session state
-    if 'search_results' not in st.session_state:
-        st.session_state.search_results = None
-    if 'export_data' not in st.session_state:
-        st.session_state.export_data = None
-    
-    st.markdown(f"""
-    <div class="cdc-header">
-        <h2 style="margin:0;">📊 {client} Pricing Dashboard</h2>
-        <p style="margin:0; opacity:0.9;">Backaldrin & Bateel • Live Google Sheets Data • Export Ready</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Load data directly from Google Sheets
-    DATA = get_google_sheets_data(client)
-    st.success(f"✅ Connected to Google Sheets - Live Data for {client}!")
-
-    # Refresh button
-    if st.button("🔄 Refresh Data", use_container_width=True, type="secondary", key=f"{client}_refresh"):
-        st.rerun()
-
-    # Supplier selection - CLEAN VERSION (no white box)
-    st.subheader("🏢 Select Supplier")
-    supplier = st.radio("", ["Backaldrin", "Bateel"], horizontal=True, label_visibility="collapsed", key=f"{client}_supplier")
-
-    # Search section - CLEAN VERSION (no white box)
-    st.subheader("🔍 Search Historical Prices")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        article = st.text_input("**ARTICLE NUMBER**", placeholder="e.g., 1-366, 1-367...", key=f"{client}_article")
-    with col2:
-        product = st.text_input("**PRODUCT NAME**", placeholder="e.g., Moist Muffin, Date Mix...", key=f"{client}_product")
-    
-    # Auto-suggestions
-    search_term = article or product
-    if search_term:
-        suggestions = get_suggestions(search_term, supplier, DATA)
-        if suggestions:
-            st.markdown("**💡 Quick Suggestions:**")
-            for i, suggestion in enumerate(suggestions[:4]):
-                with st.form(key=f"{client}_form_{i}"):
-                    if st.form_submit_button(suggestion["display"], use_container_width=True):
-                        st.session_state.search_results = {
-                            "article": suggestion["value"],
-                            "supplier": supplier,
-                            "client": client
-                        }
-                        st.rerun()
-    
-    # Manual search
-    if st.button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary", key=f"{client}_search"):
-        handle_search(article, product, supplier, DATA, client)
-
-    # Display results from session state
-    if st.session_state.search_results and st.session_state.search_results.get("client") == client:
-        display_from_session_state(DATA, client)
-
-def get_suggestions(search_term, supplier, data):
-    suggestions = []
-    supplier_data = data[supplier]
-    
-    for article_num, article_data in supplier_data.items():
-        if search_term.lower() in article_num.lower():
-            suggestions.append({
-                "type": "article",
-                "value": article_num,
-                "display": f"🔢 {article_num} - {article_data['names'][0] if article_data['names'] else 'No Name'}"
-            })
-        for name in article_data['names']:
-            if search_term.lower() in name.lower():
-                suggestions.append({
-                    "type": "product", 
-                    "value": article_num,
-                    "display": f"📝 {article_num} - {name}"
-                })
-    
-    # Remove duplicates
-    unique_suggestions = {}
-    for sugg in suggestions:
-        if sugg["value"] not in unique_suggestions:
-            unique_suggestions[sugg["value"]] = sugg
-    
-    return list(unique_suggestions.values())
-
-def handle_search(article, product, supplier, data, client):
-    search_term = article or product
-    if not search_term:
-        st.error("❌ Please enter an article number or product name")
-        return
-    
-    found = False
-    for article_num, article_data in data[supplier].items():
-        article_match = article and article == article_num
-        product_match = product and any(product.lower() in name.lower() for name in article_data['names'])
-        
-        if article_match or product_match:
-            st.session_state.search_results = {
-                "article": article_num,
-                "supplier": supplier,
-                "client": client
-            }
-            # Prepare export data
-            st.session_state.export_data = create_export_data(article_data, article_num, supplier, client)
-            found = True
-            break
-    
-    if not found:
-        st.error(f"❌ No results found for '{search_term}' in {supplier}")
-
-def display_from_session_state(data, client):
-    results = st.session_state.search_results
-    article = results["article"]
-    supplier = results["supplier"]
-    
-    if article not in data[supplier]:
-        st.error("❌ Article not found in current data")
-        return
-        
-    article_data = data[supplier][article]
-    
-    st.success(f"✅ **Article {article}** found in **{supplier}** for **{client}**")
-    
-    # Product names - SHOW ONLY UNIQUE NAMES
-    st.subheader("📝 Product Names")
-    unique_names = list(set(article_data['names']))  # Remove duplicates
-    for name in unique_names:
-        st.markdown(f'<div class="price-card">{name}</div>', unsafe_allow_html=True)
-    
-    # Statistics
-    prices = article_data['prices']
-    st.subheader("📊 Price Statistics")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-number">{len(prices)}</div>
-            <div class="stat-label">Total Records</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-number">${min(prices):.2f}</div>
-            <div class="stat-label">Min Price/kg</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-number">${max(prices):.2f}</div>
-            <div class="stat-label">Max Price/kg</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-with col4:
-    st.markdown(f"""
-    <div class="stat-card">
-        <div class="stat-number">${max(prices) - min(prices):.2f}</div>
-        <div class="stat-label">Price Range/kg</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Price history with order numbers
-    st.subheader("💵 Historical Prices with Order Details")
-    cols = st.columns(2)
-    for i, order in enumerate(article_data['orders']):
-        with cols[i % 2]:
-            st.markdown(f"""
-            <div class="price-box">
-                <div style="font-size: 1.3em; font-weight: bold;">${order['price']:.2f}/kg</div>
-                <div class="order-info">
-                    <strong>Order:</strong> {order['order_no']}<br>
-                    <strong>Date:</strong> {order['date']}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    # EXPORT SECTION
-    st.markdown('<div class="export-section">', unsafe_allow_html=True)
-    st.subheader("📤 Export Data")
-    
-    if st.session_state.export_data is not None:
-        export_df = st.session_state.export_data
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            # CSV Export
-            csv = export_df.to_csv(index=False)
-            st.download_button(
-                label="📥 Download CSV",
-                data=csv,
-                file_name=f"{client}_pricing_{article}_{datetime.now().strftime('%Y%m%d')}.csv",
-                mime="text/csv",
-                use_container_width=True,
-                type="primary"
-            )
-        
-        with col2:
-            # Excel Export
-            try:
-                excel_data = convert_df_to_excel(export_df)
-                st.download_button(
-                    label="📊 Download Excel",
-                    data=excel_data,
-                    file_name=f"{client}_pricing_{article}_{datetime.now().strftime('%Y%m%d')}.xlsx",
-                    mime="application/vnd.ms-excel",
-                    use_container_width=True
-                )
-            except:
-                st.info("📊 Excel export requires openpyxl package")
-        
-        with col3:
-            # Quick Stats Summary
-            st.download_button(
-                label="📄 Download Summary",
-                data=f"""
-{client} Pricing Summary Report
-===============================
-
-Article: {article}
-Supplier: {supplier}
-Client: {client}
-Product: {export_df['Product_Name'].iloc[0]}
-Report Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}
-
-Price Statistics:
-• Total Records: {len(export_df)}
-• Minimum Price: ${min(prices):.2f}/kg
-• Maximum Price: ${max(prices):.2f}/kg  
-• Average Price: ${sum(prices)/len(prices):.2f}/kg
-
-Orders Included: {', '.join(export_df['Order_Number'].tolist())}
-                """,
-                file_name=f"{client}_summary_{article}_{datetime.now().strftime('%Y%m%d')}.txt",
-                mime="text/plain",
-                use_container_width=True
-            )
-        
-        # Show export preview
-        with st.expander("👀 Preview Export Data"):
-            st.dataframe(export_df, use_container_width=True)
-            
-    else:
-        st.info("Search for an article to enable export options")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-
-def convert_df_to_excel(df):
-    """Convert DataFrame to Excel format"""
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Price_History')
-    processed_data = output.getvalue()
-    return processed_data
-
-# Run the main dashboard
-if __name__ == "__main__":
-    if not check_login():
-        login_page()
-    else:
-        main_dashboard()
+                product_idx = headers.index
