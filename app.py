@@ -173,12 +173,12 @@ CDC_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"
 
 # User authentication
 USERS = {
-    "admin": {"password": "admin123", "clients": ["CDC", "CoteDivoire"]},
-    "ceo": {"password": "ceo123", "clients": ["CDC", "CoteDivoire"]},
+    "admin": {"password": "admin123", "clients": ["CDC", "CoteDivoire", "CakeArt"]},
+    "ceo": {"password": "ceo123", "clients": ["CDC", "CoteDivoire", "CakeArt"]},
     "zaid": {"password": "zaid123", "clients": ["CDC"]},
-    "mohammad": {"password": "mohammad123", "clients": ["CoteDivoire"]}
+    "mohammad": {"password": "mohammad123", "clients": ["CoteDivoire"]},
+    "cakeart_user": {"password": "cakeart123", "clients": ["CakeArt"]}  # Optional: Add dedicated user
 }
-
 # Client data sheets mapping
 CLIENT_SHEETS = {
     "CDC": {
@@ -190,6 +190,11 @@ CLIENT_SHEETS = {
         "backaldrin": "Backaldrin_CoteDivoire",
         "bateel": "Bateel_CoteDivoire", 
         "ceo_special": "CoteDivoire_CEO_Special_Prices"
+    },
+    "CakeArt": {
+        "backaldrin": "Backaldrin_CakeArt",
+        "bateel": "Bateel_CakeArt",
+        "ceo_special": "CakeArt_CEO_Special_Prices"
     }
 }
 
@@ -479,7 +484,9 @@ def price_intelligence_tab():
     st.info("🔍 **Search across selected clients to compare pricing strategies and identify opportunities**")
     
     # Client selection - CEO can select specific clients or all
-    available_clients = ["CDC", "CoteDivoire"]
+    available_clients = ["CDC", "CoteDivoire", "CakeArt"]  # ADD CakeArt HERE
+    
+    # ... rest of the function remains the same
     
     # Search Configuration Section
     st.subheader("🔧 Search Configuration")
