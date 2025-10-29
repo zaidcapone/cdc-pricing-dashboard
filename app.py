@@ -658,35 +658,35 @@ def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="
         comparison_df = pd.DataFrame(comparison_data)
         st.dataframe(comparison_df, use_container_width=True)
         
-        # Show detailed view for each client that has data
-        st.markdown("#### 📈 Detailed Price History")
+# Show detailed view for each client that has data
+st.markdown("#### 📈 Detailed Price History")
+
+for client_supplier, result in article_data['client_data'].items():
+    client_name, supplier_name = client_supplier.split(" - ")
+    
+    if result['has_data']:
+        # Determine if this is best/worst price
+        is_best = result['min_price'] == overall_min if all_prices else False
+        is_worst = result['max_price'] == overall_max if all_prices else False
         
-        for client_supplier, result in article_data['client_data'].items():
-            client_name, supplier_name = client_supplier.split(" - ")
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            st.markdown(f"**{client_name} - {supplier_name}**")
             
-            if result['has_data']:
-                # Determine if this is best/worst price
-                is_best = result['min_price'] == overall_min if all_prices else False
-                is_worst = result['max_price'] == overall_max if all_prices else False
-                
-                col1, col2 = st.columns([3, 1])
-                
-                with col1:
-                    st.markdown(f"**{client_name} - {supplier_name}**")
-                    
-with col2:
-    st.markdown(f"**${result['min_price']:.2f} - ${result['max_price']:.2f}**/kg")
-    st.caption(f"Range: ${result['max_price'] - result['min_price']:.2f}")
-                    st.caption(f"{result['records']} records")
-                
-                # Show best/worst price badges
-                badge_col1, badge_col2 = st.columns(2)
-                with badge_col1:
-                    if is_best:
-                        st.success("🎯 BEST PRICE")
-                with badge_col2:
-                    if is_worst:
-                        st.error("⚠️ HIGHEST PRICE")
+        with col2:
+            st.markdown(f"**${result['min_price']:.2f} - ${result['max_price']:.2f}**/kg")
+            st.caption(f"Range: ${result['max_price'] - result['min_price']:.2f}")
+            st.caption(f"{result['records']} records")
+        
+        # Show best/worst price badges
+        badge_col1, badge_col2 = st.columns(2)
+        with badge_col1:
+            if is_best:
+                st.success("🎯 BEST PRICE")
+        with badge_col2:
+            if is_worst:
+                st.error("⚠️ HIGHEST PRICE")
                 
                 # Show detailed price history
                 with st.expander(f"View price history for {client_name}"):
