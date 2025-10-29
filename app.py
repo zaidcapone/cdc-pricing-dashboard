@@ -261,9 +261,9 @@ def main_dashboard():
     
     # Create tabs - ADDED PRICE INTELLIGENCE TAB
     if st.session_state.username in ["ceo", "admin"]:
-        tab1, tab2, tab3, tab4 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG"])
     else:
-        tab1, tab2, tab3 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES"])
+tab1, tab2, tab3, tab4 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES", "📦 PRODUCT CATALOG"])
     
     with tab1:
         clients_tab()
@@ -278,6 +278,14 @@ def main_dashboard():
     if st.session_state.username in ["ceo", "admin"]:
         with tab4:
             price_intelligence_tab()
+
+if st.session_state.username in ["ceo", "admin"]:
+    with tab5:
+        product_catalog_tab()
+else:
+    with tab4:
+        product_catalog_tab()
+        
 
 def clients_tab():
     """Clients management tab"""
@@ -1223,7 +1231,28 @@ def convert_df_to_excel(df):
         df.to_excel(writer, index=False, sheet_name='Price_History')
     processed_data = output.getvalue()
     return processed_data
-
+def product_catalog_tab():
+    """Full Product Catalog with comprehensive product information"""
+    
+    st.markdown("""
+    <div class="intelligence-header">
+        <h2 style="margin:0;">📦 Full Product Catalog</h2>
+        <p style="margin:0; opacity:0.9;">Complete Product Database • Technical Specifications • Search & Filter</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.info("🔧 **Product Catalog coming soon!** Add your 'FullProductList' sheet to Google Sheets to enable this feature.")
+    
+    # You can add the basic structure here
+    st.subheader("📋 Planned Features:")
+    st.write("""
+    - **Browse all products** with complete specifications
+    - **Advanced filtering** by category, supplier, ingredients
+    - **Search** by article number, product name, description
+    - **Technical datasheets** integration (future)
+    - **Export product catalog** in multiple formats
+    """)
+    
 # Run the main dashboard
 if __name__ == "__main__":
     if not check_login():
