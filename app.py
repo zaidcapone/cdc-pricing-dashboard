@@ -627,32 +627,30 @@ def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="
         st.caption(f"**Product Names:** {', '.join(article_data['product_names'])}")
         
         # Create comparison table for this article across clients - UPDATED VERSION
-        comparison_data = []
+comparison_data = []
 
-        for client_supplier in all_results.keys():
-            client_name, supplier_name = client_supplier.split(" - ")
-            result = article_data['client_data'].get(client_supplier)
-            
-            if result and result['has_data']:
-                comparison_data.append({
-                    'Client': client_name,
-                    'Supplier': supplier_name,
-                    'Min Price': f"${result['min_price']:.2f}",
-                    'Max Price': f"${result['max_price']:.2f}",
-                    'Price Range': f"${result['max_price'] - result['min_price']:.2f}",
-                    'Records': result['records'],
-                    'Status': '✅ Available'
-                })
-            else:
-                comparison_data.append({
-                    'Client': client_name,
-                    'Supplier': supplier_name,
-                    'Min Price': "N/A",
-                    'Max Price': "N/A", 
-                    'Price Range': "N/A",
-                    'Records': "0",
-                    'Status': '❌ Not Available'
-                })
+for client_supplier in all_results.keys():
+    client_name, supplier_name = client_supplier.split(" - ")
+    result = article_data['client_data'].get(client_supplier)
+    
+    if result and result['has_data']:
+        comparison_data.append({
+            'Client': client_name,
+            'Supplier': supplier_name,
+            'Min Price': f"${result['min_price']:.2f}",
+            'Max Price': f"${result['max_price']:.2f}",
+            'Records': result['records'],
+            'Status': '✅ Available'
+        })
+    else:
+        comparison_data.append({
+            'Client': client_name,
+            'Supplier': supplier_name,
+            'Min Price': "N/A",
+            'Max Price': "N/A", 
+            'Records': "0",
+            'Status': '❌ Not Available'
+        })
         
         # Display comparison table
         comparison_df = pd.DataFrame(comparison_data)
@@ -718,18 +716,17 @@ def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="
             client_name, supplier_name = client_supplier.split(" - ")
             
             if result['has_data']:
-                export_data.append({
-                    'Article_Number': article_num,
-                    'Product_Names': ', '.join(result['product_names']),
-                    'Client': client_name,
-                    'Supplier': supplier_name,
-                    'Min_Price': result['min_price'],
-                    'Max_Price': result['max_price'], 
-                    'Price_Range': result['max_price'] - result['min_price'],
-                    'Records_Count': result['records'],
-                    'Status': 'Available',
-                    'Analysis_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                })
+export_data.append({
+    'Article_Number': article_num,
+    'Product_Names': ', '.join(result['product_names']),
+    'Client': client_name,
+    'Supplier': supplier_name,
+    'Min_Price': result['min_price'],
+    'Max_Price': result['max_price'], 
+    'Records_Count': result['records'],
+    'Status': 'Available',
+    'Analysis_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+})
             else:
                 export_data.append({
                     'Article_Number': article_num,
