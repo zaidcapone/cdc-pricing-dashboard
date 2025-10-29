@@ -819,7 +819,6 @@ def product_catalog_tab():
         return
     
     # Show available columns for debugging
-    st.info(f"📋 **Available columns in your data:** {', '.join(catalog_data.columns)}")
     
     # Catalog Overview - DYNAMIC based on available columns
     st.subheader("📊 Catalog Overview")
