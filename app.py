@@ -381,11 +381,11 @@ CDC_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"
 
 # User authentication - UPDATED: cakeart_user changed to Khalid
 USERS = {
-    "admin": {"password": "admin123", "clients": ["CDC", "CoteDivoire", "CakeArt"]},
-    "ceo": {"password": "ceo123", "clients": ["CDC", "CoteDivoire", "CakeArt"]},
+    "admin": {"password": "admin123", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse"]},
+    "ceo": {"password": "ceo123", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse"]},
     "zaid": {"password": "zaid123", "clients": ["CDC"]},
     "mohammad": {"password": "mohammad123", "clients": ["CoteDivoire"]},
-    "Khalid": {"password": "khalid123", "clients": ["CakeArt"]}  # CHANGED: cakeart_user to Khalid
+    "Khalid": {"password": "khalid123", "clients": ["CakeArt", "SweetHouse"]}
 }
 
 # Client data sheets mapping - UPDATED WITH CakeArt
@@ -404,6 +404,11 @@ CLIENT_SHEETS = {
         "backaldrin": "Backaldrin_CakeArt",
         "bateel": "Bateel_CakeArt",
         "ceo_special": "CakeArt_CEO_Special_Prices"
+    },
+    "SweetHouse": {
+        "backaldrin": "Backaldrin_SweetHouse",
+        "bateel": "Bateel_SweetHouse",
+        "ceo_special": "SweetHouse_CEO_Special_Prices"
     }
 }
 
@@ -699,8 +704,8 @@ def price_intelligence_tab():
     st.info("🔍 **Search across selected clients to compare pricing strategies and identify opportunities**")
     
     # Client selection - CEO can select specific clients or all - UPDATED WITH CakeArt
-    available_clients = ["CDC", "CoteDivoire", "CakeArt"]
-    
+available_clients = ["CDC", "CoteDivoire", "CakeArt", "SweetHouse"]
+
     # Search Configuration Section
     st.subheader("🔧 Search Configuration")
     
