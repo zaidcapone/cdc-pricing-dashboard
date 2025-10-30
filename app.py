@@ -704,8 +704,8 @@ def price_intelligence_tab():
     st.info("🔍 **Search across selected clients to compare pricing strategies and identify opportunities**")
     
     # Client selection - CEO can select specific clients or all - UPDATED WITH CakeArt
-available_clients = ["CDC", "CoteDivoire", "CakeArt", "SweetHouse"]
-
+    available_clients = ["CDC", "CoteDivoire", "CakeArt", "SweetHouse"]
+    
     # Search Configuration Section
     st.subheader("🔧 Search Configuration")
     
