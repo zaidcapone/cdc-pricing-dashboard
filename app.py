@@ -12,157 +12,365 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for main dashboard
+# Professional Dark Theme CSS based on your Envato template
 st.markdown("""
 <style>
+    /* Root Variables - Dark Theme */
+    :root {
+        --bs-blue: #0d6efd;
+        --bs-dark-blue: #0a58ca;
+        --bs-indigo: #6610f2;
+        --bs-purple: #6f42c1;
+        --bs-pink: #d63384;
+        --bs-red: #dc3545;
+        --bs-orange: #fd7e14;
+        --bs-yellow: #ffc107;
+        --bs-green: #198754;
+        --bs-teal: #20c997;
+        --bs-cyan: #0dcaf0;
+        --bs-black: #000;
+        --bs-primary: #0d6efd;
+        --bs-secondary: #6c757d;
+        --bs-success: #02c27a;
+        --bs-info: #0dcaf0;
+        --bs-warning: #ffc107;
+        --bs-danger: #fc185a;
+        --bs-light: #f8f9fa;
+        --bs-dark: #212529;
+        --bs-heading-color: #dee2e6;
+        --bs-body-color: #dee2e6;
+        --bs-body-bg: #212529;
+        --bs-body-bg-2: #181c1f;
+        --bs-border-color: #495057;
+    }
+
+    /* Main Background */
+    .stApp {
+        background-color: var(--bs-body-bg);
+        color: var(--bs-body-color);
+    }
+
+    /* Headers - Professional Gradient */
     .main-header {
-        background: linear-gradient(135deg, #991B1B, #7F1D1D);
+        background: linear-gradient(310deg, #7928ca, #ff0080) !important;
         color: white;
-        padding: 2rem;
-        border-radius: 10px;
+        padding: 2.5rem;
+        border-radius: 15px;
         text-align: center;
         margin-bottom: 2rem;
+        border: none;
+        box-shadow: 0 4px 20px 0 rgba(0,0,0,0.3);
     }
+
     .cdc-header {
-        background: linear-gradient(135deg, #991B1B, #7F1D1D);
+        background: linear-gradient(310deg, #3494e6, #ec6ead) !important;
         color: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin-bottom: 1rem;
+        padding: 1.8rem;
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        border: none;
+        box-shadow: 0 2px 15px 0 rgba(0,0,0,0.2);
     }
+
     .ceo-header {
-        background: linear-gradient(135deg, #D97706, #B45309);
+        background: linear-gradient(310deg, #f7971e, #ffd200) !important;
         color: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin-bottom: 1rem;
+        padding: 1.8rem;
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        border: none;
+        box-shadow: 0 2px 15px 0 rgba(0,0,0,0.2);
     }
+
     .intelligence-header {
-        background: linear-gradient(135deg, #059669, #047857);
+        background: linear-gradient(310deg, #17ad37, #98ec2d) !important;
         color: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin-bottom: 1rem;
+        padding: 1.8rem;
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        border: none;
+        box-shadow: 0 2px 15px 0 rgba(0,0,0,0.2);
     }
+
+    /* Cards - Modern Dark Design */
     .price-card {
-        background: linear-gradient(135deg, #FEE2E2, #FECACA);
-        padding: 1.5rem;
-        border-radius: 8px;
-        border-left: 5px solid #991B1B;
-        margin: 0.5rem 0;
-        color: #1F2937;
+        background: linear-gradient(135deg, #2b3035, #343a40) !important;
+        padding: 1.8rem;
+        border-radius: 12px;
+        border-left: 5px solid var(--bs-danger);
+        margin: 0.8rem 0;
+        color: var(--bs-body-color);
         font-weight: 500;
+        border: 1px solid var(--bs-border-color);
+        box-shadow: 0 2px 10px 0 rgba(0,0,0,0.1);
+        transition: transform 0.2s ease;
     }
+
+    .price-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px 0 rgba(0,0,0,0.2);
+    }
+
     .special-price-card {
-        background: linear-gradient(135deg, #FEF3C7, #FDE68A);
-        padding: 1.5rem;
-        border-radius: 8px;
-        border-left: 5px solid #D97706;
-        margin: 0.5rem 0;
-        color: #1F2937;
+        background: linear-gradient(135deg, #2b3035, #343a40) !important;
+        padding: 1.8rem;
+        border-radius: 12px;
+        border-left: 5px solid var(--bs-warning);
+        margin: 0.8rem 0;
+        color: var(--bs-body-color);
         font-weight: 500;
-        border: 2px solid #D97706;
+        border: 1px solid var(--bs-border-color);
+        box-shadow: 0 2px 10px 0 rgba(0,0,0,0.1);
+        transition: transform 0.2s ease;
     }
+
     .stat-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        border: 2px solid #991B1B;
+        background: linear-gradient(135deg, #2b3035, #343a40);
+        padding: 2rem;
+        border-radius: 15px;
+        border: 1px solid var(--bs-border-color);
         text-align: center;
-        color: #1F2937;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        color: var(--bs-body-color);
+        box-shadow: 0 4px 15px 0 rgba(0,0,0,0.2);
+        transition: transform 0.2s ease;
     }
+
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px 0 rgba(0,0,0,0.3);
+    }
+
     .intelligence-stat-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        border: 2px solid #059669;
+        background: linear-gradient(135deg, #2b3035, #343a40);
+        padding: 2rem;
+        border-radius: 15px;
+        border: 1px solid var(--bs-success);
         text-align: center;
-        color: #1F2937;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        color: var(--bs-body-color);
+        box-shadow: 0 4px 15px 0 rgba(0,0,0,0.2);
     }
+
+    /* Statistics Numbers */
     .stat-number {
-        font-size: 2em;
+        font-size: 2.5em;
         font-weight: bold;
-        color: #991B1B;
+        color: var(--bs-primary);
         margin: 0;
+        background: linear-gradient(310deg, #7928ca, #ff0080);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
     }
+
     .intelligence-stat-number {
-        font-size: 2em;
+        font-size: 2.5em;
         font-weight: bold;
-        color: #059669;
+        color: var(--bs-success);
         margin: 0;
+        background: linear-gradient(310deg, #17ad37, #98ec2d);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
     }
+
     .stat-label {
         font-size: 0.9em;
-        color: #6B7280;
+        color: var(--bs-secondary);
         margin: 0;
+        font-weight: 500;
     }
+
+    /* Price Boxes */
     .price-box {
-        background: #991B1B;
+        background: linear-gradient(310deg, #ee0979, #ff6a00);
         color: white;
-        padding: 1rem;
-        border-radius: 8px;
+        padding: 1.2rem;
+        border-radius: 10px;
         text-align: center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        margin: 0.5rem 0;
+        box-shadow: 0 3px 12px 0 rgba(0,0,0,0.2);
+        margin: 0.8rem 0;
+        border: none;
+        transition: transform 0.2s ease;
     }
+
+    .price-box:hover {
+        transform: scale(1.02);
+    }
+
     .intelligence-price-box {
-        background: #059669;
+        background: linear-gradient(310deg, #17ad37, #98ec2d);
         color: white;
-        padding: 1rem;
-        border-radius: 8px;
+        padding: 1.2rem;
+        border-radius: 10px;
         text-align: center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        margin: 0.5rem 0;
+        box-shadow: 0 3px 12px 0 rgba(0,0,0,0.2);
+        margin: 0.8rem 0;
+        border: none;
     }
+
     .special-price-box {
-        background: #D97706;
+        background: linear-gradient(310deg, #f7971e, #ffd200);
         color: white;
-        padding: 1rem;
-        border-radius: 8px;
+        padding: 1.2rem;
+        border-radius: 10px;
         text-align: center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        margin: 0.5rem 0;
-        border: 2px solid #B45309;
+        box-shadow: 0 3px 12px 0 rgba(0,0,0,0.2);
+        margin: 0.8rem 0;
+        border: none;
     }
+
+    /* Order Info */
     .order-info {
-        background: #F3F4F6;
-        padding: 0.5rem;
-        border-radius: 5px;
-        margin: 0.25rem 0;
-        font-size: 0.8em;
-        color: #6B7280;
+        background: rgba(255,255,255,0.1);
+        padding: 0.8rem;
+        border-radius: 8px;
+        margin: 0.3rem 0;
+        font-size: 0.85em;
+        color: rgba(255,255,255,0.9);
+        border: 1px solid rgba(255,255,255,0.1);
     }
+
+    /* Sections */
     .export-section {
-        background: #F0F9FF;
-        padding: 1.5rem;
-        border-radius: 10px;
-        border: 2px solid #0EA5E9;
-        margin: 1rem 0;
-    }
-    .ceo-section {
-        background: #FFFBEB;
-        padding: 1.5rem;
-        border-radius: 10px;
-        border: 2px solid #D97706;
-        margin: 1rem 0;
-    }
-    .intelligence-section {
-        background: #ECFDF5;
-        padding: 1.5rem;
-        border-radius: 10px;
-        border: 2px solid #059669;
-        margin: 1rem 0;
-    }
-    .login-container {
-        max-width: 400px;
-        margin: 100px auto;
+        background: linear-gradient(135deg, #2b3035, #343a40);
         padding: 2rem;
-        background: white;
+        border-radius: 15px;
+        border: 1px solid var(--bs-info);
+        margin: 1.5rem 0;
+        box-shadow: 0 4px 15px 0 rgba(0,0,0,0.2);
+    }
+
+    .ceo-section {
+        background: linear-gradient(135deg, #2b3035, #343a40);
+        padding: 2rem;
+        border-radius: 15px;
+        border: 1px solid var(--bs-warning);
+        margin: 1.5rem 0;
+        box-shadow: 0 4px 15px 0 rgba(0,0,0,0.2);
+    }
+
+    .intelligence-section {
+        background: linear-gradient(135deg, #2b3035, #343a40);
+        padding: 2rem;
+        border-radius: 15px;
+        border: 1px solid var(--bs-success);
+        margin: 1.5rem 0;
+        box-shadow: 0 4px 15px 0 rgba(0,0,0,0.2);
+    }
+
+    /* Login Container */
+    .login-container {
+        max-width: 450px;
+        margin: 100px auto;
+        padding: 3rem;
+        background: linear-gradient(135deg, #2b3035, #343a40);
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        border: 1px solid var(--bs-border-color);
+    }
+
+    /* Streamlit Components Restyling */
+    .stButton>button {
+        background: linear-gradient(310deg, #7928ca, #ff0080) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 0.5rem 1.5rem !important;
+        font-weight: 500 !important;
+        transition: all 0.3s ease !important;
+    }
+
+    .stButton>button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(121, 40, 202, 0.4) !important;
+    }
+
+    .stSelectbox>div>div, .stTextInput>div>div>input {
+        background: #2b3035 !important;
+        border: 1px solid var(--bs-border-color) !important;
+        color: var(--bs-body-color) !important;
+        border-radius: 8px !important;
+    }
+
+    .stRadio>div {
+        background: #2b3035;
+        padding: 1rem;
         border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        border: 2px solid #991B1B;
+        border: 1px solid var(--bs-border-color);
+    }
+
+    .stTabs [data-baseweb="tab-list"] {
+        background: #2b3035;
+        border-radius: 12px;
+        padding: 0.5rem;
+        border: 1px solid var(--bs-border-color);
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        background: transparent !important;
+        color: var(--bs-body-color) !important;
+        border-radius: 8px !important;
+        margin: 0 0.2rem !important;
+    }
+
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(310deg, #7928ca, #ff0080) !important;
+        color: white !important;
+    }
+
+    /* Sidebar */
+    .css-1d391kg, .css-1lcbmhc {
+        background: #181c1f !important;
+        border-right: 1px solid var(--bs-border-color) !important;
+    }
+
+    /* Success/Error Messages */
+    .stAlert {
+        border-radius: 10px !important;
+        border: 1px solid !important;
+    }
+
+    .stSuccess {
+        background: rgba(2, 194, 122, 0.1) !important;
+        border-color: var(--bs-success) !important;
+    }
+
+    .stError {
+        background: rgba(252, 24, 90, 0.1) !important;
+        border-color: var(--bs-danger) !important;
+    }
+
+    .stInfo {
+        background: rgba(13, 202, 240, 0.1) !important;
+        border-color: var(--bs-info) !important;
+    }
+
+    .stWarning {
+        background: rgba(255, 193, 7, 0.1) !important;
+        border-color: var(--bs-warning) !important;
+    }
+
+    /* Metrics */
+    [data-testid="metric-container"] {
+        background: linear-gradient(135deg, #2b3035, #343a40) !important;
+        border: 1px solid var(--bs-border-color) !important;
+        border-radius: 12px !important;
+        padding: 1.5rem !important;
+        box-shadow: 0 4px 15px 0 rgba(0,0,0,0.2) !important;
+    }
+
+    /* Dataframes */
+    .dataframe {
+        background: #2b3035 !important;
+        border: 1px solid var(--bs-border-color) !important;
+        border-radius: 10px !important;
+    }
+
+    /* Text Colors */
+    h1, h2, h3, h4, h5, h6 {
+        color: var(--bs-heading-color) !important;
+    }
+
+    p, div, span {
+        color: var(--bs-body-color) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -217,14 +425,14 @@ def login_page():
     """Login page"""
     st.markdown("""
     <div class="login-container">
-        <h2 style="text-align: center; color: #991B1B;">🔐 Multi-Client Dashboard</h2>
-        <p style="text-align: center; color: #6B7280;">Please login to continue</p>
+        <h2 style="text-align: center; margin-bottom: 1rem;">🚀 Multi-Client Dashboard</h2>
+        <p style="text-align: center; color: var(--bs-secondary); margin-bottom: 2rem;">Professional Business Intelligence Platform</p>
     """, unsafe_allow_html=True)
     
     with st.form("login_form"):
         username = st.text_input("👤 Username")
         password = st.text_input("🔒 Password", type="password")
-        submit = st.form_submit_button("🚀 Login", use_container_width=True)
+        submit = st.form_submit_button("🎯 Login", use_container_width=True)
         
         if submit:
             if username in USERS and USERS[username]["password"] == password:
@@ -257,8 +465,8 @@ def main_dashboard():
     # Header
     st.markdown("""
     <div class="main-header">
-        <h1>🏢 Multi-Client Business Dashboard</h1>
-        <p>Centralized Management • Real-time Data • Professional Analytics</p>
+        <h1 style="margin:0; font-size: 2.5em;">🏢 Multi-Client Business Dashboard</h1>
+        <p style="margin:0; opacity:0.9; font-size: 1.2em;">Professional Analytics • Real-time Intelligence • Strategic Insights</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -289,6 +497,9 @@ def main_dashboard():
     else:
         with tab4:
             product_catalog_tab()
+
+# ... (rest of your existing functions remain exactly the same - they'll automatically use the new styling)
+# [ALL YOUR EXISTING FUNCTIONS GO HERE - clients_tab(), etd_tab(), ceo_specials_tab(), etc.]
 
 def clients_tab():
     """Clients management tab"""
@@ -422,15 +633,15 @@ def ceo_specials_tab():
             <div class="special-price-card">
                 <div style="display: flex; justify-content: between; align-items: center;">
                     <div>
-                        <h3 style="margin:0; color: #D97706;">{special['Article_Number']} - {special['Product_Name']}</h3>
-                        <p style="margin:0; font-size: 1.2em; font-weight: bold; color: #B45309;">
+                        <h3 style="margin:0; color: #ffc107;">{special['Article_Number']} - {special['Product_Name']}</h3>
+                        <p style="margin:0; font-size: 1.2em; font-weight: bold; color: #ffd200;">
                             Special Price: {price_display} {special['Currency']}/kg
                         </p>
-                        <p style="margin:0; color: #6B7280;">
+                        <p style="margin:0; color: #adb5bd;">
                             {status_color} {status_text} • Valid until: {special['Expiry_Date']}
                             {f" • Incoterm: {special['Incoterm']}" if pd.notna(special['Incoterm']) and special['Incoterm'] != '' else ''}
                         </p>
-                        {f"<p style='margin:5px 0 0 0; color: #6B7280;'><strong>Notes:</strong> {special['Notes']}</p>" if pd.notna(special['Notes']) and special['Notes'] != '' else ''}
+                        {f"<p style='margin:5px 0 0 0; color: #adb5bd;'><strong>Notes:</strong> {special['Notes']}</p>" if pd.notna(special['Notes']) and special['Notes'] != '' else ''}
                     </div>
                 </div>
             </div>
@@ -818,8 +1029,6 @@ def product_catalog_tab():
         """)
         return
     
-    # Show available columns for debugging
-    
     # Catalog Overview - DYNAMIC based on available columns
     st.subheader("📊 Catalog Overview")
     
@@ -935,13 +1144,13 @@ def display_product_card_flexible(product, available_columns):
     # Determine card color based on supplier if available
     if 'Supplier' in available_columns and product['Supplier'] == 'Backaldrin':
         card_class = "price-card"
-        border_color = "#991B1B"
+        border_color = "#fc185a"
     elif 'Supplier' in available_columns and product['Supplier'] == 'Bateel':
         card_class = "special-price-card"
-        border_color = "#D97706"
+        border_color = "#ffc107"
     else:
         card_class = "intelligence-stat-card"
-        border_color = "#059669"
+        border_color = "#02c27a"
     
     with st.expander(f"📦 {product['Article_Number']} - {product['Product_Name']}", expanded=False):
         # Build the card content dynamically based on available columns
@@ -953,7 +1162,7 @@ def display_product_card_flexible(product, available_columns):
         
         # Add Supplier if available
         if 'Supplier' in available_columns:
-            card_content += f"""<p style="margin:0; font-weight: bold; color: #6B7280;">Supplier: {product['Supplier']}</p>"""
+            card_content += f"""<p style="margin:0; font-weight: bold; color: #adb5bd;">Supplier: {product['Supplier']}</p>"""
         
         card_content += """<div style="margin-top: 1rem;"><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">"""
         
@@ -972,6 +1181,8 @@ def display_product_card_flexible(product, available_columns):
             right_column += f"""<p style="margin:0;"><strong>UOM:</strong> {product['UOM']}</p>"""
         if 'Unit_Weight' in available_columns:
             right_column += f"""<p style="margin:0;"><strong>Unit Weight:</strong> {product['Unit_Weight']}</p>"""
+        if 'Current_Price' in available_columns and product['Current_Price']:
+            right_column += f"""<p style="margin:0;"><strong>Current Price:</strong> ${product['Current_Price']}/kg</p>"""
         
         card_content += f"""<div>{left_column}</div><div>{right_column}</div></div>"""
         
@@ -980,7 +1191,7 @@ def display_product_card_flexible(product, available_columns):
             card_content += f"""
             <div style="margin-top: 1rem;">
                 <p style="margin:0;"><strong>Description:</strong></p>
-                <p style="margin:0; color: #6B7280;">{product['Common_Description']}</p>
+                <p style="margin:0; color: #adb5bd;">{product['Common_Description']}</p>
             </div>
             """
         
@@ -988,7 +1199,7 @@ def display_product_card_flexible(product, available_columns):
             card_content += f"""
             <div style="margin-top: 1rem;">
                 <p style="margin:0;"><strong>Purpose of Use:</strong></p>
-                <p style="margin:0; color: #6B7280;">{product['Purpose_Of_Use']}</p>
+                <p style="margin:0; color: #adb5bd;">{product['Purpose_Of_Use']}</p>
             </div>
             """
         
@@ -996,7 +1207,7 @@ def display_product_card_flexible(product, available_columns):
             card_content += f"""
             <div style="margin-top: 1rem;">
                 <p style="margin:0;"><strong>Dosage:</strong></p>
-                <p style="margin:0; color: #6B7280;">{product['Dosage']}</p>
+                <p style="margin:0; color: #adb5bd;">{product['Dosage']}</p>
             </div>
             """
         
@@ -1004,14 +1215,14 @@ def display_product_card_flexible(product, available_columns):
             card_content += f"""
             <div style="margin-top: 1rem;">
                 <p style="margin:0;"><strong>Ingredients:</strong></p>
-                <p style="margin:0; color: #6B7280;">{product['Ingredients']}</p>
+                <p style="margin:0; color: #adb5bd;">{product['Ingredients']}</p>
             </div>
             """
         
         if 'Datasheet_Link' in available_columns and product['Datasheet_Link']:
             card_content += f"""
             <div style="margin-top: 1rem;">
-                <p style="margin:0;"><strong>Datasheet:</strong> <a href="{product['Datasheet_Link']}" target="_blank">View Datasheet</a></p>
+                <p style="margin:0;"><strong>Datasheet:</strong> <a href="{product['Datasheet_Link']}" target="_blank" style="color: #0dcaf0;">View Datasheet</a></p>
             </div>
             """
         
@@ -1042,7 +1253,6 @@ def load_product_catalog():
                 
                 # Check if we have at least the basic required data
                 if len(df) > 0 and 'Article_Number' in df.columns:
-                    st.success(f"✅ Loaded {len(df)} products from catalog!")
                     return df
                 else:
                     st.error(f"Product catalog loaded but missing required columns. Found: {list(df.columns)}")
