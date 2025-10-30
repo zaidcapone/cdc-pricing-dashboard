@@ -255,11 +255,11 @@ def main_dashboard():
     </div>
     """, unsafe_allow_html=True)
     
-    # Create tabs - ADDED PRODUCT CATALOG TAB
+    # Create tabs - ALL USERS GET PRICE INTELLIGENCE
     if st.session_state.username in ["ceo", "admin"]:
         tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG"])
     else:
-        tab1, tab2, tab3, tab4 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES", "📦 PRODUCT CATALOG"])
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG"])
     
     with tab1:
         clients_tab()
@@ -270,18 +270,14 @@ def main_dashboard():
     with tab3:
         ceo_specials_tab()
     
-    # Only show Price Intelligence tab for CEO/Admin
-    if st.session_state.username in ["ceo", "admin"]:
-        with tab4:
-            price_intelligence_tab()
+    # Price Intelligence tab for ALL users (but limited to their clients)
+    with tab4:
+        price_intelligence_tab()
 
     # Product Catalog tab for all users
-    if st.session_state.username in ["ceo", "admin"]:
-        with tab5:
-            product_catalog_tab()
-    else:
-        with tab4:
-            product_catalog_tab()
+    with tab5:
+        product_catalog_tab()
+        
 
 # ... (rest of your existing functions remain exactly the same - they'll automatically use the new styling)
 # [ALL YOUR EXISTING FUNCTIONS GO HERE - clients_tab(), etd_tab(), ceo_specials_tab(), etc.]
@@ -483,8 +479,15 @@ def price_intelligence_tab():
     
     st.info("🔍 **Search across selected clients to compare pricing strategies and identify opportunities**")
     
-    # Client selection - CEO can select specific clients or all - UPDATED WITH CakeArt
-    available_clients = ["CDC", "CoteDivoire", "CakeArt", "SweetHouse"]
+    # Show only the clients that the current user has access to
+    available_clients = st.session_state.user_clients
+    
+    # Client selection - Show only user's accessible clients
+    available_clients = st.session_state.user_clients
+    
+    # User-friendly message about client access
+    if len(available_clients) < 2:
+        st.warning("🔒 You need access to at least 2 clients to compare prices. Currently you only have access to: " + ", ".join(available_clients))
     
     # Search Configuration Section
     st.subheader("🔧 Search Configuration")
