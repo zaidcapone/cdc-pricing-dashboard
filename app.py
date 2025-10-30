@@ -385,7 +385,8 @@ USERS = {
     "ceo": {"password": "ceo123", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse"]},
     "zaid": {"password": "zaid123", "clients": ["CDC"]},
     "mohammad": {"password": "mohammad123", "clients": ["CoteDivoire"]},
-    "Khalid": {"password": "KHALID123", "clients": ["CakeArt", "SweetHouse"]}
+    "Khalid": {"password": "khalid123", "clients": ["CakeArt", "SweetHouse"]},
+    "Rotana": {"password": "Rotana123", "clients": ["CDC"]}
 }
 
 # Client data sheets mapping - UPDATED WITH CakeArt
