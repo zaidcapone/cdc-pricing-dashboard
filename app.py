@@ -13,367 +13,138 @@ st.set_page_config(
 )
 
 # Professional Dark Theme CSS based on your Envato template
-st.markdown("""
-<style>
-    /* Root Variables - Dark Theme */
-    :root {
-        --bs-blue: #0d6efd;
-        --bs-dark-blue: #0a58ca;
-        --bs-indigo: #6610f2;
-        --bs-purple: #6f42c1;
-        --bs-pink: #d63384;
-        --bs-red: #dc3545;
-        --bs-orange: #fd7e14;
-        --bs-yellow: #ffc107;
-        --bs-green: #198754;
-        --bs-teal: #20c997;
-        --bs-cyan: #0dcaf0;
-        --bs-black: #000;
-        --bs-primary: #0d6efd;
-        --bs-secondary: #6c757d;
-        --bs-success: #02c27a;
-        --bs-info: #0dcaf0;
-        --bs-warning: #ffc107;
-        --bs-danger: #fc185a;
-        --bs-light: #f8f9fa;
-        --bs-dark: #212529;
-        --bs-heading-color: #dee2e6;
-        --bs-body-color: #dee2e6;
-        --bs-body-bg: #212529;
-        --bs-body-bg-2: #181c1f;
-        --bs-border-color: #495057;
-    }
+# Dynamic Theme CSS
+if 'theme' not in st.session_state:
+    st.session_state.theme = 'dark'
 
-    /* Main Background */
-    .stApp {
-        background-color: var(--bs-body-bg);
-        color: var(--bs-body-color);
-    }
+if st.session_state.theme == 'dark':
+    theme_css = """
+    <style>
+        /* Dark Theme Variables */
+        :root {
+            --bs-blue: #0d6efd;
+            --bs-dark-blue: #0a58ca;
+            --bs-indigo: #6610f2;
+            --bs-purple: #6f42c1;
+            --bs-pink: #d63384;
+            --bs-red: #dc3545;
+            --bs-orange: #fd7e14;
+            --bs-yellow: #ffc107;
+            --bs-green: #198754;
+            --bs-teal: #20c997;
+            --bs-cyan: #0dcaf0;
+            --bs-black: #000;
+            --bs-primary: #0d6efd;
+            --bs-secondary: #6c757d;
+            --bs-success: #02c27a;
+            --bs-info: #0dcaf0;
+            --bs-warning: #ffc107;
+            --bs-danger: #fc185a;
+            --bs-light: #f8f9fa;
+            --bs-dark: #212529;
+            --bs-heading-color: #dee2e6;
+            --bs-body-color: #dee2e6;
+            --bs-body-bg: #212529;
+            --bs-body-bg-2: #181c1f;
+            --bs-border-color: #495057;
+        }
 
-    /* Headers - Professional Gradient */
-    .main-header {
-        background: linear-gradient(310deg, #7928ca, #ff0080) !important;
-        color: white;
-        padding: 2.5rem;
-        border-radius: 15px;
-        text-align: center;
-        margin-bottom: 2rem;
-        border: none;
-        box-shadow: 0 4px 20px 0 rgba(0,0,0,0.3);
-    }
+        /* Dark Theme Styles */
+        .stApp { background-color: var(--bs-body-bg); color: var(--bs-body-color); }
+        .main-header { background: linear-gradient(310deg, #7928ca, #ff0080) !important; color: white; }
+        .cdc-header { background: linear-gradient(310deg, #3494e6, #ec6ead) !important; color: white; }
+        .ceo-header { background: linear-gradient(310deg, #f7971e, #ffd200) !important; color: white; }
+        .intelligence-header { background: linear-gradient(310deg, #17ad37, #98ec2d) !important; color: white; }
+        .price-card, .special-price-card, .stat-card, .intelligence-stat-card { 
+            background: linear-gradient(135deg, #2b3035, #343a40) !important; 
+            border: 1px solid var(--bs-border-color) !important;
+            color: var(--bs-body-color) !important;
+        }
+        .price-box { background: linear-gradient(310deg, #ee0979, #ff6a00); color: white; }
+        .intelligence-price-box { background: linear-gradient(310deg, #17ad37, #98ec2d); color: white; }
+        .special-price-box { background: linear-gradient(310deg, #f7971e, #ffd200); color: white; }
+        .order-info { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.9); }
+        .export-section, .ceo-section, .intelligence-section { 
+            background: linear-gradient(135deg, #2b3035, #343a40); 
+            border: 1px solid var(--bs-border-color);
+        }
+        .login-container { background: linear-gradient(135deg, #2b3035, #343a40); border: 1px solid var(--bs-border-color); }
+        .stButton>button { background: linear-gradient(310deg, #7928ca, #ff0080) !important; color: white !important; }
+        .stSelectbox>div>div, .stTextInput>div>div>input { background: #2b3035 !important; border: 1px solid var(--bs-border-color) !important; color: var(--bs-body-color) !important; }
+        .stRadio>div { background: #2b3035; border: 1px solid var(--bs-border-color); }
+        .stTabs [data-baseweb="tab-list"] { background: #2b3035; border: 1px solid var(--bs-border-color); }
+        .css-1d391kg, .css-1lcbmhc { background: #181c1f !important; border-right: 1px solid var(--bs-border-color) !important; }
+        [data-testid="metric-container"] { background: linear-gradient(135deg, #2b3035, #343a40) !important; border: 1px solid var(--bs-border-color) !important; }
+        h1, h2, h3, h4, h5, h6 { color: var(--bs-heading-color) !important; }
+        p, div, span { color: var(--bs-body-color) !important; }
+    </style>
+    """
+else:
+    theme_css = """
+    <style>
+        /* Light Theme Variables */
+        :root {
+            --bs-blue: #0d6efd;
+            --bs-dark-blue: #0a58ca;
+            --bs-indigo: #6610f2;
+            --bs-purple: #6f42c1;
+            --bs-pink: #d63384;
+            --bs-red: #dc3545;
+            --bs-orange: #fd7e14;
+            --bs-yellow: #ffc107;
+            --bs-green: #198754;
+            --bs-teal: #20c997;
+            --bs-cyan: #0dcaf0;
+            --bs-black: #000;
+            --bs-primary: #0d6efd;
+            --bs-secondary: #6c757d;
+            --bs-success: #02c27a;
+            --bs-info: #0dcaf0;
+            --bs-warning: #ffc107;
+            --bs-danger: #fc185a;
+            --bs-light: #f8f9fa;
+            --bs-dark: #212529;
+            --bs-heading-color: #2c3e50;
+            --bs-body-color: #5b6166;
+            --bs-body-bg: #ffffff;
+            --bs-body-bg-2: #f8f9fa;
+            --bs-border-color: #dee2e6;
+        }
 
-    .cdc-header {
-        background: linear-gradient(310deg, #3494e6, #ec6ead) !important;
-        color: white;
-        padding: 1.8rem;
-        border-radius: 12px;
-        margin-bottom: 1.5rem;
-        border: none;
-        box-shadow: 0 2px 15px 0 rgba(0,0,0,0.2);
-    }
+        /* Light Theme Styles */
+        .stApp { background-color: var(--bs-body-bg); color: var(--bs-body-color); }
+        .main-header { background: linear-gradient(310deg, #7928ca, #ff0080) !important; color: white; }
+        .cdc-header { background: linear-gradient(310deg, #3494e6, #ec6ead) !important; color: white; }
+        .ceo-header { background: linear-gradient(310deg, #f7971e, #ffd200) !important; color: white; }
+        .intelligence-header { background: linear-gradient(310deg, #17ad37, #98ec2d) !important; color: white; }
+        .price-card, .special-price-card, .stat-card, .intelligence-stat-card { 
+            background: linear-gradient(135deg, #ffffff, #f8f9fa) !important; 
+            border: 1px solid var(--bs-border-color) !important;
+            color: var(--bs-body-color) !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+        }
+        .price-box { background: linear-gradient(310deg, #ee0979, #ff6a00); color: white; }
+        .intelligence-price-box { background: linear-gradient(310deg, #17ad37, #98ec2d); color: white; }
+        .special-price-box { background: linear-gradient(310deg, #f7971e, #ffd200); color: white; }
+        .order-info { background: rgba(0,0,0,0.05); color: #5b6166; }
+        .export-section, .ceo-section, .intelligence-section { 
+            background: linear-gradient(135deg, #ffffff, #f8f9fa); 
+            border: 1px solid var(--bs-border-color);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .login-container { background: linear-gradient(135deg, #ffffff, #f8f9fa); border: 1px solid var(--bs-border-color); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .stButton>button { background: linear-gradient(310deg, #7928ca, #ff0080) !important; color: white !important; }
+        .stSelectbox>div>div, .stTextInput>div>div>input { background: #ffffff !important; border: 1px solid var(--bs-border-color) !important; color: var(--bs-body-color) !important; }
+        .stRadio>div { background: #ffffff; border: 1px solid var(--bs-border-color); }
+        .stTabs [data-baseweb="tab-list"] { background: #f8f9fa; border: 1px solid var(--bs-border-color); }
+        .css-1d391kg, .css-1lcbmhc { background: #f8f9fa !important; border-right: 1px solid var(--bs-border-color) !important; }
+        [data-testid="metric-container"] { background: linear-gradient(135deg, #ffffff, #f8f9fa) !important; border: 1px solid var(--bs-border-color) !important; }
+        h1, h2, h3, h4, h5, h6 { color: var(--bs-heading-color) !important; }
+        p, div, span { color: var(--bs-body-color) !important; }
+    </style>
+    """
 
-    .ceo-header {
-        background: linear-gradient(310deg, #f7971e, #ffd200) !important;
-        color: white;
-        padding: 1.8rem;
-        border-radius: 12px;
-        margin-bottom: 1.5rem;
-        border: none;
-        box-shadow: 0 2px 15px 0 rgba(0,0,0,0.2);
-    }
-
-    .intelligence-header {
-        background: linear-gradient(310deg, #17ad37, #98ec2d) !important;
-        color: white;
-        padding: 1.8rem;
-        border-radius: 12px;
-        margin-bottom: 1.5rem;
-        border: none;
-        box-shadow: 0 2px 15px 0 rgba(0,0,0,0.2);
-    }
-
-    /* Cards - Modern Dark Design */
-    .price-card {
-        background: linear-gradient(135deg, #2b3035, #343a40) !important;
-        padding: 1.8rem;
-        border-radius: 12px;
-        border-left: 5px solid var(--bs-danger);
-        margin: 0.8rem 0;
-        color: var(--bs-body-color);
-        font-weight: 500;
-        border: 1px solid var(--bs-border-color);
-        box-shadow: 0 2px 10px 0 rgba(0,0,0,0.1);
-        transition: transform 0.2s ease;
-    }
-
-    .price-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px 0 rgba(0,0,0,0.2);
-    }
-
-    .special-price-card {
-        background: linear-gradient(135deg, #2b3035, #343a40) !important;
-        padding: 1.8rem;
-        border-radius: 12px;
-        border-left: 5px solid var(--bs-warning);
-        margin: 0.8rem 0;
-        color: var(--bs-body-color);
-        font-weight: 500;
-        border: 1px solid var(--bs-border-color);
-        box-shadow: 0 2px 10px 0 rgba(0,0,0,0.1);
-        transition: transform 0.2s ease;
-    }
-
-    .stat-card {
-        background: linear-gradient(135deg, #2b3035, #343a40);
-        padding: 2rem;
-        border-radius: 15px;
-        border: 1px solid var(--bs-border-color);
-        text-align: center;
-        color: var(--bs-body-color);
-        box-shadow: 0 4px 15px 0 rgba(0,0,0,0.2);
-        transition: transform 0.2s ease;
-    }
-
-    .stat-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 6px 20px 0 rgba(0,0,0,0.3);
-    }
-
-    .intelligence-stat-card {
-        background: linear-gradient(135deg, #2b3035, #343a40);
-        padding: 2rem;
-        border-radius: 15px;
-        border: 1px solid var(--bs-success);
-        text-align: center;
-        color: var(--bs-body-color);
-        box-shadow: 0 4px 15px 0 rgba(0,0,0,0.2);
-    }
-
-    /* Statistics Numbers */
-    .stat-number {
-        font-size: 2.5em;
-        font-weight: bold;
-        color: var(--bs-primary);
-        margin: 0;
-        background: linear-gradient(310deg, #7928ca, #ff0080);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-
-    .intelligence-stat-number {
-        font-size: 2.5em;
-        font-weight: bold;
-        color: var(--bs-success);
-        margin: 0;
-        background: linear-gradient(310deg, #17ad37, #98ec2d);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-
-    .stat-label {
-        font-size: 0.9em;
-        color: var(--bs-secondary);
-        margin: 0;
-        font-weight: 500;
-    }
-
-    /* Price Boxes */
-    .price-box {
-        background: linear-gradient(310deg, #ee0979, #ff6a00);
-        color: white;
-        padding: 1.2rem;
-        border-radius: 10px;
-        text-align: center;
-        box-shadow: 0 3px 12px 0 rgba(0,0,0,0.2);
-        margin: 0.8rem 0;
-        border: none;
-        transition: transform 0.2s ease;
-    }
-
-    .price-box:hover {
-        transform: scale(1.02);
-    }
-
-    .intelligence-price-box {
-        background: linear-gradient(310deg, #17ad37, #98ec2d);
-        color: white;
-        padding: 1.2rem;
-        border-radius: 10px;
-        text-align: center;
-        box-shadow: 0 3px 12px 0 rgba(0,0,0,0.2);
-        margin: 0.8rem 0;
-        border: none;
-    }
-
-    .special-price-box {
-        background: linear-gradient(310deg, #f7971e, #ffd200);
-        color: white;
-        padding: 1.2rem;
-        border-radius: 10px;
-        text-align: center;
-        box-shadow: 0 3px 12px 0 rgba(0,0,0,0.2);
-        margin: 0.8rem 0;
-        border: none;
-    }
-
-    /* Order Info */
-    .order-info {
-        background: rgba(255,255,255,0.1);
-        padding: 0.8rem;
-        border-radius: 8px;
-        margin: 0.3rem 0;
-        font-size: 0.85em;
-        color: rgba(255,255,255,0.9);
-        border: 1px solid rgba(255,255,255,0.1);
-    }
-
-    /* Sections */
-    .export-section {
-        background: linear-gradient(135deg, #2b3035, #343a40);
-        padding: 2rem;
-        border-radius: 15px;
-        border: 1px solid var(--bs-info);
-        margin: 1.5rem 0;
-        box-shadow: 0 4px 15px 0 rgba(0,0,0,0.2);
-    }
-
-    .ceo-section {
-        background: linear-gradient(135deg, #2b3035, #343a40);
-        padding: 2rem;
-        border-radius: 15px;
-        border: 1px solid var(--bs-warning);
-        margin: 1.5rem 0;
-        box-shadow: 0 4px 15px 0 rgba(0,0,0,0.2);
-    }
-
-    .intelligence-section {
-        background: linear-gradient(135deg, #2b3035, #343a40);
-        padding: 2rem;
-        border-radius: 15px;
-        border: 1px solid var(--bs-success);
-        margin: 1.5rem 0;
-        box-shadow: 0 4px 15px 0 rgba(0,0,0,0.2);
-    }
-
-    /* Login Container */
-    .login-container {
-        max-width: 450px;
-        margin: 100px auto;
-        padding: 3rem;
-        background: linear-gradient(135deg, #2b3035, #343a40);
-        border-radius: 20px;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-        border: 1px solid var(--bs-border-color);
-    }
-
-    /* Streamlit Components Restyling */
-    .stButton>button {
-        background: linear-gradient(310deg, #7928ca, #ff0080) !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 8px !important;
-        padding: 0.5rem 1.5rem !important;
-        font-weight: 500 !important;
-        transition: all 0.3s ease !important;
-    }
-
-    .stButton>button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(121, 40, 202, 0.4) !important;
-    }
-
-    .stSelectbox>div>div, .stTextInput>div>div>input {
-        background: #2b3035 !important;
-        border: 1px solid var(--bs-border-color) !important;
-        color: var(--bs-body-color) !important;
-        border-radius: 8px !important;
-    }
-
-    .stRadio>div {
-        background: #2b3035;
-        padding: 1rem;
-        border-radius: 10px;
-        border: 1px solid var(--bs-border-color);
-    }
-
-    .stTabs [data-baseweb="tab-list"] {
-        background: #2b3035;
-        border-radius: 12px;
-        padding: 0.5rem;
-        border: 1px solid var(--bs-border-color);
-    }
-
-    .stTabs [data-baseweb="tab"] {
-        background: transparent !important;
-        color: var(--bs-body-color) !important;
-        border-radius: 8px !important;
-        margin: 0 0.2rem !important;
-    }
-
-    .stTabs [aria-selected="true"] {
-        background: linear-gradient(310deg, #7928ca, #ff0080) !important;
-        color: white !important;
-    }
-
-    /* Sidebar */
-    .css-1d391kg, .css-1lcbmhc {
-        background: #181c1f !important;
-        border-right: 1px solid var(--bs-border-color) !important;
-    }
-
-    /* Success/Error Messages */
-    .stAlert {
-        border-radius: 10px !important;
-        border: 1px solid !important;
-    }
-
-    .stSuccess {
-        background: rgba(2, 194, 122, 0.1) !important;
-        border-color: var(--bs-success) !important;
-    }
-
-    .stError {
-        background: rgba(252, 24, 90, 0.1) !important;
-        border-color: var(--bs-danger) !important;
-    }
-
-    .stInfo {
-        background: rgba(13, 202, 240, 0.1) !important;
-        border-color: var(--bs-info) !important;
-    }
-
-    .stWarning {
-        background: rgba(255, 193, 7, 0.1) !important;
-        border-color: var(--bs-warning) !important;
-    }
-
-    /* Metrics */
-    [data-testid="metric-container"] {
-        background: linear-gradient(135deg, #2b3035, #343a40) !important;
-        border: 1px solid var(--bs-border-color) !important;
-        border-radius: 12px !important;
-        padding: 1.5rem !important;
-        box-shadow: 0 4px 15px 0 rgba(0,0,0,0.2) !important;
-    }
-
-    /* Dataframes */
-    .dataframe {
-        background: #2b3035 !important;
-        border: 1px solid var(--bs-border-color) !important;
-        border-radius: 10px !important;
-    }
-
-    /* Text Colors */
-    h1, h2, h3, h4, h5, h6 {
-        color: var(--bs-heading-color) !important;
-    }
-
-    p, div, span {
-        color: var(--bs-body-color) !important;
-    }
-</style>
-""", unsafe_allow_html=True)
+st.markdown(theme_css, unsafe_allow_html=True)
 
 # Configuration
 API_KEY = "AIzaSyA3P-ZpLjDdVtGB82_1kaWuO7lNbKDj9HU"
@@ -466,6 +237,14 @@ def main_dashboard():
     # Display user info in sidebar
     st.sidebar.markdown(f"**👤 Welcome, {st.session_state.username}**")
     st.sidebar.markdown(f"**🏢 Access to:** {', '.join(st.session_state.user_clients)}")
+    
+    # Theme selector
+    if 'theme' not in st.session_state:
+        st.session_state.theme = 'dark'
+    
+    theme = st.sidebar.radio("🎨 Theme", ["Dark", "Light"], index=0 if st.session_state.theme == 'dark' else 1, key="theme_selector")
+    st.session_state.theme = theme.lower()
+    
     logout_button()
     
     # Header
