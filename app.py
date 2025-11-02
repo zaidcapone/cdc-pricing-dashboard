@@ -1637,73 +1637,56 @@ Orders List:
     st.markdown('</div>', unsafe_allow_html=True)
 
 def display_order_card(order):
-    """Display individual order card"""
+    """Display individual order card using Streamlit components only"""
     
-    # Determine card color based on status
-    if order['Status'] == 'Shipped':
-        card_class = "price-card"
-        status_color = "#02c27a"
-        status_icon = "✅"
-    elif order['Status'] == 'In Production':
-        card_class = "special-price-card" 
-        status_color = "#ffc107"
-        status_icon = "🔄"
-    else:
-        card_class = "intelligence-stat-card"
-        status_color = "#fc185a"
-        status_icon = "⏳"
+    status = order.get('Status', 'Pending')
+    payment_status = order.get('Payment Update', 'Pending')
+    order_number = order.get('Order Number', 'N/A')
     
-    # Determine payment status color
-    if order['Payment Update'] == 'Paid':
-        payment_color = "#02c27a"
-        payment_icon = "💳"
-    elif order['Payment Update'] == 'Due':
-        payment_color = "#fc185a"
-        payment_icon = "⚠️"
-    else:
-        payment_color = "#ffc107"
-        payment_icon = "⏳"
-    
-    with st.expander(f"{status_icon} {order['Order Number']} - {order['Status']}", expanded=False):
-        card_content = f"""
-        <div class="{card_class}">
-            <div style="border-left: 5px solid {status_color}; padding-left: 1rem;">
-                <div style="display: flex; justify-content: space-between; align-items: start;">
-                    <div>
-                        <h3 style="margin:0; color: {status_color};">{order['Order Number']}</h3>
-                        <p style="margin:0; font-weight: bold;">Status: {order['Status']}</p>
-                    </div>
-                    <div style="text-align: right;">
-                        <p style="margin:0; color: {payment_color}; font-weight: bold;">
-                            {payment_icon} {order['Payment Update']}
-                        </p>
-                    </div>
-                </div>
-                
-                <div style="margin-top: 1rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div>
-                        <p style="margin:0;"><strong>Manufacturer:</strong> {order.get('Manufacturer', 'N/A')}</p>
-                        <p style="margin:0;"><strong>ETD:</strong> {order.get('ETD', 'N/A')}</p>
-                    </div>
-                    <div>
-                        <p style="margin:0;"><strong>Payment Due:</strong> {order.get('Payment due date', 'N/A')}</p>
-                        <p style="margin:0;"><strong>Invoice:</strong> {order.get('Payment', 'N/A')}</p>
-                    </div>
-                </div>
-        """
+    # Create expander
+    with st.expander(f"📦 {order_number} - {status}", expanded=False):
         
-        # Add notes if available
-        if pd.notna(order.get('Notes')) and order.get('Notes') != '':
-            card_content += f"""
-                <div style="margin-top: 1rem; padding: 0.5rem; background: rgba(255,255,255,0.1); border-radius: 0.25rem;">
-                    <p style="margin:0; font-weight: bold;">📝 Notes:</p>
-                    <p style="margin:0;">{order.get('Notes', '')}</p>
-                </div>
-            """
+        # Header row
+        col1, col2 = st.columns([3, 1])
         
-        card_content += "</div></div>"
+        with col1:
+            st.subheader(order_number)
+            st.write(f"**Status:** {status}")
+            
+        with col2:
+            # Payment status with color coding
+            if payment_status == 'Paid':
+                st.success(f"💳 {payment_status}")
+            elif payment_status == 'Due':
+                st.error(f"⚠️ {payment_status}")
+            else:
+                st.warning(f"⏳ {payment_status}")
+            
+            st.write(f"**ERP:** {order.get('ERP', 'N/A')}")
         
-        st.markdown(card_content, unsafe_allow_html=True)
+        # Order details in columns
+        st.write("---")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.write("**📋 Order Details**")
+            st.write(f"Manufacturer: {order.get('Manufacturer', 'N/A')}")
+            st.write(f"ETD: {order.get('ETD', 'N/A')}")
+            st.write(f"PI Issue: {order.get('Date of PI issue', 'N/A')}")
+            
+        with col2:
+            st.write("**💰 Financial Details**")
+            st.write(f"Payment Due: {order.get('Payment due date', 'N/A')}")
+            st.write(f"Invoice: {order.get('Payment', 'N/A')}")
+            st.write(f"Client Signed: {order.get('Date of Client signing', 'N/A')}")
+        
+        # Notes section
+        notes = order.get('Notes', '')
+        if pd.notna(notes) and notes != '':
+            st.write("---")
+            st.write("**📝 Notes**")
+            st.info(notes)
+        
 
 def load_orders_data(client):
     """Load orders data from Google Sheets - USING YOUR ACTUAL DATA STRUCTURE"""
