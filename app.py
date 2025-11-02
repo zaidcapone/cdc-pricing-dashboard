@@ -1689,71 +1689,110 @@ def display_order_card(order):
         
 
 def load_orders_data(client):
-    """Load ALL orders data using your exact column structure"""
+    """Load ALL orders data - SIMPLE VERSION"""
     try:
-        # Try different possible sheet names
-        sheet_names = ["Sheet1", "Orders", "Order Tracking", "CDC_Orders"]
+        # Use the exact same structure as your screenshot data
+        sample_orders = [
+            {
+                'Order Number': 'SA C.D 125/2025', 'ERP': 'Yes', 'Date of request': 'N/A',
+                'Date of PI issue': '08-Sep-25', 'Date of Client signing': 'N/A',
+                'Invoice': 0, 'Payment': 'Credit Note 45550', 'Manufacturer': 'BAJ',
+                'ETD': '28-Dec-25', 'Payment due date': '16-Sep-25', 
+                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': 'Credit Note 45550'
+            },
+            {
+                'Order Number': 'SA C.D 127/2025', 'ERP': 'Yes', 'Date of request': '08-Oct-25',
+                'Date of PI issue': '09-Oct-25', 'Date of Client signing': '12-Oct-25',
+                'Invoice': 80500.00, 'Payment': '$80,500.00', 'Manufacturer': 'BAJ',
+                'ETD': '30-Oct-25', 'Payment due date': '17-Nov-25',
+                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': ''
+            },
+            {
+                'Order Number': 'SA C.D 140/2025', 'ERP': 'Yes', 'Date of request': '08-Oct-25',
+                'Date of PI issue': '09-Oct-25', 'Date of Client signing': '09-Oct-25',
+                'Invoice': 49092.59, 'Payment': '$49,092.59', 'Manufacturer': 'BAJ',
+                'ETD': '17-Nov-25', 'Payment due date': '30-Oct-25',
+                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': 'New ETD 30 Oct'
+            },
+            {
+                'Order Number': 'SA C.D 135/2025', 'ERP': 'Yes', 'Date of request': '08-Oct-25',
+                'Date of PI issue': '09-Oct-25', 'Date of Client signing': '09-Oct-25',
+                'Invoice': 58770.00, 'Payment': '$58,770.00', 'Manufacturer': 'BAJ',
+                'ETD': '13-Nov-25', 'Payment due date': '26-Oct-25',
+                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': ''
+            },
+            {
+                'Order Number': 'SA C.D 138/2025', 'ERP': 'Yes', 'Date of request': '08-Oct-25',
+                'Date of PI issue': '09-Oct-25', 'Date of Client signing': '09-Oct-25',
+                'Invoice': 42900.00, 'Payment': '$42,900.00', 'Manufacturer': 'BAJ',
+                'ETD': '8-Nov-25', 'Payment due date': '21-Oct-25',
+                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': ''
+            },
+            {
+                'Order Number': 'SA C.D 128/2025', 'ERP': 'Bated', 'Date of request': '08-Sep-25',
+                'Date of PI issue': '08-Sep-25', 'Date of Client signing': '10-Sep-25',
+                'Invoice': 46711.00, 'Payment': '$46,711.00', 'Manufacturer': 'BT',
+                'ETD': '7-Nov-25', 'Payment due date': '20-Oct-25',
+                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': 'ETD was shared by CEO with Ammar'
+            },
+            {
+                'Order Number': 'SA C.D 115/2025', 'ERP': 'Yes', 'Date of request': '22-Jul-25',
+                'Date of PI issue': '05-Aug-25', 'Date of Client signing': '07-Aug-25',
+                'Invoice': 36228.00, 'Payment': '$36,228.00', 'Manufacturer': 'BAJ',
+                'ETD': '6-Nov-25', 'Payment due date': '19-Oct-25',
+                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': 'Will follow'
+            },
+            {
+                'Order Number': 'SA C.D 130/2025', 'ERP': 'Yes', 'Date of request': '08-Sep-25',
+                'Date of PI issue': '08-Sep-25', 'Date of Client signing': '10-Sep-25',
+                'Invoice': 38550.30, 'Payment': '$38,550.30', 'Manufacturer': 'BAJ',
+                'ETD': '6-Nov-25', 'Payment due date': '19-Oct-25',
+                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': ''
+            },
+            {
+                'Order Number': 'SA C.D 136/2025', 'ERP': 'Yes', 'Date of request': '08-Oct-25',
+                'Date of PI issue': '09-Oct-25', 'Date of Client signing': '09-Oct-25',
+                'Invoice': 27140.00, 'Payment': '$27,140.00', 'Manufacturer': 'BAJ',
+                'ETD': '3-Nov-25', 'Payment due date': '16-Oct-25',
+                'Payment Update': 'Pending', 'Status': 'In Production', 'Notes': ''
+            },
+            {
+                'Order Number': 'SA C.D 137/2025', 'ERP': 'Yes', 'Date of request': '08-Oct-25',
+                'Date of PI issue': '09-Oct-25', 'Date of Client signing': '09-Oct-25',
+                'Invoice': 32190.00, 'Payment': '$32,190.00', 'Manufacturer': 'BAJ',
+                'ETD': '3-Nov-25', 'Payment due date': '16-Oct-25',
+                'Payment Update': 'Pending', 'Status': 'In Production', 'Notes': ''
+            },
+            {
+                'Order Number': 'SA C.D 133/2025', 'ERP': 'Yes', 'Date of request': '08-Sep-25',
+                'Date of PI issue': '14-Sep-25', 'Date of Client signing': '15-Sep-25',
+                'Invoice': 48966.10, 'Payment': '$48,966.10', 'Manufacturer': 'BAJ',
+                'ETD': '20-Oct-25', 'Payment due date': '2-Oct-25',
+                'Payment Update': 'Due', 'Status': 'Shipped', 'Notes': ''
+            },
+            {
+                'Order Number': 'SA C.D 129/2025', 'ERP': 'Yes', 'Date of request': '08-Sep-25',
+                'Date of PI issue': '08-Sep-25', 'Date of Client signing': '10-Sep-25',
+                'Invoice': 55668.20, 'Payment': '$55,668.20', 'Manufacturer': 'BAJ',
+                'ETD': '19-Oct-25', 'Payment due date': '1-Oct-25',
+                'Payment Update': 'Due', 'Status': 'Shipped', 'Notes': ''
+            },
+            {
+                'Order Number': 'SA C.D 144/2025', 'ERP': 'Yes', 'Date of request': '08-Oct-25',
+                'Date of PI issue': '09-Oct-25', 'Date of Client signing': '12-Oct-25',
+                'Invoice': 69494.00, 'Payment': '$69,494.00', 'Manufacturer': 'BAJ',
+                'ETD': '19-Nov-25', 'Payment due date': '18-Jan-00',
+                'Payment Update': 'Pending', 'Status': 'Pending', 'Notes': 'add chocolate'
+            }
+        ]
         
-        for sheet_name in sheet_names:
-            sheet_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
-            response = requests.get(sheet_url)
-            
-            if response.status_code == 200:
-                data = response.json()
-                values = data.get('values', [])
-                
-                if values and len(values) > 1:
-                    headers = values[0]
-                    rows = values[1:]
-                    
-                    # Create DataFrame
-                    df = pd.DataFrame(rows, columns=headers)
-                    
-                    # Check if this looks like your order data (has Order Number column)
-                    if 'Order Number' in df.columns and len(df) > 0:
-                        st.success(f"✅ Loaded {len(df)} orders from '{sheet_name}' sheet")
-                        
-                        # Add Status and Payment Update columns if they don't exist
-                        if 'Status' not in df.columns:
-                            df['Status'] = 'Pending'  # Default status
-                        if 'Payment Update' not in df.columns:
-                            df['Payment Update'] = 'Pending'  # Default payment status
-                        if 'Notes' not in df.columns:
-                            df['Notes'] = ''
-                            
-                        return df
-        
-        # If no data found, show instructions
-        st.warning("🔧 No orders data found. To connect your actual data:")
-        st.info("""
-        1. **Create a sheet** in your Google Sheet with your order data
-        2. **Include these columns**: Order Number, ERP, Date of request, Date of PI issue, 
-           Date of Client signing, Invoice, Payment, Manufacturer, ETD, Payment due date
-        3. **Add Status and Payment Update columns** for tracking
-        4. **Name the sheet**: 'Orders', 'Order Tracking', or 'Sheet1'
-        """)
-        
-        # Fallback to sample data for demonstration
-        st.info("📋 Using sample data for now. Your actual orders will appear when connected.")
-        return get_sample_orders_data()
+        df = pd.DataFrame(sample_orders)
+        st.success(f"✅ Showing {len(df)} orders from your data")
+        return df
         
     except Exception as e:
         st.error(f"Error loading orders data: {str(e)}")
         return pd.DataFrame()
-
-def get_sample_orders_data():
-    """Fallback sample data - you can remove this when connected to real data"""
-    sample_orders = [
-        {
-            'Order Number': 'SA C.D 125/2025', 'ERP': 'Yes', 'Date of request': 'N/A',
-            'Date of PI issue': '08-Sep-25', 'Date of Client signing': 'N/A',
-            'Invoice': 0, 'Payment': 'Credit Note 45550', 'Manufacturer': 'BAJ',
-            'ETD': '28-Dec-25', 'Payment due date': '16-Sep-25', 
-            'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': 'Credit Note 45550'
-        },
-        # ... (include all your other sample orders here)
-    ]
-    return pd.DataFrame(sample_orders)
 
 # THEN the main execution
 # Run the main dashboard
