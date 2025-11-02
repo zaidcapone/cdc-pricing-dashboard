@@ -1689,12 +1689,11 @@ def display_order_card(order):
         
 
 def load_orders_data(client):
-    """Load orders data from Google Sheets - USING YOUR ACTUAL DATA STRUCTURE"""
+    """Load ALL orders data from your actual Google Sheet"""
     try:
-        # Try to load from a sheet that contains your orders data
-        # You'll need to replace "Orders" with your actual sheet name that has the order data
-        orders_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/Orders!A:Z?key={API_KEY}"
-        response = requests.get(orders_url)
+        # Try to load from your main data sheet - replace "Sheet1" with your actual sheet name
+        sheet_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/Sheet1!A:Z?key={API_KEY}"
+        response = requests.get(sheet_url)
         
         if response.status_code == 200:
             data = response.json()
@@ -1704,142 +1703,48 @@ def load_orders_data(client):
                 headers = values[0]
                 rows = values[1:]
                 
-                # Create DataFrame
+                # Create DataFrame with all your data
                 df = pd.DataFrame(rows, columns=headers)
                 
-                # If we successfully got data from an "Orders" sheet
-                if len(df) > 0:
-                    return df
+                # Clean up the data and map to our expected columns
+                orders_list = []
+                
+                for _, row in df.iterrows():
+                    # Skip empty rows
+                    if pd.isna(row.get('Order Number', '')) or row.get('Order Number', '') == '':
+                        continue
+                    
+                    # Create order dictionary with proper column mapping
+                    order_data = {
+                        'Order Number': row.get('Order Number', ''),
+                        'ERP': row.get('ERP', ''),
+                        'Date of request': row.get('Date of request', ''),
+                        'Date of PI issue': row.get('Date of PI issue', ''),
+                        'Date of Client signing': row.get('Date of Client signing', ''),
+                        'Invoice': row.get('Invoice', ''),
+                        'Payment': row.get('Payment', ''),
+                        'Manufacturer': row.get('Manufacturer', ''),
+                        'ETD': row.get('ETD', ''),
+                        'Payment due date': row.get('Payment due date', ''),
+                        'Payment Update': row.get('Payment Update', ''),
+                        'Status': row.get('Status', 'Pending'),
+                        'Notes': row.get('Notes', '')
+                    }
+                    orders_list.append(order_data)
+                
+                if orders_list:
+                    st.success(f"✅ Loaded {len(orders_list)} orders from your Google Sheet")
+                    return pd.DataFrame(orders_list)
         
-        # If no dedicated Orders sheet exists, use sample data for demonstration
-        st.info("📋 Using sample orders data for demonstration. Connect to your actual Google Sheet when ready.")
+        # If we can't load from Google Sheets, show error
+        st.error("❌ Could not load orders from Google Sheets. Please check:")
+        st.info("""
+        1. Make sure your Google Sheet is shared publicly
+        2. Check the sheet name matches
+        3. Verify the API key is correct
+        """)
         
-        # Sample data matching your exact spreadsheet structure from our analysis
-        sample_orders = [
-            {
-                'Order Number': 'SA C.D 125/2025',
-                'ERP': 'Yes', 
-                'Date of request': 'N/A',
-                'Date of PI issue': '08-Sep-25',
-                'Date of Client signing': 'N/A',
-                'Invoice': 0,
-                'Payment': 'Credit Note 45550',
-                'Manufacturer': 'BAJ',
-                'ETD': '28-Dec-25',
-                'Payment due date': '16-Sep-25',
-                'Payment Update': 'Pending',
-                'Status': 'Shipped',
-                'Notes': 'Credit Note 45550'
-            },
-            {
-                'Order Number': 'SA C.D 127/2025',
-                'ERP': 'Yes',
-                'Date of request': '08-Oct-25', 
-                'Date of PI issue': '09-Oct-25',
-                'Date of Client signing': '12-Oct-25',
-                'Invoice': 80500.00,
-                'Payment': '$80,500.00',
-                'Manufacturer': 'BAJ',
-                'ETD': '30-Oct-25',
-                'Payment due date': '17-Nov-25',
-                'Payment Update': 'Pending', 
-                'Status': 'Shipped',
-                'Notes': ''
-            },
-            {
-                'Order Number': 'SA C.D 140/2025',
-                'ERP': 'Yes',
-                'Date of request': '08-Oct-25',
-                'Date of PI issue': '09-Oct-25', 
-                'Date of Client signing': '09-Oct-25',
-                'Invoice': 49092.59,
-                'Payment': '$49,092.59',
-                'Manufacturer': 'BAJ',
-                'ETD': '17-Nov-25',
-                'Payment due date': '30-Oct-25',
-                'Payment Update': 'Pending',
-                'Status': 'Shipped', 
-                'Notes': 'New ETD 30 Oct'
-            },
-            {
-                'Order Number': 'SA C.D 135/2025',
-                'ERP': 'Yes',
-                'Date of request': '08-Oct-25',
-                'Date of PI issue': '09-Oct-25',
-                'Date of Client signing': '09-Oct-25',
-                'Invoice': 58770.00, 
-                'Payment': '$58,770.00',
-                'Manufacturer': 'BAJ',
-                'ETD': '13-Nov-25',
-                'Payment due date': '26-Oct-25',
-                'Payment Update': 'Pending',
-                'Status': 'Shipped',
-                'Notes': ''
-            },
-            {
-                'Order Number': 'SA C.D 133/2025', 
-                'ERP': 'Yes',
-                'Date of request': '08-Sep-25',
-                'Date of PI issue': '14-Sep-25',
-                'Date of Client signing': '15-Sep-25',
-                'Invoice': 48966.10,
-                'Payment': '$48,966.10',
-                'Manufacturer': 'BAJ',
-                'ETD': '20-Oct-25',
-                'Payment due date': '2-Oct-25', 
-                'Payment Update': 'Due',
-                'Status': 'Shipped',
-                'Notes': ''
-            },
-            {
-                'Order Number': 'SA C.D 144/2025',
-                'ERP': 'Yes',
-                'Date of request': '08-Oct-25',
-                'Date of PI issue': '09-Oct-25',
-                'Date of Client signing': '12-Oct-25',
-                'Invoice': 69494.00,
-                'Payment': '$69,494.00', 
-                'Manufacturer': 'BAJ',
-                'ETD': '19-Nov-25',
-                'Payment due date': '18-Jan-00',
-                'Payment Update': 'Pending',
-                'Status': 'Pending',
-                'Notes': 'add chocolate'
-            },
-            {
-                'Order Number': 'SA C.D 138/2025',
-                'ERP': 'Yes',
-                'Date of request': '08-Oct-25',
-                'Date of PI issue': '09-Oct-25',
-                'Date of Client signing': '09-Oct-25',
-                'Invoice': 42900.00,
-                'Payment': '$42,900.00',
-                'Manufacturer': 'BAJ',
-                'ETD': '8-Nov-25',
-                'Payment due date': '21-Oct-25',
-                'Payment Update': 'Pending',
-                'Status': 'In Production',
-                'Notes': ''
-            },
-            {
-                'Order Number': 'SA C.D 136/2025',
-                'ERP': 'Yes',
-                'Date of request': '08-Oct-25',
-                'Date of PI issue': '09-Oct-25',
-                'Date of Client signing': '09-Oct-25',
-                'Invoice': 27140.00,
-                'Payment': '$27,140.00',
-                'Manufacturer': 'BAJ',
-                'ETD': '3-Nov-25',
-                'Payment due date': '16-Oct-25',
-                'Payment Update': 'Pending',
-                'Status': 'In Production',
-                'Notes': ''
-            }
-        ]
-        
-        df = pd.DataFrame(sample_orders)
-        return df
+        return pd.DataFrame()
         
     except Exception as e:
         st.error(f"Error loading orders data: {str(e)}")
