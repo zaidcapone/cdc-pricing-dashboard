@@ -164,8 +164,10 @@ USERS = {
 CLIENT_SHEETS = {
     "CDC": {
         "backaldrin": "Backaldrin_CDC",
-        "bateel": "Bateel_CDC",
-        "ceo_special": "CDC_CEO_Special_Prices"
+        "bateel": "Bateel_CDC", 
+        "ceo_special": "CDC_CEO_Special_Prices",
+        "new_orders": "New_Orders",
+        "paid_orders": "Paid_Orders"
     },
     "CoteDivoire": {
         "backaldrin": "Backaldrin_CoteDivoire",
@@ -257,9 +259,9 @@ def main_dashboard():
     
     # Create tabs - ALL USERS GET PRICE INTELLIGENCE
     if st.session_state.username in ["ceo", "admin"]:
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG"])
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG", "📋 ORDERS MANAGEMENT"])
     else:
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG"])
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG", "📋 ORDERS MANAGEMENT"])
     
     with tab1:
         clients_tab()
@@ -278,7 +280,10 @@ def main_dashboard():
     with tab5:
         product_catalog_tab()
         
-
+    # Orders Management tab
+    with tab6:
+        orders_management_tab()
+        
 # ... (rest of your existing functions remain exactly the same - they'll automatically use the new styling)
 # [ALL YOUR EXISTING FUNCTIONS GO HERE - clients_tab(), etd_tab(), ceo_specials_tab(), etc.]
 
@@ -347,7 +352,7 @@ def ceo_specials_tab():
            - Expiry_Date
         """)
         return
-    
+     
     # CEO Special Prices Overview
     st.subheader(f"📊 {client} CEO Specials Overview")
     col1, col2, col3, col4 = st.columns(4)
@@ -1500,6 +1505,22 @@ def convert_df_to_excel(df):
     processed_data = output.getvalue()
     return processed_data
 
+# [All your existing functions...]
+# check_login(), login_page(), logout_button(), main_dashboard()
+# clients_tab(), etd_tab(), ceo_specials_tab(), price_intelligence_tab()
+# product_catalog_tab(), and all other existing functions...
+
+# 🔧 STEP 4: ADD ORDERS MANAGEMENT FUNCTIONS HERE
+def orders_management_tab():
+    # ... (the full function code from Step 4)
+
+def load_orders_data(client, order_type):
+    # ... (the full function code from Step 4)
+
+def display_orders_section(section_name, orders_data, client):
+    # ... (the full function code from Step 4)
+
+# THEN the main execution
 # Run the main dashboard
 if __name__ == "__main__":
     if not check_login():
