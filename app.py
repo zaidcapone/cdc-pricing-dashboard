@@ -284,9 +284,6 @@ def main_dashboard():
     with tab6:
         orders_management_tab()
         
-# ... (rest of your existing functions remain exactly the same - they'll automatically use the new styling)
-# [ALL YOUR EXISTING FUNCTIONS GO HERE - clients_tab(), etd_tab(), ceo_specials_tab(), etc.]
-
 def clients_tab():
     """Clients management tab"""
     st.subheader("Client Selection")
@@ -1505,24 +1502,241 @@ def convert_df_to_excel(df):
     processed_data = output.getvalue()
     return processed_data
 
-# [All your existing functions...]
-# check_login(), login_page(), logout_button(), main_dashboard()
-# clients_tab(), etd_tab(), ceo_specials_tab(), price_intelligence_tab()
-# product_catalog_tab(), and all other existing functions...
-
-# 🔧 STEP 4: ADD ORDERS MANAGEMENT FUNCTIONS HERE
+# ORDERS MANAGEMENT FUNCTIONS
 def orders_management_tab():
-    st.header("Orders Management")
-    # Your actual implementation code here
-    # Not just a comment
+    """Orders Management Dashboard"""
+    st.markdown("""
+    <div class="intelligence-header">
+        <h2 style="margin:0;">📋 Orders Management Dashboard</h2>
+        <p style="margin:0; opacity:0.9;">Order Tracking • Status Monitoring • Payment Updates</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Client selection for orders
+    available_clients = st.session_state.user_clients
+    client = st.selectbox(
+        "Select Client:",
+        available_clients,
+        key="orders_client_select"
+    )
+    
+    if not client:
+        st.warning("Please select a client to view orders")
+        return
+    
+    # Load orders data
+    orders_data = load_orders_data(client)
+    
+    if orders_data.empty:
+        st.info(f"No orders data found for {client}. Orders management will be available when data is added.")
+        return
+    
+    # Orders Overview
+    st.subheader("📊 Orders Overview")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        total_orders = len(orders_data)
+        st.metric("Total Orders", total_orders)
+    
+    with col2:
+        shipped_orders = len(orders_data[orders_data['Status'] == 'Shipped'])
+        st.metric("Shipped", shipped_orders)
+    
+    with col3:
+        production_orders = len(orders_data[orders_data['Status'] == 'In Production'])
+        st.metric("In Production", production_orders)
+    
+    with col4:
+        pending_orders = len(orders_data[orders_data['Status'] == 'Pending'])
+        st.metric("Pending", pending_orders)
+    
+    # Filter section
+    st.subheader("🔍 Filter Orders")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        status_filter = st.selectbox(
+            "Status",
+            ["All", "Shipped", "In Production", "Pending"],
+            key="orders_status_filter"
+        )
+    
+    with col2:
+        payment_filter = st.selectbox(
+            "Payment Status", 
+            ["All", "Pending", "Due", "Paid"],
+            key="orders_payment_filter"
+        )
+    
+    with col3:
+        search_term = st.text_input("Search Order Number...", key="orders_search")
+    
+    # Apply filters
+    filtered_orders = orders_data.copy()
+    
+    if status_filter != "All":
+        filtered_orders = filtered_orders[filtered_orders['Status'] == status_filter]
+    
+    if payment_filter != "All":
+        filtered_orders = filtered_orders[filtered_orders['Payment Update'] == payment_filter]
+    
+    if search_term:
+        filtered_orders = filtered_orders[
+            filtered_orders['Order Number'].str.contains(search_term, case=False, na=False)
+        ]
+    
+    # Display orders
+    st.subheader(f"📋 Orders ({len(filtered_orders)} found)")
+    
+    if not filtered_orders.empty:
+        for _, order in filtered_orders.iterrows():
+            display_order_card(order)
+    else:
+        st.info("No orders match your filter criteria.")
+    
+    # Export section
+    st.markdown('<div class="export-section">', unsafe_allow_html=True)
+    st.subheader("📤 Export Orders Data")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        csv = filtered_orders.to_csv(index=False)
+        st.download_button(
+            label="📥 Download CSV",
+            data=csv,
+            file_name=f"{client}_orders_{datetime.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+    
+    with col2:
+        st.download_button(
+            label="📄 Download Summary",
+            data=f"""
+{client} Orders Summary
+======================
 
-def load_orders_data(client, order_type):
-    # Your actual data loading code here
-    return data
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Total Orders: {len(filtered_orders)}
+Shipped: {shipped_orders}
+In Production: {production_orders}
+Pending: {pending_orders}
 
-def display_orders_section(section_name, orders_data, client):
-    # Your actual display code here
-    st.write(f"Displaying {section_name}")
+Orders List:
+{chr(10).join([f"• {row['Order Number']} - {row['Status']} - Payment: {row['Payment Update']}" for _, row in filtered_orders.iterrows()])}
+            """,
+            file_name=f"{client}_orders_summary_{datetime.now().strftime('%Y%m%d')}.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+def display_order_card(order):
+    """Display individual order card"""
+    
+    # Determine card color based on status
+    if order['Status'] == 'Shipped':
+        card_class = "price-card"
+        status_color = "#02c27a"
+        status_icon = "✅"
+    elif order['Status'] == 'In Production':
+        card_class = "special-price-card" 
+        status_color = "#ffc107"
+        status_icon = "🔄"
+    else:
+        card_class = "intelligence-stat-card"
+        status_color = "#fc185a"
+        status_icon = "⏳"
+    
+    # Determine payment status color
+    if order['Payment Update'] == 'Paid':
+        payment_color = "#02c27a"
+        payment_icon = "💳"
+    elif order['Payment Update'] == 'Due':
+        payment_color = "#fc185a"
+        payment_icon = "⚠️"
+    else:
+        payment_color = "#ffc107"
+        payment_icon = "⏳"
+    
+    with st.expander(f"{status_icon} {order['Order Number']} - {order['Status']}", expanded=False):
+        card_content = f"""
+        <div class="{card_class}">
+            <div style="border-left: 5px solid {status_color}; padding-left: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div>
+                        <h3 style="margin:0; color: {status_color};">{order['Order Number']}</h3>
+                        <p style="margin:0; font-weight: bold;">Status: {order['Status']}</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <p style="margin:0; color: {payment_color}; font-weight: bold;">
+                            {payment_icon} {order['Payment Update']}
+                        </p>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 1rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div>
+                        <p style="margin:0;"><strong>Manufacturer:</strong> {order.get('Manufacturer', 'N/A')}</p>
+                        <p style="margin:0;"><strong>ETD:</strong> {order.get('ETD', 'N/A')}</p>
+                    </div>
+                    <div>
+                        <p style="margin:0;"><strong>Payment Due:</strong> {order.get('Payment due date', 'N/A')}</p>
+                        <p style="margin:0;"><strong>Invoice:</strong> {order.get('Invoice', 'N/A')}</p>
+                    </div>
+                </div>
+        """
+        
+        # Add notes if available
+        if pd.notna(order.get('Notes')) and order.get('Notes') != '':
+            card_content += f"""
+                <div style="margin-top: 1rem; padding: 0.5rem; background: rgba(255,255,255,0.1); border-radius: 0.25rem;">
+                    <p style="margin:0; font-weight: bold;">📝 Notes:</p>
+                    <p style="margin:0;">{order.get('Notes', '')}</p>
+                </div>
+            """
+        
+        card_content += "</div></div>"
+        
+        st.markdown(card_content, unsafe_allow_html=True)
+
+def load_orders_data(client):
+    """Load orders data from Google Sheets"""
+    try:
+        # Try to load from the orders sheet for the client
+        orders_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/Orders!A:Z?key={API_KEY}"
+        response = requests.get(orders_url)
+        
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if values and len(values) > 1:
+                headers = values[0]
+                rows = values[1:]
+                
+                # Create DataFrame
+                df = pd.DataFrame(rows, columns=headers)
+                
+                # Filter for the current client if Client column exists
+                if 'Client' in df.columns:
+                    df = df[df['Client'] == client]
+                
+                # Ensure required columns exist
+                required_cols = ['Order Number', 'Status', 'Payment Update']
+                if all(col in df.columns for col in required_cols):
+                    return df
+                
+        return pd.DataFrame()
+        
+    except Exception as e:
+        st.error(f"Error loading orders data: {str(e)}")
+        return pd.DataFrame()
 
 # THEN the main execution
 # Run the main dashboard
