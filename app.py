@@ -1689,66 +1689,71 @@ def display_order_card(order):
         
 
 def load_orders_data(client):
-    """Load ALL orders data from your actual Google Sheet"""
+    """Load ALL orders data using your exact column structure"""
     try:
-        # Try to load from your main data sheet - replace "Sheet1" with your actual sheet name
-        sheet_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/Sheet1!A:Z?key={API_KEY}"
-        response = requests.get(sheet_url)
+        # Try different possible sheet names
+        sheet_names = ["Sheet1", "Orders", "Order Tracking", "CDC_Orders"]
         
-        if response.status_code == 200:
-            data = response.json()
-            values = data.get('values', [])
+        for sheet_name in sheet_names:
+            sheet_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
+            response = requests.get(sheet_url)
             
-            if values and len(values) > 1:
-                headers = values[0]
-                rows = values[1:]
+            if response.status_code == 200:
+                data = response.json()
+                values = data.get('values', [])
                 
-                # Create DataFrame with all your data
-                df = pd.DataFrame(rows, columns=headers)
-                
-                # Clean up the data and map to our expected columns
-                orders_list = []
-                
-                for _, row in df.iterrows():
-                    # Skip empty rows
-                    if pd.isna(row.get('Order Number', '')) or row.get('Order Number', '') == '':
-                        continue
+                if values and len(values) > 1:
+                    headers = values[0]
+                    rows = values[1:]
                     
-                    # Create order dictionary with proper column mapping
-                    order_data = {
-                        'Order Number': row.get('Order Number', ''),
-                        'ERP': row.get('ERP', ''),
-                        'Date of request': row.get('Date of request', ''),
-                        'Date of PI issue': row.get('Date of PI issue', ''),
-                        'Date of Client signing': row.get('Date of Client signing', ''),
-                        'Invoice': row.get('Invoice', ''),
-                        'Payment': row.get('Payment', ''),
-                        'Manufacturer': row.get('Manufacturer', ''),
-                        'ETD': row.get('ETD', ''),
-                        'Payment due date': row.get('Payment due date', ''),
-                        'Payment Update': row.get('Payment Update', ''),
-                        'Status': row.get('Status', 'Pending'),
-                        'Notes': row.get('Notes', '')
-                    }
-                    orders_list.append(order_data)
-                
-                if orders_list:
-                    st.success(f"✅ Loaded {len(orders_list)} orders from your Google Sheet")
-                    return pd.DataFrame(orders_list)
+                    # Create DataFrame
+                    df = pd.DataFrame(rows, columns=headers)
+                    
+                    # Check if this looks like your order data (has Order Number column)
+                    if 'Order Number' in df.columns and len(df) > 0:
+                        st.success(f"✅ Loaded {len(df)} orders from '{sheet_name}' sheet")
+                        
+                        # Add Status and Payment Update columns if they don't exist
+                        if 'Status' not in df.columns:
+                            df['Status'] = 'Pending'  # Default status
+                        if 'Payment Update' not in df.columns:
+                            df['Payment Update'] = 'Pending'  # Default payment status
+                        if 'Notes' not in df.columns:
+                            df['Notes'] = ''
+                            
+                        return df
         
-        # If we can't load from Google Sheets, show error
-        st.error("❌ Could not load orders from Google Sheets. Please check:")
+        # If no data found, show instructions
+        st.warning("🔧 No orders data found. To connect your actual data:")
         st.info("""
-        1. Make sure your Google Sheet is shared publicly
-        2. Check the sheet name matches
-        3. Verify the API key is correct
+        1. **Create a sheet** in your Google Sheet with your order data
+        2. **Include these columns**: Order Number, ERP, Date of request, Date of PI issue, 
+           Date of Client signing, Invoice, Payment, Manufacturer, ETD, Payment due date
+        3. **Add Status and Payment Update columns** for tracking
+        4. **Name the sheet**: 'Orders', 'Order Tracking', or 'Sheet1'
         """)
         
-        return pd.DataFrame()
+        # Fallback to sample data for demonstration
+        st.info("📋 Using sample data for now. Your actual orders will appear when connected.")
+        return get_sample_orders_data()
         
     except Exception as e:
         st.error(f"Error loading orders data: {str(e)}")
         return pd.DataFrame()
+
+def get_sample_orders_data():
+    """Fallback sample data - you can remove this when connected to real data"""
+    sample_orders = [
+        {
+            'Order Number': 'SA C.D 125/2025', 'ERP': 'Yes', 'Date of request': 'N/A',
+            'Date of PI issue': '08-Sep-25', 'Date of Client signing': 'N/A',
+            'Invoice': 0, 'Payment': 'Credit Note 45550', 'Manufacturer': 'BAJ',
+            'ETD': '28-Dec-25', 'Payment due date': '16-Sep-25', 
+            'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': 'Credit Note 45550'
+        },
+        # ... (include all your other sample orders here)
+    ]
+    return pd.DataFrame(sample_orders)
 
 # THEN the main execution
 # Run the main dashboard
