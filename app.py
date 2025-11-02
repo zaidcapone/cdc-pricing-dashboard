@@ -12,139 +12,175 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Professional Dark Theme CSS based on your Envato template
-# Dynamic Theme CSS
-if 'theme' not in st.session_state:
-    st.session_state.theme = 'dark'
-
-if st.session_state.theme == 'dark':
-    theme_css = """
-    <style>
-        /* Dark Theme Variables */
-        :root {
-            --bs-blue: #0d6efd;
-            --bs-dark-blue: #0a58ca;
-            --bs-indigo: #6610f2;
-            --bs-purple: #6f42c1;
-            --bs-pink: #d63384;
-            --bs-red: #dc3545;
-            --bs-orange: #fd7e14;
-            --bs-yellow: #ffc107;
-            --bs-green: #198754;
-            --bs-teal: #20c997;
-            --bs-cyan: #0dcaf0;
-            --bs-black: #000;
-            --bs-primary: #0d6efd;
-            --bs-secondary: #6c757d;
-            --bs-success: #02c27a;
-            --bs-info: #0dcaf0;
-            --bs-warning: #ffc107;
-            --bs-danger: #fc185a;
-            --bs-light: #f8f9fa;
-            --bs-dark: #212529;
-            --bs-heading-color: #dee2e6;
-            --bs-body-color: #dee2e6;
-            --bs-body-bg: #212529;
-            --bs-body-bg-2: #181c1f;
-            --bs-border-color: #495057;
-        }
-
-        /* Dark Theme Styles */
-        .stApp { background-color: var(--bs-body-bg); color: var(--bs-body-color); }
-        .main-header { background: linear-gradient(310deg, #7928ca, #ff0080) !important; color: white; }
-        .cdc-header { background: linear-gradient(310deg, #3494e6, #ec6ead) !important; color: white; }
-        .ceo-header { background: linear-gradient(310deg, #f7971e, #ffd200) !important; color: white; }
-        .intelligence-header { background: linear-gradient(310deg, #17ad37, #98ec2d) !important; color: white; }
-        .price-card, .special-price-card, .stat-card, .intelligence-stat-card { 
-            background: linear-gradient(135deg, #2b3035, #343a40) !important; 
-            border: 1px solid var(--bs-border-color) !important;
-            color: var(--bs-body-color) !important;
-        }
-        .price-box { background: linear-gradient(310deg, #ee0979, #ff6a00); color: white; }
-        .intelligence-price-box { background: linear-gradient(310deg, #17ad37, #98ec2d); color: white; }
-        .special-price-box { background: linear-gradient(310deg, #f7971e, #ffd200); color: white; }
-        .order-info { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.9); }
-        .export-section, .ceo-section, .intelligence-section { 
-            background: linear-gradient(135deg, #2b3035, #343a40); 
-            border: 1px solid var(--bs-border-color);
-        }
-        .login-container { background: linear-gradient(135deg, #2b3035, #343a40); border: 1px solid var(--bs-border-color); }
-        .stButton>button { background: linear-gradient(310deg, #7928ca, #ff0080) !important; color: white !important; }
-        .stSelectbox>div>div, .stTextInput>div>div>input { background: #2b3035 !important; border: 1px solid var(--bs-border-color) !important; color: var(--bs-body-color) !important; }
-        .stRadio>div { background: #2b3035; border: 1px solid var(--bs-border-color); }
-        .stTabs [data-baseweb="tab-list"] { background: #2b3035; border: 1px solid var(--bs-border-color); }
-        .css-1d391kg, .css-1lcbmhc { background: #181c1f !important; border-right: 1px solid var(--bs-border-color) !important; }
-        [data-testid="metric-container"] { background: linear-gradient(135deg, #2b3035, #343a40) !important; border: 1px solid var(--bs-border-color) !important; }
-        h1, h2, h3, h4, h5, h6 { color: var(--bs-heading-color) !important; }
-        p, div, span { color: var(--bs-body-color) !important; }
-    </style>
-    """
-else:
-    theme_css = """
-    <style>
-        /* Light Theme Variables */
-        :root {
-            --bs-blue: #0d6efd;
-            --bs-dark-blue: #0a58ca;
-            --bs-indigo: #6610f2;
-            --bs-purple: #6f42c1;
-            --bs-pink: #d63384;
-            --bs-red: #dc3545;
-            --bs-orange: #fd7e14;
-            --bs-yellow: #ffc107;
-            --bs-green: #198754;
-            --bs-teal: #20c997;
-            --bs-cyan: #0dcaf0;
-            --bs-black: #000;
-            --bs-primary: #0d6efd;
-            --bs-secondary: #6c757d;
-            --bs-success: #02c27a;
-            --bs-info: #0dcaf0;
-            --bs-warning: #ffc107;
-            --bs-danger: #fc185a;
-            --bs-light: #f8f9fa;
-            --bs-dark: #212529;
-            --bs-heading-color: #2c3e50;
-            --bs-body-color: #5b6166;
-            --bs-body-bg: #ffffff;
-            --bs-body-bg-2: #f8f9fa;
-            --bs-border-color: #dee2e6;
-        }
-
-        /* Light Theme Styles */
-        .stApp { background-color: var(--bs-body-bg); color: var(--bs-body-color); }
-        .main-header { background: linear-gradient(310deg, #7928ca, #ff0080) !important; color: white; }
-        .cdc-header { background: linear-gradient(310deg, #3494e6, #ec6ead) !important; color: white; }
-        .ceo-header { background: linear-gradient(310deg, #f7971e, #ffd200) !important; color: white; }
-        .intelligence-header { background: linear-gradient(310deg, #17ad37, #98ec2d) !important; color: white; }
-        .price-card, .special-price-card, .stat-card, .intelligence-stat-card { 
-            background: linear-gradient(135deg, #ffffff, #f8f9fa) !important; 
-            border: 1px solid var(--bs-border-color) !important;
-            color: var(--bs-body-color) !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-        }
-        .price-box { background: linear-gradient(310deg, #ee0979, #ff6a00); color: white; }
-        .intelligence-price-box { background: linear-gradient(310deg, #17ad37, #98ec2d); color: white; }
-        .special-price-box { background: linear-gradient(310deg, #f7971e, #ffd200); color: white; }
-        .order-info { background: rgba(0,0,0,0.05); color: #5b6166; }
-        .export-section, .ceo-section, .intelligence-section { 
-            background: linear-gradient(135deg, #ffffff, #f8f9fa); 
-            border: 1px solid var(--bs-border-color);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .login-container { background: linear-gradient(135deg, #ffffff, #f8f9fa); border: 1px solid var(--bs-border-color); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .stButton>button { background: linear-gradient(310deg, #7928ca, #ff0080) !important; color: white !important; }
-        .stSelectbox>div>div, .stTextInput>div>div>input { background: #ffffff !important; border: 1px solid var(--bs-border-color) !important; color: var(--bs-body-color) !important; }
-        .stRadio>div { background: #ffffff; border: 1px solid var(--bs-border-color); }
-        .stTabs [data-baseweb="tab-list"] { background: #f8f9fa; border: 1px solid var(--bs-border-color); }
-        .css-1d391kg, .css-1lcbmhc { background: #f8f9fa !important; border-right: 1px solid var(--bs-border-color) !important; }
-        [data-testid="metric-container"] { background: linear-gradient(135deg, #ffffff, #f8f9fa) !important; border: 1px solid var(--bs-border-color) !important; }
-        h1, h2, h3, h4, h5, h6 { color: var(--bs-heading-color) !important; }
-        p, div, span { color: var(--bs-body-color) !important; }
-    </style>
-    """
-
-st.markdown(theme_css, unsafe_allow_html=True)
+# Custom CSS for main dashboard - USING YOUR PREVIOUS THEME
+st.markdown("""
+<style>
+    .main-header {
+        background: linear-gradient(135deg, #991B1B, #7F1D1D);
+        color: white;
+        padding: 2rem;
+        border-radius: 10px;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .cdc-header {
+        background: linear-gradient(135deg, #991B1B, #7F1D1D);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+    .ceo-header {
+        background: linear-gradient(135deg, #D97706, #B45309);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+    .intelligence-header {
+        background: linear-gradient(135deg, #059669, #047857);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+    .price-card {
+        background: linear-gradient(135deg, #FEE2E2, #FECACA);
+        padding: 1.5rem;
+        border-radius: 8px;
+        border-left: 5px solid #991B1B;
+        margin: 0.5rem 0;
+        color: #1F2937;
+        font-weight: 500;
+    }
+    .special-price-card {
+        background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+        padding: 1.5rem;
+        border-radius: 8px;
+        border-left: 5px solid #D97706;
+        margin: 0.5rem 0;
+        color: #1F2937;
+        font-weight: 500;
+        border: 2px solid #D97706;
+    }
+    .stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 2px solid #991B1B;
+        text-align: center;
+        color: #1F2937;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .intelligence-stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 2px solid #059669;
+        text-align: center;
+        color: #1F2937;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .stat-number {
+        font-size: 2em;
+        font-weight: bold;
+        color: #991B1B;
+        margin: 0;
+    }
+    .intelligence-stat-number {
+        font-size: 2em;
+        font-weight: bold;
+        color: #059669;
+        margin: 0;
+    }
+    .stat-label {
+        font-size: 0.9em;
+        color: #6B7280;
+        margin: 0;
+    }
+    .price-box {
+        background: #991B1B;
+        color: white;
+        padding: 1rem;
+        border-radius: 8px;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        margin: 0.5rem 0;
+    }
+    .intelligence-price-box {
+        background: #059669;
+        color: white;
+        padding: 1rem;
+        border-radius: 8px;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        margin: 0.5rem 0;
+    }
+    .special-price-box {
+        background: #D97706;
+        color: white;
+        padding: 1rem;
+        border-radius: 8px;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        margin: 0.5rem 0;
+        border: 2px solid #B45309;
+    }
+    .order-info {
+        background: #F3F4F6;
+        padding: 0.5rem;
+        border-radius: 5px;
+        margin: 0.25rem 0;
+        font-size: 0.8em;
+        color: #6B7280;
+    }
+    .export-section {
+        background: #F0F9FF;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 2px solid #0EA5E9;
+        margin: 1rem 0;
+    }
+    .ceo-section {
+        background: #FFFBEB;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 2px solid #D97706;
+        margin: 1rem 0;
+    }
+    .intelligence-section {
+        background: #ECFDF5;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 2px solid #059669;
+        margin: 1rem 0;
+    }
+    .login-container {
+        max-width: 400px;
+        margin: 100px auto;
+        padding: 2rem;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        border: 2px solid #991B1B;
+    }
+    /* NEW: Orders Management Styles */
+    .orders-header {
+        background: linear-gradient(135deg, #7C3AED, #6D28D9);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+    .product-catalog-header {
+        background: linear-gradient(135deg, #0EA5E9, #0284C7);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # Configuration
 API_KEY = "AIzaSyA3P-ZpLjDdVtGB82_1kaWuO7lNbKDj9HU"
@@ -204,14 +240,14 @@ def login_page():
     """Login page"""
     st.markdown("""
     <div class="login-container">
-        <h2 style="text-align: center; margin-bottom: 1rem;">🚀 Multi-Client Dashboard</h2>
-        <p style="text-align: center; color: var(--bs-secondary); margin-bottom: 2rem;">Professional Business Intelligence Platform</p>
+        <h2 style="text-align: center; color: #991B1B;">🔐 Multi-Client Dashboard</h2>
+        <p style="text-align: center; color: #6B7280;">Please login to continue</p>
     """, unsafe_allow_html=True)
     
     with st.form("login_form"):
         username = st.text_input("👤 Username")
         password = st.text_input("🔒 Password", type="password")
-        submit = st.form_submit_button("🎯 Login", use_container_width=True)
+        submit = st.form_submit_button("🚀 Login", use_container_width=True)
         
         if submit:
             if username in USERS and USERS[username]["password"] == password:
@@ -240,20 +276,15 @@ def main_dashboard():
     st.sidebar.markdown(f"**👤 Welcome, {st.session_state.username}**")
     st.sidebar.markdown(f"**🏢 Access to:** {', '.join(st.session_state.user_clients)}")
     
-    # Theme selector
-    if 'theme' not in st.session_state:
-        st.session_state.theme = 'dark'
-    
-    theme = st.sidebar.radio("🎨 Theme", ["Dark", "Light"], index=0 if st.session_state.theme == 'dark' else 1, key="theme_selector")
-    st.session_state.theme = theme.lower()
+    # Theme selector removed - using fixed theme
     
     logout_button()
     
     # Header
     st.markdown("""
     <div class="main-header">
-        <h1 style="margin:0; font-size: 2.5em;">🏢 Multi-Client Business Dashboard</h1>
-        <p style="margin:0; opacity:0.9; font-size: 1.2em;">Professional Analytics • Real-time Intelligence • Strategic Insights</p>
+        <h1>🏢 Multi-Client Business Dashboard</h1>
+        <p>Centralized Management • Real-time Data • Professional Analytics</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -416,15 +447,15 @@ def ceo_specials_tab():
             <div class="special-price-card">
                 <div style="display: flex; justify-content: between; align-items: center;">
                     <div>
-                        <h3 style="margin:0; color: #ffc107;">{special['Article_Number']} - {special['Product_Name']}</h3>
-                        <p style="margin:0; font-size: 1.2em; font-weight: bold; color: #ffd200;">
+                        <h3 style="margin:0; color: #D97706;">{special['Article_Number']} - {special['Product_Name']}</h3>
+                        <p style="margin:0; font-size: 1.2em; font-weight: bold; color: #B45309;">
                             Special Price: {price_display} {special['Currency']}/kg
                         </p>
-                        <p style="margin:0; color: #adb5bd;">
+                        <p style="margin:0; color: #6B7280;">
                             {status_color} {status_text} • Valid until: {special['Expiry_Date']}
                             {f" • Incoterm: {special['Incoterm']}" if pd.notna(special['Incoterm']) and special['Incoterm'] != '' else ''}
                         </p>
-                        {f"<p style='margin:5px 0 0 0; color: #adb5bd;'><strong>Notes:</strong> {special['Notes']}</p>" if pd.notna(special['Notes']) and special['Notes'] != '' else ''}
+                        {f"<p style='margin:5px 0 0 0; color: #6B7280;'><strong>Notes:</strong> {special['Notes']}</p>" if pd.notna(special['Notes']) and special['Notes'] != '' else ''}
                     </div>
                 </div>
             </div>
@@ -796,7 +827,7 @@ def product_catalog_tab():
     """Full Product Catalog with comprehensive product information"""
     
     st.markdown("""
-    <div class="intelligence-header">
+    <div class="product-catalog-header">
         <h2 style="margin:0;">📦 Full Product Catalog</h2>
         <p style="margin:0; opacity:0.9;">Complete Product Database • Technical Specifications • Search & Filter</p>
     </div>
@@ -934,13 +965,13 @@ def display_product_card_flexible(product, available_columns):
     # Determine card color based on supplier if available
     if 'Supplier' in available_columns and product['Supplier'] == 'Backaldrin':
         card_class = "price-card"
-        border_color = "#fc185a"
+        border_color = "#991B1B"
     elif 'Supplier' in available_columns and product['Supplier'] == 'Bateel':
         card_class = "special-price-card"
-        border_color = "#ffc107"
+        border_color = "#D97706"
     else:
         card_class = "intelligence-stat-card"
-        border_color = "#02c27a"
+        border_color = "#059669"
     
     with st.expander(f"📦 {product['Article_Number']} - {product['Product_Name']}", expanded=False):
         # Build the card content dynamically based on available columns
@@ -952,7 +983,7 @@ def display_product_card_flexible(product, available_columns):
         
         # Add Supplier if available
         if 'Supplier' in available_columns:
-            card_content += f"""<p style="margin:0; font-weight: bold; color: #adb5bd;">Supplier: {product['Supplier']}</p>"""
+            card_content += f"""<p style="margin:0; font-weight: bold; color: #6B7280;">Supplier: {product['Supplier']}</p>"""
         
         card_content += """<div style="margin-top: 1rem;"><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">"""
         
@@ -981,7 +1012,7 @@ def display_product_card_flexible(product, available_columns):
             card_content += f"""
             <div style="margin-top: 1rem;">
                 <p style="margin:0;"><strong>Description:</strong></p>
-                <p style="margin:0; color: #adb5bd;">{product['Common_Description']}</p>
+                <p style="margin:0; color: #6B7280;">{product['Common_Description']}</p>
             </div>
             """
         
@@ -989,7 +1020,7 @@ def display_product_card_flexible(product, available_columns):
             card_content += f"""
             <div style="margin-top: 1rem;">
                 <p style="margin:0;"><strong>Purpose of Use:</strong></p>
-                <p style="margin:0; color: #adb5bd;">{product['Purpose_Of_Use']}</p>
+                <p style="margin:0; color: #6B7280;">{product['Purpose_Of_Use']}</p>
             </div>
             """
         
@@ -997,7 +1028,7 @@ def display_product_card_flexible(product, available_columns):
             card_content += f"""
             <div style="margin-top: 1rem;">
                 <p style="margin:0;"><strong>Dosage:</strong></p>
-                <p style="margin:0; color: #adb5bd;">{product['Dosage']}</p>
+                <p style="margin:0; color: #6B7280;">{product['Dosage']}</p>
             </div>
             """
         
@@ -1005,14 +1036,14 @@ def display_product_card_flexible(product, available_columns):
             card_content += f"""
             <div style="margin-top: 1rem;">
                 <p style="margin:0;"><strong>Ingredients:</strong></p>
-                <p style="margin:0; color: #adb5bd;">{product['Ingredients']}</p>
+                <p style="margin:0; color: #6B7280;">{product['Ingredients']}</p>
             </div>
             """
         
         if 'Datasheet_Link' in available_columns and product['Datasheet_Link']:
             card_content += f"""
             <div style="margin-top: 1rem;">
-                <p style="margin:0;"><strong>Datasheet:</strong> <a href="{product['Datasheet_Link']}" target="_blank" style="color: #0dcaf0;">View Datasheet</a></p>
+                <p style="margin:0;"><strong>Datasheet:</strong> <a href="{product['Datasheet_Link']}" target="_blank" style="color: #0EA5E9;">View Datasheet</a></p>
             </div>
             """
         
@@ -1506,7 +1537,7 @@ def convert_df_to_excel(df):
 def orders_management_tab():
     """Orders Management Dashboard"""
     st.markdown("""
-    <div class="intelligence-header">
+    <div class="orders-header">
         <h2 style="margin:0;">📋 Orders Management Dashboard</h2>
         <p style="margin:0; opacity:0.9;">Order Tracking • Status Monitoring • Payment Updates</p>
     </div>
@@ -1686,7 +1717,6 @@ def display_order_card(order):
             st.write("---")
             st.write("**📝 Notes**")
             st.info(notes)
-        
 
 def load_orders_data(client):
     """Load ALL orders data - SIMPLE VERSION"""
@@ -1794,7 +1824,6 @@ def load_orders_data(client):
         st.error(f"Error loading orders data: {str(e)}")
         return pd.DataFrame()
 
-# THEN the main execution
 # Run the main dashboard
 if __name__ == "__main__":
     if not check_login():
