@@ -1706,9 +1706,32 @@ def display_order_card(order):
         st.markdown(card_content, unsafe_allow_html=True)
 
 def load_orders_data(client):
-    """Load orders data - USING SAMPLE DATA FOR TESTING"""
+    """Load orders data from Google Sheets - USING YOUR ACTUAL DATA STRUCTURE"""
     try:
-        # Sample data matching your spreadsheet structure
+        # Try to load from a sheet that contains your orders data
+        # You'll need to replace "Orders" with your actual sheet name that has the order data
+        orders_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/Orders!A:Z?key={API_KEY}"
+        response = requests.get(orders_url)
+        
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if values and len(values) > 1:
+                headers = values[0]
+                rows = values[1:]
+                
+                # Create DataFrame
+                df = pd.DataFrame(rows, columns=headers)
+                
+                # If we successfully got data from an "Orders" sheet
+                if len(df) > 0:
+                    return df
+        
+        # If no dedicated Orders sheet exists, use sample data for demonstration
+        st.info("📋 Using sample orders data for demonstration. Connect to your actual Google Sheet when ready.")
+        
+        # Sample data matching your exact spreadsheet structure from our analysis
         sample_orders = [
             {
                 'Order Number': 'SA C.D 125/2025',
@@ -1716,7 +1739,7 @@ def load_orders_data(client):
                 'Date of request': 'N/A',
                 'Date of PI issue': '08-Sep-25',
                 'Date of Client signing': 'N/A',
-                'Invoice': 'Credit Note 45550',
+                'Invoice': 0,
                 'Payment': 'Credit Note 45550',
                 'Manufacturer': 'BAJ',
                 'ETD': '28-Dec-25',
@@ -1731,7 +1754,7 @@ def load_orders_data(client):
                 'Date of request': '08-Oct-25', 
                 'Date of PI issue': '09-Oct-25',
                 'Date of Client signing': '12-Oct-25',
-                'Invoice': '$80,500.00',
+                'Invoice': 80500.00,
                 'Payment': '$80,500.00',
                 'Manufacturer': 'BAJ',
                 'ETD': '30-Oct-25',
@@ -1746,7 +1769,7 @@ def load_orders_data(client):
                 'Date of request': '08-Oct-25',
                 'Date of PI issue': '09-Oct-25', 
                 'Date of Client signing': '09-Oct-25',
-                'Invoice': '$49,092.59',
+                'Invoice': 49092.59,
                 'Payment': '$49,092.59',
                 'Manufacturer': 'BAJ',
                 'ETD': '17-Nov-25',
@@ -1761,7 +1784,7 @@ def load_orders_data(client):
                 'Date of request': '08-Oct-25',
                 'Date of PI issue': '09-Oct-25',
                 'Date of Client signing': '09-Oct-25',
-                'Invoice': '$58,770.00', 
+                'Invoice': 58770.00, 
                 'Payment': '$58,770.00',
                 'Manufacturer': 'BAJ',
                 'ETD': '13-Nov-25',
@@ -1776,7 +1799,7 @@ def load_orders_data(client):
                 'Date of request': '08-Sep-25',
                 'Date of PI issue': '14-Sep-25',
                 'Date of Client signing': '15-Sep-25',
-                'Invoice': '$48,966.10',
+                'Invoice': 48966.10,
                 'Payment': '$48,966.10',
                 'Manufacturer': 'BAJ',
                 'ETD': '20-Oct-25',
@@ -1791,7 +1814,7 @@ def load_orders_data(client):
                 'Date of request': '08-Oct-25',
                 'Date of PI issue': '09-Oct-25',
                 'Date of Client signing': '12-Oct-25',
-                'Invoice': '$69,494.00',
+                'Invoice': 69494.00,
                 'Payment': '$69,494.00', 
                 'Manufacturer': 'BAJ',
                 'ETD': '19-Nov-25',
@@ -1799,6 +1822,36 @@ def load_orders_data(client):
                 'Payment Update': 'Pending',
                 'Status': 'Pending',
                 'Notes': 'add chocolate'
+            },
+            {
+                'Order Number': 'SA C.D 138/2025',
+                'ERP': 'Yes',
+                'Date of request': '08-Oct-25',
+                'Date of PI issue': '09-Oct-25',
+                'Date of Client signing': '09-Oct-25',
+                'Invoice': 42900.00,
+                'Payment': '$42,900.00',
+                'Manufacturer': 'BAJ',
+                'ETD': '8-Nov-25',
+                'Payment due date': '21-Oct-25',
+                'Payment Update': 'Pending',
+                'Status': 'In Production',
+                'Notes': ''
+            },
+            {
+                'Order Number': 'SA C.D 136/2025',
+                'ERP': 'Yes',
+                'Date of request': '08-Oct-25',
+                'Date of PI issue': '09-Oct-25',
+                'Date of Client signing': '09-Oct-25',
+                'Invoice': 27140.00,
+                'Payment': '$27,140.00',
+                'Manufacturer': 'BAJ',
+                'ETD': '3-Nov-25',
+                'Payment due date': '16-Oct-25',
+                'Payment Update': 'Pending',
+                'Status': 'In Production',
+                'Notes': ''
             }
         ]
         
