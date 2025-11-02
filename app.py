@@ -1688,6 +1688,7 @@ def display_order_card(order):
                     <div>
                         <p style="margin:0;"><strong>Payment Due:</strong> {order.get('Payment due date', 'N/A')}</p>
                         <p style="margin:0;"><strong>Invoice:</strong> {order.get('Invoice', 'N/A')}</p>
+<p style="margin:0;"><strong>Payment:</strong> {order.get('Payment', 'N/A')}</p>
                     </div>
                 </div>
         """
