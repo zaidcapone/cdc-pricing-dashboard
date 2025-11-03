@@ -284,7 +284,7 @@ def main_dashboard():
     st.markdown("""
     <div class="main-header">
         <h1>🏢 Backaldrin Arab Jordan Dashboard</h1>
-        <p>Centralized Management • Real-time Data • Professional Analytics</p>
+       # <p>Centralized Management • Real-time Data • Professional Analytics</p>
     </div>
     """, unsafe_allow_html=True)
     
