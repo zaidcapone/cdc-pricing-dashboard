@@ -1334,6 +1334,7 @@ def cdc_dashboard(client):
     # Manual search
 if st.button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary", key=f"{client}_search"):
     handle_search(article, product, hs_code, supplier, DATA, client)
+    
 
     # Display results from session state
     if st.session_state.search_results and st.session_state.search_results.get("client") == client:
