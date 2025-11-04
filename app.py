@@ -1332,8 +1332,8 @@ def cdc_dashboard(client):
                         st.rerun()
     
     # Manual search
-    if st.button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary", key=f"{client}_search"):
-        handle_search(article, product, supplier, DATA, client)
+if st.button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary", key=f"{client}_search"):
+    handle_search(article, product, hs_code, supplier, DATA, client)
 
     # Display results from session state
     if st.session_state.search_results and st.session_state.search_results.get("client") == client:
@@ -1344,18 +1344,32 @@ def get_suggestions(search_term, supplier, data):
     supplier_data = data[supplier]
     
     for article_num, article_data in supplier_data.items():
+        # Article number search
         if search_term.lower() in article_num.lower():
             suggestions.append({
                 "type": "article",
                 "value": article_num,
                 "display": f"🔢 {article_num} - {article_data['names'][0] if article_data['names'] else 'No Name'}"
             })
+        
+        # Product name search
         for name in article_data['names']:
             if search_term.lower() in name.lower():
                 suggestions.append({
                     "type": "product", 
                     "value": article_num,
                     "display": f"📝 {article_num} - {name}"
+                })
+        
+        # NEW: HS Code search
+        for order in article_data['orders']:
+            if (order.get('hs_code') and 
+                search_term.lower() in str(order['hs_code']).lower() and
+                article_num not in [s['value'] for s in suggestions]):
+                suggestions.append({
+                    "type": "hs_code",
+                    "value": article_num,
+                    "display": f"🏷️ {article_num} - HS: {order['hs_code']} - {article_data['names'][0] if article_data['names'] else 'No Name'}"
                 })
     
     # Remove duplicates
@@ -1366,18 +1380,22 @@ def get_suggestions(search_term, supplier, data):
     
     return list(unique_suggestions.values())
 
-def handle_search(article, product, supplier, data, client):
-    search_term = article or product
+def handle_search(article, product, hs_code, supplier, data, client):
+    search_term = article or product or hs_code
     if not search_term:
-        st.error("❌ Please enter an article number or product name")
+        st.error("❌ Please enter an article number, product name, or HS code")
         return
     
     found = False
     for article_num, article_data in data[supplier].items():
         article_match = article and article == article_num
         product_match = product and any(product.lower() in name.lower() for name in article_data['names'])
+        hs_code_match = hs_code and any(
+            hs_code.lower() in str(order.get('hs_code', '')).lower() 
+            for order in article_data['orders']
+        )
         
-        if article_match or product_match:
+        if article_match or product_match or hs_code_match:
             st.session_state.search_results = {
                 "article": article_num,
                 "supplier": supplier,
