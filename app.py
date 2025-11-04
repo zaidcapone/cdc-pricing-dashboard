@@ -179,6 +179,14 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 1rem;
     }
+    .detail-card {
+        background: linear-gradient(135deg, #F8FAFC, #F1F5F9);
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #0EA5E9;
+        margin: 0.5rem 0;
+        color: #1F2937;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -283,7 +291,8 @@ def main_dashboard():
     # Header
     st.markdown("""
     <div class="main-header">
-        <h1>🏢 Backaldrin Arab Jordan Dashboard</h1>
+        <h1>🏢 Multi-Client Business Dashboard</h1>
+        <p>Centralized Management • Real-time Data • Professional Analytics</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -1132,7 +1141,7 @@ def load_ceo_special_prices(client="CDC"):
         return pd.DataFrame()
 
 def get_google_sheets_data(client="CDC"):
-    """Load data from Google Sheets using API key - CLEAN VERSION"""
+    """Load data from Google Sheets using API key - UPDATED WITH NEW COLUMNS"""
     try:
         # Get client-specific sheet names
         client_sheets = CLIENT_SHEETS[client]
@@ -1148,22 +1157,31 @@ def get_google_sheets_data(client="CDC"):
         data = {"Backaldrin": {}, "Bateel": {}}
         
         def process_sheet_data(values, supplier_name, sheet_name):
-            """Process sheet data using header names instead of positions"""
+            """Process sheet data with NEW COLUMNS"""
             if not values or len(values) < 2:
                 return
                 
             headers = [str(h).strip().lower() for h in values[0]]
             rows = values[1:]
             
-            # Find column indices by header name
+            # Find column indices by header name - UPDATED WITH NEW COLUMNS
             try:
                 order_no_idx = headers.index("order_number")
                 order_date_idx = headers.index("order_date") 
+                year_idx = headers.index("year") if "year" in headers else -1
                 article_idx = headers.index("article_number")
                 product_idx = headers.index("product_name")
+                hs_code_idx = headers.index("hs_code") if "hs_code" in headers else -1
+                packaging_idx = headers.index("packaging") if "packaging" in headers else -1
+                quantity_idx = headers.index("quantity") if "quantity" in headers else -1
+                total_weight_idx = headers.index("total_weight") if "total_weight" in headers else -1
                 price_idx = headers.index("price_per_kg")
-            except ValueError:
-                return
+                total_price_idx = headers.index("total_price") if "total_price" in headers else -1
+            except ValueError as e:
+                st.warning(f"Missing some columns in {sheet_name}: {e}")
+                # Use basic columns if some are missing
+                if "order_number" not in headers or "article_number" not in headers or "price_per_kg" not in headers:
+                    return
             
             for row in rows:
                 if len(row) > max(order_no_idx, order_date_idx, article_idx, product_idx, price_idx):
@@ -1172,6 +1190,14 @@ def get_google_sheets_data(client="CDC"):
                     price_str = row[price_idx] if price_idx < len(row) and row[price_idx] else ""
                     order_no = row[order_no_idx] if order_no_idx < len(row) and row[order_no_idx] else ""
                     order_date = row[order_date_idx] if order_date_idx < len(row) and row[order_date_idx] else ""
+                    
+                    # NEW: Extract additional fields
+                    year = row[year_idx] if year_idx != -1 and year_idx < len(row) and row[year_idx] else ""
+                    hs_code = row[hs_code_idx] if hs_code_idx != -1 and hs_code_idx < len(row) and row[hs_code_idx] else ""
+                    packaging = row[packaging_idx] if packaging_idx != -1 and packaging_idx < len(row) and row[packaging_idx] else ""
+                    quantity = row[quantity_idx] if quantity_idx != -1 and quantity_idx < len(row) and row[quantity_idx] else ""
+                    total_weight = row[total_weight_idx] if total_weight_idx != -1 and total_weight_idx < len(row) and row[total_weight_idx] else ""
+                    total_price = row[total_price_idx] if total_price_idx != -1 and total_price_idx < len(row) and row[total_price_idx] else ""
                     
                     if article and price_str and article != "":
                         # CLEAN THE PRICE - remove currency and other text
@@ -1194,9 +1220,17 @@ def get_google_sheets_data(client="CDC"):
                         
                         data[supplier_name][article]["prices"].append(price_float)
                         data[supplier_name][article]["orders"].append({
-                            "price": price_float,
                             "order_no": order_no,
-                            "date": order_date
+                            "date": order_date,
+                            "year": year,
+                            "product_name": product_name,
+                            "article": article,
+                            "hs_code": hs_code,
+                            "packaging": packaging,
+                            "quantity": quantity,
+                            "total_weight": total_weight,
+                            "price": price_float,
+                            "total_price": total_price
                         })
                         
                         if product_name and product_name.strip() != "":
@@ -1221,48 +1255,25 @@ def get_google_sheets_data(client="CDC"):
         st.error(f"Error loading data for {client}: {str(e)}")
         return {"Backaldrin": {}, "Bateel": {}}
 
-def get_sample_data():
-    """Fallback sample data"""
-    return {
-        "Backaldrin": {
-            "1-366": {
-                "prices": [2.40, 2.45, 2.38, 2.42],
-                "names": ["Moist Muffin Vanilla Mix", "موسيت مفن فانيلا ميكس"],
-                "orders": [
-                    {"price": 2.40, "order_no": "ORD-001", "date": "2024-01-15"},
-                    {"price": 2.45, "order_no": "ORD-002", "date": "2024-02-20"},
-                    {"price": 2.38, "order_no": "ORD-003", "date": "2024-03-10"},
-                    {"price": 2.42, "order_no": "ORD-004", "date": "2024-04-05"}
-                ]
-            }
-        },
-        "Bateel": {
-            "1001": {
-                "prices": [3.20, 3.25, 3.18, 3.22],
-                "names": ["Premium Date Mix", "خليط التمر الفاخر"],
-                "orders": [
-                    {"price": 3.20, "order_no": "ORD-101", "date": "2024-01-18"},
-                    {"price": 3.25, "order_no": "ORD-102", "date": "2024-02-22"},
-                    {"price": 3.18, "order_no": "ORD-103", "date": "2024-03-12"},
-                    {"price": 3.22, "order_no": "ORD-104", "date": "2024-04-08"}
-                ]
-            }
-        }
-    }
-
 def create_export_data(article_data, article, supplier, client):
-    """Create export data in different formats"""
+    """Create export data in different formats - UPDATED WITH NEW COLUMNS"""
     # Create DataFrame for export
     export_data = []
     for order in article_data['orders']:
         export_data.append({
             'Client': client,
-            'Article_Number': article,
-            'Supplier': supplier,
-            'Product_Name': article_data['names'][0] if article_data['names'] else 'N/A',
-            'Price_per_kg': order['price'],
             'Order_Number': order['order_no'],
-            'Order_Date': order['date'],
+            'Date': order['date'],
+            'Year': order['year'],
+            'Product_Name': order['product_name'],
+            'Article_Number': article,
+            'HS_Code': order['hs_code'],
+            'Packaging': order['packaging'],
+            'Quantity': order['quantity'],
+            'Total_Weight': order['total_weight'],
+            'Price_per_kg': order['price'],
+            'Total_Price': order['total_price'],
+            'Supplier': supplier,
             'Export_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
     
@@ -1382,6 +1393,7 @@ def handle_search(article, product, supplier, data, client):
         st.error(f"❌ No results found for '{search_term}' in {supplier}")
 
 def display_from_session_state(data, client):
+    """Display search results with NEW DETAILED INFORMATION"""
     results = st.session_state.search_results
     article = results["article"]
     supplier = results["supplier"]
@@ -1438,20 +1450,46 @@ def display_from_session_state(data, client):
         </div>
         """, unsafe_allow_html=True)
     
-    # Price history with order numbers
-    st.subheader("💵 Historical Prices with Order Details")
-    cols = st.columns(2)
+    # NEW: Detailed order information with all columns
+    st.subheader("📋 Detailed Order History")
+    
     for i, order in enumerate(article_data['orders']):
-        with cols[i % 2]:
-            st.markdown(f"""
-            <div class="price-box">
-                <div style="font-size: 1.3em; font-weight: bold;">${order['price']:.2f}/kg</div>
-                <div class="order-info">
-                    <strong>Order:</strong> {order['order_no']}<br>
-                    <strong>Date:</strong> {order['date']}
+        with st.expander(f"📦 Order {order['order_no']} - {order['date']}", expanded=i == 0):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown(f"""
+                <div class="detail-card">
+                    <h4>📄 Order Details</h4>
+                    <p><strong>Order Number:</strong> {order['order_no']}</p>
+                    <p><strong>Date:</strong> {order['date']}</p>
+                    <p><strong>Year:</strong> {order['year'] if order['year'] else 'N/A'}</p>
+                    <p><strong>Product Name:</strong> {order['product_name']}</p>
+                    <p><strong>Article:</strong> {order['article']}</p>
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
+                
+            with col2:
+                st.markdown(f"""
+                <div class="detail-card">
+                    <h4>🏷️ Product Information</h4>
+                    <p><strong>HS Code:</strong> {order['hs_code'] if order['hs_code'] else 'N/A'}</p>
+                    <p><strong>Packaging:</strong> {order['packaging'] if order['packaging'] else 'N/A'}</p>
+                    <p><strong>Quantity:</strong> {order['quantity'] if order['quantity'] else 'N/A'}</p>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            col3, col4 = st.columns(2)
+            
+            with col3:
+                st.markdown(f"""
+                <div class="detail-card">
+                    <h4>⚖️ Weight & Pricing</h4>
+                    <p><strong>Total Weight:</strong> {order['total_weight'] if order['total_weight'] else 'N/A'}</p>
+                    <p><strong>Price per kg:</strong> ${order['price']:.2f}</p>
+                    <p><strong>Total Price:</strong> {order['total_price'] if order['total_price'] else 'N/A'}</p>
+                </div>
+                """, unsafe_allow_html=True)
     
     # EXPORT SECTION
     st.markdown('<div class="export-section">', unsafe_allow_html=True)
