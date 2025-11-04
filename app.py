@@ -270,11 +270,40 @@ def logout_button():
         st.rerun()
 
 def main_dashboard():
-    """Main dashboard with tabs"""
+    """Main dashboard with tabs and sidebar announcements"""
     
     # Display user info in sidebar
     st.sidebar.markdown(f"**👤 Welcome, {st.session_state.username}**")
     st.sidebar.markdown(f"**🏢 Access to:** {', '.join(st.session_state.user_clients)}")
+    
+    # NEW: General Announcements Section
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 📢 General Announcements")
+    
+    # Announcements that will be visible to all users
+    announcements = [
+        "🚨 **NEW PRICE UPDATE**: Effective immediately - Backaldrin prices adjusted for Q1 2024",
+        "📦 **SHIPPING NOTICE**: New ETD schedules available for all clients",
+        "⭐ **SPECIAL OFFER**: CEO Special Prices updated for CakeArt & SweetHouse",
+        "🔔 **REMINDER**: Please refresh data after making Google Sheets changes",
+        "📊 **NEW FEATURE**: HS Code search now available across all clients"
+    ]
+    
+    # Display announcements with nice styling
+    for announcement in announcements:
+        st.sidebar.markdown(f"""
+        <div style="
+            background: linear-gradient(135deg, #F0F9FF, #E0F2FE);
+            padding: 0.8rem;
+            border-radius: 8px;
+            border-left: 4px solid #0EA5E9;
+            margin: 0.5rem 0;
+            font-size: 0.9em;
+            color: #1E293B;
+        ">
+            {announcement}
+        </div>
+        """, unsafe_allow_html=True)
     
     # Theme selector removed - using fixed theme
     
