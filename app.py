@@ -291,8 +291,7 @@ def main_dashboard():
     # Header
     st.markdown("""
     <div class="main-header">
-        <h1>🏢 Multi-Client Business Dashboard</h1>
-        <p>Centralized Management • Real-time Data • Professional Analytics</p>
+        <h1>🏢 Backaldrin Arab Jordan Dashboard</h1>
     </div>
     """, unsafe_allow_html=True)
     
