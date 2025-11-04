@@ -1393,7 +1393,7 @@ def handle_search(article, product, supplier, data, client):
         st.error(f"❌ No results found for '{search_term}' in {supplier}")
 
 def display_from_session_state(data, client):
-    """Display search results with NEW DETAILED INFORMATION in existing price cards"""
+    """Display search results with NEW CARD DESIGN"""
     results = st.session_state.search_results
     article = results["article"]
     supplier = results["supplier"]
@@ -1450,26 +1450,32 @@ def display_from_session_state(data, client):
         </div>
         """, unsafe_allow_html=True)
     
-    # UPDATED: Enhanced price history with ALL NEW DETAILS in the existing section
+    # UPDATED: NEW CARD DESIGN
     st.subheader("💵 Historical Prices with Order Details")
     cols = st.columns(2)
     for i, order in enumerate(article_data['orders']):
         with cols[i % 2]:
-            # Create enhanced order details with all new information
+            # NEW CARD DESIGN: Order Number as header, then date, then price, then details
             order_details = f"""
             <div class="price-box">
-                <div style="font-size: 1.3em; font-weight: bold;">${order['price']:.2f}/kg</div>
+                <div style="font-size: 1.4em; font-weight: bold; border-bottom: 2px solid white; padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                    📦 {order['order_no']}
+                </div>
+                <div style="font-size: 1.1em; margin-bottom: 0.5rem;">
+                    <strong>📅 Date:</strong> {order['date']}
+                </div>
+                <div style="font-size: 1.3em; font-weight: bold; color: #FEF3C7; margin-bottom: 0.8rem;">
+                    ${order['price']:.2f}/kg
+                </div>
                 <div class="order-info">
-                    <strong>Order:</strong> {order['order_no']}<br>
-                    <strong>Date:</strong> {order['date']}<br>
-                    {f"<strong>Year:</strong> {order['year']}<br>" if order['year'] else ""}
-                    <strong>Product:</strong> {order['product_name']}<br>
-                    <strong>Article:</strong> {order['article']}<br>
-                    {f"<strong>HS Code:</strong> {order['hs_code']}<br>" if order['hs_code'] else ""}
-                    {f"<strong>Packaging:</strong> {order['packaging']}<br>" if order['packaging'] else ""}
-                    {f"<strong>Quantity:</strong> {order['quantity']}<br>" if order['quantity'] else ""}
-                    {f"<strong>Total Weight:</strong> {order['total_weight']}<br>" if order['total_weight'] else ""}
-                    {f"<strong>Total Price:</strong> {order['total_price']}<br>" if order['total_price'] else ""}
+                    <strong>📦 Product:</strong> {order['product_name']}<br>
+                    <strong>🔢 Article:</strong> {order['article']}<br>
+                    {f"<strong>🏷️ Year:</strong> {order['year']}<br>" if order['year'] else ""}
+                    {f"<strong>📊 HS Code:</strong> {order['hs_code']}<br>" if order['hs_code'] else ""}
+                    {f"<strong>📦 Packaging:</strong> {order['packaging']}<br>" if order['packaging'] else ""}
+                    {f"<strong>🔢 Quantity:</strong> {order['quantity']}<br>" if order['quantity'] else ""}
+                    {f"<strong>⚖️ Total Weight:</strong> {order['total_weight']}<br>" if order['total_weight'] else ""}
+                    {f"<strong>💰 Total Price:</strong> {order['total_price']}<br>" if order['total_price'] else ""}
                 </div>
             </div>
             """
