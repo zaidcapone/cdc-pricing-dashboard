@@ -179,14 +179,6 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 1rem;
     }
-    .detail-card {
-        background: linear-gradient(135deg, #F8FAFC, #F1F5F9);
-        padding: 1rem;
-        border-radius: 8px;
-        border-left: 4px solid #0EA5E9;
-        margin: 0.5rem 0;
-        color: #1F2937;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -291,7 +283,8 @@ def main_dashboard():
     # Header
     st.markdown("""
     <div class="main-header">
-        <h1>🏢 Backaldrin Arab Jordan Dashboard</h1>
+        <h1>🏢 Multi-Client Business Dashboard</h1>
+        <p>Centralized Management • Real-time Data • Professional Analytics</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -1279,7 +1272,7 @@ def create_export_data(article_data, article, supplier, client):
     return pd.DataFrame(export_data)
 
 def cdc_dashboard(client):
-    """Client pricing dashboard with export features - NOW CLIENT SPECIFIC"""
+    """Client pricing dashboard with THREE SEARCH OPTIONS"""
     
     # Initialize session state
     if 'search_results' not in st.session_state:
@@ -1306,17 +1299,19 @@ def cdc_dashboard(client):
     st.subheader("🏢 Select Supplier")
     supplier = st.radio("", ["Backaldrin", "Bateel"], horizontal=True, label_visibility="collapsed", key=f"{client}_supplier")
 
-    # Search section - CLEAN VERSION (no white box)
+    # Search section - THREE SEARCH OPTIONS
     st.subheader("🔍 Search Historical Prices")
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         article = st.text_input("**ARTICLE NUMBER**", placeholder="e.g., 1-366, 1-367...", key=f"{client}_article")
     with col2:
         product = st.text_input("**PRODUCT NAME**", placeholder="e.g., Moist Muffin, Date Mix...", key=f"{client}_product")
-    
+    with col3:
+        hs_code = st.text_input("**HS CODE**", placeholder="e.g., 1901200000, 180690...", key=f"{client}_hscode")
+
     # Auto-suggestions
-    search_term = article or product
+    search_term = article or product or hs_code
     if search_term:
         suggestions = get_suggestions(search_term, supplier, DATA)
         if suggestions:
@@ -1331,16 +1326,16 @@ def cdc_dashboard(client):
                         }
                         st.rerun()
     
-    # Manual search
-if st.button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary", key=f"{client}_search"):
-    handle_search(article, product, hs_code, supplier, DATA, client)
-    
+    # Manual search - UPDATED: Added hs_code parameter
+    if st.button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary", key=f"{client}_search"):
+        handle_search(article, product, hs_code, supplier, DATA, client)
 
     # Display results from session state
     if st.session_state.search_results and st.session_state.search_results.get("client") == client:
         display_from_session_state(DATA, client)
 
 def get_suggestions(search_term, supplier, data):
+    """Get search suggestions for article, product name, or HS code"""
     suggestions = []
     supplier_data = data[supplier]
     
@@ -1382,6 +1377,7 @@ def get_suggestions(search_term, supplier, data):
     return list(unique_suggestions.values())
 
 def handle_search(article, product, hs_code, supplier, data, client):
+    """Handle search across article, product name, and HS code"""
     search_term = article or product or hs_code
     if not search_term:
         st.error("❌ Please enter an article number, product name, or HS code")
@@ -1569,7 +1565,6 @@ Orders Included: {', '.join(export_df['Order_Number'].tolist())}
         st.info("Search for an article to enable export options")
     
     st.markdown('</div>', unsafe_allow_html=True)
-    
 
 def convert_df_to_excel(df):
     """Convert DataFrame to Excel format"""
