@@ -1393,7 +1393,7 @@ def handle_search(article, product, supplier, data, client):
         st.error(f"❌ No results found for '{search_term}' in {supplier}")
 
 def display_from_session_state(data, client):
-    """Display search results with NEW DETAILED INFORMATION"""
+    """Display search results with NEW DETAILED INFORMATION in existing price cards"""
     results = st.session_state.search_results
     article = results["article"]
     supplier = results["supplier"]
@@ -1450,46 +1450,30 @@ def display_from_session_state(data, client):
         </div>
         """, unsafe_allow_html=True)
     
-    # NEW: Detailed order information with all columns
-    st.subheader("📋 Detailed Order History")
-    
+    # UPDATED: Enhanced price history with ALL NEW DETAILS in the existing section
+    st.subheader("💵 Historical Prices with Order Details")
+    cols = st.columns(2)
     for i, order in enumerate(article_data['orders']):
-        with st.expander(f"📦 Order {order['order_no']} - {order['date']}", expanded=i == 0):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.markdown(f"""
-                <div class="detail-card">
-                    <h4>📄 Order Details</h4>
-                    <p><strong>Order Number:</strong> {order['order_no']}</p>
-                    <p><strong>Date:</strong> {order['date']}</p>
-                    <p><strong>Year:</strong> {order['year'] if order['year'] else 'N/A'}</p>
-                    <p><strong>Product Name:</strong> {order['product_name']}</p>
-                    <p><strong>Article:</strong> {order['article']}</p>
+        with cols[i % 2]:
+            # Create enhanced order details with all new information
+            order_details = f"""
+            <div class="price-box">
+                <div style="font-size: 1.3em; font-weight: bold;">${order['price']:.2f}/kg</div>
+                <div class="order-info">
+                    <strong>Order:</strong> {order['order_no']}<br>
+                    <strong>Date:</strong> {order['date']}<br>
+                    {f"<strong>Year:</strong> {order['year']}<br>" if order['year'] else ""}
+                    <strong>Product:</strong> {order['product_name']}<br>
+                    <strong>Article:</strong> {order['article']}<br>
+                    {f"<strong>HS Code:</strong> {order['hs_code']}<br>" if order['hs_code'] else ""}
+                    {f"<strong>Packaging:</strong> {order['packaging']}<br>" if order['packaging'] else ""}
+                    {f"<strong>Quantity:</strong> {order['quantity']}<br>" if order['quantity'] else ""}
+                    {f"<strong>Total Weight:</strong> {order['total_weight']}<br>" if order['total_weight'] else ""}
+                    {f"<strong>Total Price:</strong> {order['total_price']}<br>" if order['total_price'] else ""}
                 </div>
-                """, unsafe_allow_html=True)
-                
-            with col2:
-                st.markdown(f"""
-                <div class="detail-card">
-                    <h4>🏷️ Product Information</h4>
-                    <p><strong>HS Code:</strong> {order['hs_code'] if order['hs_code'] else 'N/A'}</p>
-                    <p><strong>Packaging:</strong> {order['packaging'] if order['packaging'] else 'N/A'}</p>
-                    <p><strong>Quantity:</strong> {order['quantity'] if order['quantity'] else 'N/A'}</p>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            col3, col4 = st.columns(2)
-            
-            with col3:
-                st.markdown(f"""
-                <div class="detail-card">
-                    <h4>⚖️ Weight & Pricing</h4>
-                    <p><strong>Total Weight:</strong> {order['total_weight'] if order['total_weight'] else 'N/A'}</p>
-                    <p><strong>Price per kg:</strong> ${order['price']:.2f}</p>
-                    <p><strong>Total Price:</strong> {order['total_price'] if order['total_price'] else 'N/A'}</p>
-                </div>
-                """, unsafe_allow_html=True)
+            </div>
+            """
+            st.markdown(order_details, unsafe_allow_html=True)
     
     # EXPORT SECTION
     st.markdown('<div class="export-section">', unsafe_allow_html=True)
@@ -1561,6 +1545,7 @@ Orders Included: {', '.join(export_df['Order_Number'].tolist())}
         st.info("Search for an article to enable export options")
     
     st.markdown('</div>', unsafe_allow_html=True)
+    
 
 def convert_df_to_excel(df):
     """Convert DataFrame to Excel format"""
