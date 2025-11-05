@@ -179,6 +179,27 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 1rem;
     }
+    .new-orders-header {
+        background: linear-gradient(135deg, #DC2626, #B91C1C);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+    /* Tab container styling for 2 lines */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 2px;
+        flex-wrap: wrap;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        white-space: pre-wrap;
+        background-color: #F3F4F6;
+        border-radius: 4px 4px 0px 0px;
+        gap: 1px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -196,29 +217,32 @@ USERS = {
     "Rotana": {"password": "Rotana123", "clients": ["CDC"]}
 }
 
-# Client data sheets mapping - UPDATED WITH CakeArt
+# Client data sheets mapping - UPDATED WITH New_client_orders
 CLIENT_SHEETS = {
     "CDC": {
         "backaldrin": "Backaldrin_CDC",
         "bateel": "Bateel_CDC", 
         "ceo_special": "CDC_CEO_Special_Prices",
-        "new_orders": "New_Orders",
+        "new_orders": "New_client_orders",  # CHANGED to New_client_orders
         "paid_orders": "Paid_Orders"
     },
     "CoteDivoire": {
         "backaldrin": "Backaldrin_CoteDivoire",
         "bateel": "Bateel_CoteDivoire", 
-        "ceo_special": "CoteDivoire_CEO_Special_Prices"
+        "ceo_special": "CoteDivoire_CEO_Special_Prices",
+        "new_orders": "New_client_orders"  # ADDED
     },
     "CakeArt": {
         "backaldrin": "Backaldrin_CakeArt",
         "bateel": "Bateel_CakeArt",
-        "ceo_special": "CakeArt_CEO_Special_Prices"
+        "ceo_special": "CakeArt_CEO_Special_Prices",
+        "new_orders": "New_client_orders"  # ADDED
     },
     "SweetHouse": {
         "backaldrin": "Backaldrin_SweetHouse",
         "bateel": "Bateel_SweetHouse",
-        "ceo_special": "SweetHouse_CEO_Special_Prices"
+        "ceo_special": "SweetHouse_CEO_Special_Prices",
+        "new_orders": "New_client_orders"  # ADDED
     }
 }
 
@@ -312,38 +336,321 @@ def main_dashboard():
     # Header
     st.markdown("""
     <div class="main-header">
-        <h1>🏢 Backaldrin Arab Jordan Dashboard</h1>
+        <h1>🏢 Multi-Client Business Dashboard</h1>
         <p>Centralized Management • Real-time Data • Professional Analytics</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Create tabs - ALL USERS GET PRICE INTELLIGENCE
+    # Create tabs - 2 LINES OF TABS
     if st.session_state.username in ["ceo", "admin"]:
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🏢 CLIENTS", "📋 NEW ORDERS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG", "📋 ORDERS MANAGEMENT"])
+        # First line of tabs
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+            "🏢 CLIENTS", "📋 NEW ORDERS", "📅 ETD SHEET", 
+            "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG"
+        ])
+        # Second line of tabs
+        tab7, tab8, tab9 = st.tabs([
+            "📊 ORDERS MANAGEMENT", "🔍 ADVANCED ANALYTICS", "⚙️ SETTINGS"
+        ])
     else:
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG", "📋 ORDERS MANAGEMENT"])
+        # First line of tabs
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+            "🏢 CLIENTS", "📋 NEW ORDERS", "📅 ETD SHEET", 
+            "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG"
+        ])
+        # Second line of tabs
+        tab7, tab8 = st.tabs(["📊 ORDERS MANAGEMENT", "🔍 ADVANCED ANALYTICS"])
     
     with tab1:
         clients_tab()
     
     with tab2:
-        etd_tab()
+        new_orders_tab()  # NEW ORDERS MANAGEMENT TAB
         
     with tab3:
+        etd_tab()
+        
+    with tab4:
         ceo_specials_tab()
     
-    # Price Intelligence tab for ALL users (but limited to their clients)
-    with tab4:
+    with tab5:
         price_intelligence_tab()
 
-    # Product Catalog tab for all users
-    with tab5:
+    with tab6:
         product_catalog_tab()
         
-    # Orders Management tab
-    with tab6:
+    with tab7:
         orders_management_tab()
         
+    # Additional tabs for admin/ceo
+    if st.session_state.username in ["ceo", "admin"]:
+        with tab8:
+            advanced_analytics_tab()
+        with tab9:
+            settings_tab()
+    else:
+        with tab8:
+            advanced_analytics_tab()
+
+def new_orders_tab():
+    """NEW: Client Orders Management Tab"""
+    st.markdown("""
+    <div class="new-orders-header">
+        <h2 style="margin:0;">📋 New Client Orders Management</h2>
+        <p style="margin:0; opacity:0.9;">Order Preparation • PI Generation • Item Allocation • Availability Tracking</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Client selection
+    available_clients = st.session_state.user_clients
+    client = st.selectbox(
+        "Select Client:",
+        available_clients,
+        key="new_orders_client"
+    )
+    
+    if not client:
+        st.warning("Please select a client to manage orders")
+        return
+    
+    # Load new orders data
+    orders_data = load_new_orders_data(client)
+    
+    if orders_data.empty:
+        st.info(f"""
+        ⚠️ **No new orders data found for {client}**
+        
+        **To get started:**
+        1. Go to your Google Sheet for {client}
+        2. Add data to the **'New_client_orders'** sheet
+        3. Use these headers:
+           - Order_Number, Client_Name, Product_Name, Article_No
+           - HS_Code, Origin, Packing, Qty, Type
+           - Total_Weight, Price_in_USD_kg, Total_Price, Status
+        """)
+        return
+    
+    # Orders Overview
+    st.subheader("📊 Orders Overview")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        total_orders = orders_data['Order_Number'].nunique()
+        st.metric("Total PIs", total_orders)
+    
+    with col2:
+        total_items = len(orders_data)
+        st.metric("Total Items", total_items)
+    
+    with col3:
+        total_value = orders_data['Total_Price'].sum()
+        st.metric("Total Value", f"${total_value:,.2f}")
+    
+    with col4:
+        unique_articles = orders_data['Article_No'].nunique()
+        st.metric("Unique Articles", unique_articles)
+    
+    # Search and Filter Section
+    st.subheader("🔍 Search & Filter Orders")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        search_type = st.radio("Search By:", ["Article Number", "Product Name", "PI Number", "HS Code"], 
+                              horizontal=True, key="new_orders_search_type")
+    
+    with col2:
+        search_term = st.text_input("Enter search term...", key="new_orders_search")
+    
+    with col3:
+        status_filter = st.selectbox("Order Status", ["All", "Draft", "Confirmed", "In Production", "Shipped"], 
+                                    key="new_orders_status")
+    
+    # Filter data
+    filtered_data = orders_data.copy()
+    
+    if search_term:
+        if search_type == "Article Number":
+            filtered_data = filtered_data[filtered_data['Article_No'].astype(str).str.contains(search_term, case=False, na=False)]
+        elif search_type == "Product Name":
+            filtered_data = filtered_data[filtered_data['Product_Name'].str.contains(search_term, case=False, na=False)]
+        elif search_type == "PI Number":
+            filtered_data = filtered_data[filtered_data['Order_Number'].str.contains(search_term, case=False, na=False)]
+        elif search_type == "HS Code":
+            filtered_data = filtered_data[filtered_data['HS_Code'].astype(str).str.contains(search_term, case=False, na=False)]
+    
+    if status_filter != "All":
+        filtered_data = filtered_data[filtered_data['Status'] == status_filter]
+    
+    # Display Results
+    st.subheader(f"📋 Order Items ({len(filtered_data)} found)")
+    
+    if not filtered_data.empty:
+        # Group by Order Number
+        for order_num, order_group in filtered_data.groupby('Order_Number'):
+            with st.expander(f"📦 PI: {order_num} | Items: {len(order_group)} | Status: {order_group['Status'].iloc[0]}", expanded=False):
+                
+                # Order summary
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Total Items", len(order_group))
+                with col2:
+                    st.metric("Total Qty", order_group['Qty'].sum())
+                with col3:
+                    st.metric("Total Weight", f"{order_group['Total_Weight'].sum():.1f} kg")
+                with col4:
+                    st.metric("Total Value", f"${order_group['Total_Price'].sum():,.2f}")
+                
+                # Display items in this order
+                for _, item in order_group.iterrows():
+                    st.markdown(f"""
+                    <div class="price-card">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div style="flex: 2;">
+                                <h4 style="margin:0; color: #991B1B;">{item['Article_No']} - {item['Product_Name']}</h4>
+                                <p style="margin:0; color: #6B7280;">
+                                    HS Code: {item['HS_Code']} | Origin: {item['Origin']} | Packing: {item['Packing']}
+                                </p>
+                            </div>
+                            <div style="flex: 1; text-align: right;">
+                                <p style="margin:0; font-weight: bold;">Qty: {item['Qty']} {item['Type']}</p>
+                                <p style="margin:0;">Weight: {item['Total_Weight']} kg</p>
+                                <p style="margin:0; color: #059669;">Price: ${item['Price_in_USD_kg']}/kg</p>
+                                <p style="margin:0; font-weight: bold;">Total: ${item['Total_Price']:,.2f}</p>
+                            </div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+        
+        # Export Section
+        st.markdown('<div class="export-section">', unsafe_allow_html=True)
+        st.subheader("📤 Export Orders Data")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            csv = filtered_data.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv,
+                file_name=f"{client}_new_orders_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+        
+        with col2:
+            # Create summary report
+            summary_text = f"""
+{client} New Orders Report
+=========================
+
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Total PIs: {filtered_data['Order_Number'].nunique()}
+Total Items: {len(filtered_data)}
+Total Value: ${filtered_data['Total_Price'].sum():,.2f}
+
+Orders Summary:
+{chr(10).join([f"• {order_num}: {len(group)} items, ${group['Total_Price'].sum():,.2f} ({group['Status'].iloc[0]})" 
+               for order_num, group in filtered_data.groupby('Order_Number')])}
+
+Search Criteria: {search_type} = '{search_term}' | Status: {status_filter}
+            """
+            st.download_button(
+                label="📄 Download Summary",
+                data=summary_text,
+                file_name=f"{client}_orders_summary_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True
+            )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    else:
+        st.info("No orders match your search criteria.")
+
+def load_new_orders_data(client):
+    """Load new client orders data from Google Sheets"""
+    try:
+        sheet_name = CLIENT_SHEETS[client]["new_orders"]
+        orders_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
+        response = requests.get(orders_url)
+        
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if values and len(values) > 1:
+                headers = values[0]
+                rows = values[1:]
+                
+                # Create DataFrame
+                df = pd.DataFrame(rows, columns=headers)
+                
+                # Check for required columns
+                required_cols = ['Order_Number', 'Product_Name', 'Article_No', 'HS_Code', 'Origin', 
+                                'Packing', 'Qty', 'Type', 'Total_Weight', 'Price_in_USD_kg', 'Total_Price']
+                
+                # Fill missing columns with empty values
+                for col in required_cols:
+                    if col not in df.columns:
+                        df[col] = ''
+                
+                # Ensure Status column exists
+                if 'Status' not in df.columns:
+                    df['Status'] = 'Draft'
+                
+                # Convert numeric columns
+                numeric_cols = ['Qty', 'Total_Weight', 'Price_in_USD_kg', 'Total_Price']
+                for col in numeric_cols:
+                    if col in df.columns:
+                        df[col] = pd.to_numeric(df[col], errors='coerce')
+                
+                return df
+                
+        return pd.DataFrame()
+        
+    except Exception as e:
+        st.error(f"Error loading new orders data for {client}: {str(e)}")
+        return pd.DataFrame()
+
+def advanced_analytics_tab():
+    """Advanced Analytics Tab"""
+    st.markdown("""
+    <div class="intelligence-header">
+        <h2 style="margin:0;">📊 Advanced Analytics</h2>
+        <p style="margin:0; opacity:0.9;">Business Intelligence • Performance Metrics • Trend Analysis</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.info("🔧 Advanced analytics features coming soon...")
+    st.write("This tab will include:")
+    st.write("• Sales performance dashboards")
+    st.write("• Client profitability analysis") 
+    st.write("• Supplier performance metrics")
+    st.write("• Market trend analysis")
+    st.write("• Forecasting and predictions")
+
+def settings_tab():
+    """Settings Tab"""
+    st.markdown("""
+    <div class="ceo-header">
+        <h2 style="margin:0;">⚙️ System Settings</h2>
+        <p style="margin:0; opacity:0.9;">Configuration • User Management • System Preferences</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.info("🔧 Settings management coming soon...")
+    st.write("This tab will include:")
+    st.write("• User management and permissions")
+    st.write("• API configuration")
+    st.write("• System preferences")
+    st.write("• Data backup and recovery")
+
+# [ALL YOUR EXISTING FUNCTIONS REMAIN THE SAME - clients_tab, etd_tab, ceo_specials_tab, price_intelligence_tab, 
+# product_catalog_tab, orders_management_tab, and all their helper functions]
+
+# Include all your existing functions here (they remain unchanged)
 def clients_tab():
     """Clients management tab"""
     st.subheader("Client Selection")
@@ -1603,7 +1910,6 @@ def convert_df_to_excel(df):
     processed_data = output.getvalue()
     return processed_data
 
-# ORDERS MANAGEMENT FUNCTIONS
 def orders_management_tab():
     """Orders Management Dashboard"""
     st.markdown("""
