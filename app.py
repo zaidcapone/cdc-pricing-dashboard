@@ -186,10 +186,12 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 1rem;
     }
-    /* Tab container styling for 2 lines */
+    /* Horizontal scrollable tabs */
     .stTabs [data-baseweb="tab-list"] {
         gap: 2px;
-        flex-wrap: wrap;
+        overflow-x: auto;
+        white-space: nowrap;
+        flex-wrap: nowrap;
     }
     .stTabs [data-baseweb="tab"] {
         height: 50px;
@@ -223,26 +225,26 @@ CLIENT_SHEETS = {
         "backaldrin": "Backaldrin_CDC",
         "bateel": "Bateel_CDC", 
         "ceo_special": "CDC_CEO_Special_Prices",
-        "new_orders": "New_client_orders",  # CHANGED to New_client_orders
+        "new_orders": "New_client_orders",
         "paid_orders": "Paid_Orders"
     },
     "CoteDivoire": {
         "backaldrin": "Backaldrin_CoteDivoire",
         "bateel": "Bateel_CoteDivoire", 
         "ceo_special": "CoteDivoire_CEO_Special_Prices",
-        "new_orders": "New_client_orders"  # ADDED
+        "new_orders": "New_client_orders"
     },
     "CakeArt": {
         "backaldrin": "Backaldrin_CakeArt",
         "bateel": "Bateel_CakeArt",
         "ceo_special": "CakeArt_CEO_Special_Prices",
-        "new_orders": "New_client_orders"  # ADDED
+        "new_orders": "New_client_orders"
     },
     "SweetHouse": {
         "backaldrin": "Backaldrin_SweetHouse",
         "bateel": "Bateel_SweetHouse",
         "ceo_special": "SweetHouse_CEO_Special_Prices",
-        "new_orders": "New_client_orders"  # ADDED
+        "new_orders": "New_client_orders"
     }
 }
 
@@ -329,8 +331,6 @@ def main_dashboard():
         </div>
         """, unsafe_allow_html=True)
     
-    # Theme selector removed - using fixed theme
-    
     logout_button()
     
     # Header
@@ -339,52 +339,6 @@ def main_dashboard():
         <h1>🏢 Multi-Client Business Dashboard</h1>
         <p>Centralized Management • Real-time Data • Professional Analytics</p>
     </div>
-    """, unsafe_allow_html=True)
-    
-       # Custom CSS for horizontal scrollable tabs
-    st.markdown("""
-    <style>
-    /* Horizontal scrollable tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 2px;
-        overflow-x: auto;
-        white-space: nowrap;
-        flex-wrap: nowrap;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        display: inline-flex;
-        height: 50px;
-        white-space: nowrap;
-        background-color: #F3F4F6;
-        border-radius: 4px 4px 0px 0px;
-        padding: 10px 20px;
-        margin-right: 2px;
-        flex-shrink: 0;
-    }
-    
-    .stTabs [data-baseweb="tab"]:hover {
-        background-color: #E5E7EB;
-    }
-    
-    /* Hide scrollbar but keep functionality */
-    .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar {
-        height: 6px;
-    }
-    
-    .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar-track {
-        background: #f1f1f1;
-    }
-    
-    .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar-thumb {
-        background: #888;
-        border-radius: 3px;
-    }
-    
-    .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar-thumb:hover {
-        background: #555;
-    }
-    </style>
     """, unsafe_allow_html=True)
     
     # Create ALL tabs in one line - they will auto-scroll horizontally
@@ -405,7 +359,7 @@ def main_dashboard():
         clients_tab()
     
     with tab2:
-        new_orders_tab()  # NEW ORDERS MANAGEMENT TAB
+        new_orders_tab()
         
     with tab3:
         etd_tab()
@@ -454,7 +408,8 @@ def new_orders_tab():
         return
     
     # Load new orders data
-    orders_data = load_new_orders_data(client)
+    with st.spinner(f"📥 Loading orders data for {client}..."):
+        orders_data = load_new_orders_data(client)
     
     if orders_data.empty:
         st.info(f"""
@@ -576,7 +531,8 @@ def new_orders_tab():
                 data=csv,
                 file_name=f"{client}_new_orders_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
-                use_container_width=True
+                use_container_width=True,
+                key="new_orders_csv"  # FIXED: Added unique key
             )
         
         with col2:
@@ -601,7 +557,8 @@ Search Criteria: {search_type} = '{search_term}' | Status: {status_filter}
                 data=summary_text,
                 file_name=f"{client}_orders_summary_{datetime.now().strftime('%Y%m%d')}.txt",
                 mime="text/plain",
-                use_container_width=True
+                use_container_width=True,
+                key="new_orders_summary"  # FIXED: Added unique key
             )
         
         st.markdown('</div>', unsafe_allow_html=True)
@@ -850,7 +807,8 @@ def ceo_specials_tab():
                 data=csv,
                 file_name=f"{client}_ceo_special_prices_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
-                use_container_width=True
+                use_container_width=True,
+                key="ceo_csv"
             )
         
         with col2:
@@ -869,7 +827,8 @@ Special Prices:
                 """,
                 file_name=f"{client}_ceo_specials_summary_{datetime.now().strftime('%Y%m%d')}.txt",
                 mime="text/plain",
-                use_container_width=True
+                use_container_width=True,
+                key="ceo_summary"
             )
         
         st.markdown('</div>', unsafe_allow_html=True)
@@ -1171,7 +1130,8 @@ def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="
                 data=csv,
                 file_name=f"price_intelligence_{search_term}_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
-                use_container_width=True
+                use_container_width=True,
+                key="intelligence_csv"
             )
         
         with col2:
@@ -1193,7 +1153,8 @@ Detailed Findings:
                 """,
                 file_name=f"price_intelligence_summary_{search_term}_{datetime.now().strftime('%Y%m%d')}.txt",
                 mime="text/plain",
-                use_container_width=True
+                use_container_width=True,
+                key="intelligence_summary"
             )
             
     
@@ -1310,7 +1271,8 @@ def product_catalog_tab():
                 data=csv,
                 file_name=f"product_catalog_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
-                use_container_width=True
+                use_container_width=True,
+                key="catalog_csv"
             )
         
         with col2:
@@ -1327,7 +1289,8 @@ Products:
                 data=export_text,
                 file_name=f"product_catalog_summary_{datetime.now().strftime('%Y%m%d')}.txt",
                 mime="text/plain",
-                use_container_width=True
+                use_container_width=True,
+                key="catalog_summary"
             )
         
         st.markdown('</div>', unsafe_allow_html=True)
@@ -1889,7 +1852,8 @@ def display_from_session_state(data, client):
                 file_name=f"{client}_pricing_{article}_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
                 use_container_width=True,
-                type="primary"
+                type="primary",
+                key=f"{client}_csv"
             )
         
         with col2:
@@ -1901,7 +1865,8 @@ def display_from_session_state(data, client):
                     data=excel_data,
                     file_name=f"{client}_pricing_{article}_{datetime.now().strftime('%Y%m%d')}.xlsx",
                     mime="application/vnd.ms-excel",
-                    use_container_width=True
+                    use_container_width=True,
+                    key=f"{client}_excel"
                 )
             except:
                 st.info("📊 Excel export requires openpyxl package")
@@ -1930,7 +1895,8 @@ Orders Included: {', '.join(export_df['Order_Number'].tolist())}
                 """,
                 file_name=f"{client}_summary_{article}_{datetime.now().strftime('%Y%m%d')}.txt",
                 mime="text/plain",
-                use_container_width=True
+                use_container_width=True,
+                key=f"{client}_summary"
             )
         
         # Show export preview
@@ -2057,7 +2023,8 @@ def orders_management_tab():
             data=csv,
             file_name=f"{client}_orders_{datetime.now().strftime('%Y%m%d')}.csv",
             mime="text/csv",
-            use_container_width=True
+            use_container_width=True,
+            key="orders_csv"
         )
     
     with col2:
@@ -2078,7 +2045,8 @@ Orders List:
             """,
             file_name=f"{client}_orders_summary_{datetime.now().strftime('%Y%m%d')}.txt",
             mime="text/plain",
-            use_container_width=True
+            use_container_width=True,
+            key="orders_summary"
         )
     
     st.markdown('</div>', unsafe_allow_html=True)
