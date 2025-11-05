@@ -678,39 +678,28 @@ def clients_tab():
         cdc_dashboard(client)
 
 def etd_tab():
-    """ETD Sheet - Live Google Sheets Integration with Multi-Month Support"""
+    """ETD Sheet - Live Google Sheets Integration"""
     st.markdown("""
     <div class="intelligence-header">
         <h2 style="margin:0;">📅 ETD Management Dashboard</h2>
-        <p style="margin:0; opacity:0.9;">Live Order Tracking • Multi-Supplier ETD • Multi-Month View</p>
+        <p style="margin:0; opacity:0.9;">Live Order Tracking • Multi-Supplier ETD • Smart Alerts</p>
     </div>
     """, unsafe_allow_html=True)
 
     # ETD Sheet configuration
     ETD_SHEET_ID = "1eA-mtD3aK_n9VYNV_bxnmqm58IywF0f5-7vr3PT51hs"
-    
-    # Available months - we'll detect automatically
-    AVAILABLE_MONTHS = ["October 2025 ", "November 2025 ", "Zaid Shami"]
+    ETD_SHEET_NAME = "October 2025"
 
     try:
-        # Month Selection
-        st.subheader("📅 Select Month")
-        selected_month = st.radio(
-            "Choose month to view:",
-            AVAILABLE_MONTHS,
-            horizontal=True,
-            key="etd_month_selector"
-        )
-        
-        # Load ETD data for selected month
-        with st.spinner(f"🔄 Loading {selected_month} ETD data..."):
-            etd_data = load_etd_data(ETD_SHEET_ID, selected_month)
+        # Load ETD data
+        with st.spinner("🔄 Loading live ETD data from Google Sheets..."):
+            etd_data = load_etd_data(ETD_SHEET_ID, ETD_SHEET_NAME)
         
         if etd_data.empty:
-            st.warning(f"No ETD data found in {selected_month}. Please check the sheet.")
+            st.warning("No ETD data found. Please check your Google Sheet connection.")
             return
 
-        st.success(f"✅ Connected to {selected_month}! Loaded {len(etd_data)} orders")
+        st.success(f"✅ Connected to live ETD data! Loaded {len(etd_data)} orders")
 
         # Overview Metrics
         st.subheader("📊 ETD Overview")
@@ -741,26 +730,6 @@ def etd_tab():
                 (etd_data['ETD_PMC'].astype(str).str.contains('NEED ETD', case=False, na=False))
             ])
             st.metric("Need ETD", need_etd)
-
-        # Cross-Month Summary (if multiple months available)
-        if len(AVAILABLE_MONTHS) > 1:
-            st.subheader("🌐 Cross-Month Summary")
-            month_cols = st.columns(len(AVAILABLE_MONTHS))
-            
-            for i, month in enumerate(AVAILABLE_MONTHS):
-                with month_cols[i]:
-                    if month == selected_month:
-                        st.info(f"**{month}**\n**{len(etd_data)} orders**")
-                    else:
-                        # Quick load other months for summary
-                        try:
-                            other_month_data = load_etd_data(ETD_SHEET_ID, month)
-                            if not other_month_data.empty:
-                                st.metric(month, len(other_month_data))
-                            else:
-                                st.write(f"**{month}**\n0 orders")
-                        except:
-                            st.write(f"**{month}**\n–")
 
         # Search and Filter Section
         st.subheader("🔍 Filter & Search Orders")
@@ -798,7 +767,7 @@ def etd_tab():
             filtered_data = filtered_data[filtered_data['Client Name'] == client_filter]
         
         if employee_filter != "All":
-            filtered_data = filtered_data[filtered_data['Concerned Employee'] == employee_filter]
+            filtered_data = filtered_data[filterd_data['Concerned Employee'] == employee_filter]
         
         if status_filter != "All":
             if status_filter == "Need ETD":
@@ -817,11 +786,11 @@ def etd_tab():
             ]
 
         # Display filtered results
-        st.subheader(f"📋 {selected_month} Orders ({len(filtered_data)} found)")
+        st.subheader(f"📋 Orders ({len(filtered_data)} found)")
         
         if not filtered_data.empty:
             for _, order in filtered_data.iterrows():
-                display_etd_order_card(order, selected_month)
+                display_etd_order_card(order)
         else:
             st.info("No orders match your filter criteria.")
 
@@ -836,7 +805,7 @@ def etd_tab():
             st.download_button(
                 label="📥 Download CSV",
                 data=csv,
-                file_name=f"etd_data_{selected_month.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv",
+                file_name=f"etd_data_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
                 use_container_width=True,
                 key="etd_csv"
@@ -844,8 +813,8 @@ def etd_tab():
         
         with col2:
             summary_text = f"""
-ETD Data Export - {selected_month}
-===============================
+ETD Data Export
+===============
 
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 Total Orders: {len(filtered_data)}
@@ -857,7 +826,7 @@ Orders Summary:
             st.download_button(
                 label="📄 Download Summary",
                 data=summary_text,
-                file_name=f"etd_summary_{selected_month.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.txt",
+                file_name=f"etd_summary_{datetime.now().strftime('%Y%m%d')}.txt",
                 mime="text/plain",
                 use_container_width=True,
                 key="etd_summary"
@@ -869,7 +838,40 @@ Orders Summary:
         st.error(f"❌ Error loading ETD data: {str(e)}")
         st.info("Please check: 1) Google Sheet is shared, 2) Sheet name is correct, 3) Internet connection")
 
-def display_etd_order_card(order, month):
+def load_etd_data(sheet_id, sheet_name):
+    """Load ETD data from Google Sheets starting from row 14"""
+    try:
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{sheet_name}!A:Z?key={API_KEY}"
+        response = requests.get(url)
+        
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if len(values) >= 15:  # Ensure we have at least headers (row 14) and one data row
+                # Headers are in row 13 (index 13), data starts from row 14 (index 14)
+                headers = values[13]  # Row 14 in your sheet (0-indexed as 13)
+                data_rows = values[14:]  # Data starts from row 15
+                
+                # Create DataFrame
+                df = pd.DataFrame(data_rows, columns=headers)
+                
+                # Clean up column names and data
+                df = df.replace('', pd.NA)
+                
+                return df
+            else:
+                st.warning("ETD sheet doesn't have enough data rows")
+                return pd.DataFrame()
+        else:
+            st.error(f"Failed to load ETD data. HTTP Status: {response.status_code}")
+            return pd.DataFrame()
+            
+    except Exception as e:
+        st.error(f"Error loading ETD data: {str(e)}")
+        return pd.DataFrame()
+
+def display_etd_order_card(order):
     """Display individual ETD order card with supplier tracking"""
     
     # Determine status color
@@ -889,7 +891,7 @@ def display_etd_order_card(order, month):
         if pd.notna(etd_value) and 'NEED ETD' in str(etd_value).upper():
             needs_etd.append(supplier)
     
-    with st.expander(f"{status_color} {order.get('Order No.', 'N/A')} - {order.get('Client Name', 'N/A')} | {month}", expanded=False):
+    with st.expander(f"{status_color} {order.get('Order No.', 'N/A')} - {order.get('Client Name', 'N/A')}", expanded=False):
         
         # Order Header
         col1, col2, col3 = st.columns([2, 1, 1])
@@ -897,7 +899,6 @@ def display_etd_order_card(order, month):
         with col1:
             st.write(f"**Client:** {order.get('Client Name', 'N/A')}")
             st.write(f"**Employee:** {order.get('Concerned Employee', 'N/A')}")
-            st.write(f"**Month:** {month}")
             
         with col2:
             st.write(f"**Status:** {status}")
