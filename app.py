@@ -360,6 +360,7 @@ def main_dashboard():
         border-radius: 4px 4px 0px 0px;
         padding: 10px 20px;
         margin-right: 2px;
+        flex-shrink: 0;
     }
     
     .stTabs [data-baseweb="tab"]:hover {
