@@ -688,7 +688,7 @@ def etd_tab():
 
     # ETD Sheet configuration
     ETD_SHEET_ID = "1eA-mtD3aK_n9VYNV_bxnmqm58IywF0f5-7vr3PT51hs"
-    ETD_SHEET_NAME = "October 2025"
+    ETD_SHEET_NAME = "October 2025 "
 
     try:
         # Load ETD data
@@ -839,32 +839,37 @@ Orders Summary:
         st.info("Please check: 1) Google Sheet is shared, 2) Sheet name is correct, 3) Internet connection")
 
 def load_etd_data(sheet_id, sheet_name):
-    """Load ETD data from Google Sheets starting from row 14"""
+    """Load ETD data from Google Sheets - FIXED VERSION"""
     try:
-        url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{sheet_name}!A:Z?key={API_KEY}"
+        # URL encode the sheet name to handle spaces
+        import urllib.parse
+        encoded_sheet_name = urllib.parse.quote(sheet_name)
+        
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{encoded_sheet_name}!A:Z?key={API_KEY}"
         response = requests.get(url)
         
         if response.status_code == 200:
             data = response.json()
             values = data.get('values', [])
             
-            if len(values) >= 15:  # Ensure we have at least headers (row 14) and one data row
-                # Headers are in row 13 (index 13), data starts from row 14 (index 14)
-                headers = values[13]  # Row 14 in your sheet (0-indexed as 13)
+            if len(values) >= 15:  # Headers in row 14, data from row 15
+                headers = values[13]  # Row 14 (0-indexed as 13)
                 data_rows = values[14:]  # Data starts from row 15
                 
                 # Create DataFrame
                 df = pd.DataFrame(data_rows, columns=headers)
                 
-                # Clean up column names and data
+                # Clean up empty values
                 df = df.replace('', pd.NA)
                 
+                st.success(f"✅ Successfully loaded {len(df)} orders from {sheet_name}")
                 return df
             else:
-                st.warning("ETD sheet doesn't have enough data rows")
+                st.warning(f"Sheet exists but not enough data. Found {len(values)} rows, need at least 15.")
                 return pd.DataFrame()
         else:
             st.error(f"Failed to load ETD data. HTTP Status: {response.status_code}")
+            st.info("Please check: 1) Sheet name is exact, 2) Sheet exists in the file")
             return pd.DataFrame()
             
     except Exception as e:
