@@ -690,7 +690,7 @@ def etd_tab():
     ETD_SHEET_ID = "1eA-mtD3aK_n9VYNV_bxnmqm58IywF0f5-7vr3PT51hs"
     
     # Available months - we'll detect automatically
-    AVAILABLE_MONTHS = ["October 2025", "November 2025", "Zaid Shami"]
+    AVAILABLE_MONTHS = ["October 2025 ", "November 2025 ", "Zaid Shami"]
 
     try:
         # Month Selection
