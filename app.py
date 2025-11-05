@@ -341,25 +341,64 @@ def main_dashboard():
     </div>
     """, unsafe_allow_html=True)
     
-    # Create tabs - 2 LINES OF TABS
+       # Custom CSS for horizontal scrollable tabs
+    st.markdown("""
+    <style>
+    /* Horizontal scrollable tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 2px;
+        overflow-x: auto;
+        white-space: nowrap;
+        flex-wrap: nowrap;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        display: inline-flex;
+        height: 50px;
+        white-space: nowrap;
+        background-color: #F3F4F6;
+        border-radius: 4px 4px 0px 0px;
+        padding: 10px 20px;
+        margin-right: 2px;
+    }
+    
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: #E5E7EB;
+    }
+    
+    /* Hide scrollbar but keep functionality */
+    .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar {
+        height: 6px;
+    }
+    
+    .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+    
+    .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 3px;
+    }
+    
+    .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Create ALL tabs in one line - they will auto-scroll horizontally
     if st.session_state.username in ["ceo", "admin"]:
-        # First line of tabs
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
             "🏢 CLIENTS", "📋 NEW ORDERS", "📅 ETD SHEET", 
-            "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG"
-        ])
-        # Second line of tabs
-        tab7, tab8, tab9 = st.tabs([
+            "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG",
             "📊 ORDERS MANAGEMENT", "🔍 ADVANCED ANALYTICS", "⚙️ SETTINGS"
         ])
     else:
-        # First line of tabs
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
             "🏢 CLIENTS", "📋 NEW ORDERS", "📅 ETD SHEET", 
-            "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG"
+            "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG",
+            "📊 ORDERS MANAGEMENT", "🔍 ADVANCED ANALYTICS"
         ])
-        # Second line of tabs
-        tab7, tab8 = st.tabs(["📊 ORDERS MANAGEMENT", "🔍 ADVANCED ANALYTICS"])
     
     with tab1:
         clients_tab()
