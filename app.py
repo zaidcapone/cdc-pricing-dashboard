@@ -201,6 +201,20 @@ st.markdown("""
         gap: 1px;
         padding-top: 10px;
         padding-bottom: 10px;
+        color: #000000 !important; /* Force black text */
+    }
+    .stTabs [data-baseweb="tab"] span {
+        color: #000000 !important; /* Force black text for tab labels */
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: #E5E7EB;
+    }
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        background-color: #991B1B !important; /* Active tab color */
+        color: white !important; /* White text for active tab */
+    }
+    .stTabs [data-baseweb="tab"][aria-selected="true"] span {
+        color: white !important; /* White text for active tab label */
     }
 </style>
 """, unsafe_allow_html=True)
