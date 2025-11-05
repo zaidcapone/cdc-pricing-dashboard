@@ -319,7 +319,7 @@ def main_dashboard():
     
     # Create tabs - ALL USERS GET PRICE INTELLIGENCE
     if st.session_state.username in ["ceo", "admin"]:
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG", "📋 ORDERS MANAGEMENT"])
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🏢 CLIENTS", "📋 NEW ORDERS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG", "📋 ORDERS MANAGEMENT"])
     else:
         tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG", "📋 ORDERS MANAGEMENT"])
     
