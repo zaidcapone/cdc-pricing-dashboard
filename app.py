@@ -678,10 +678,281 @@ def clients_tab():
         cdc_dashboard(client)
 
 def etd_tab():
-    """ETD Sheet tab"""
-    st.subheader("📅 ETD Sheet - Live View")
-    st.info("🔧 ETD Sheet integration will be added when ready")
-    st.write("This tab will display your live ETD data when available")
+    """ETD Sheet - Live Google Sheets Integration"""
+    st.markdown("""
+    <div class="intelligence-header">
+        <h2 style="margin:0;">📅 ETD Management Dashboard</h2>
+        <p style="margin:0; opacity:0.9;">Live Order Tracking • Multi-Supplier ETD • Smart Alerts</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ETD Sheet configuration
+    ETD_SHEET_ID = "1eA-mtD3aK_n9VYNV_bxnmqm58IywF0f5-7vr3PT51hs"
+    ETD_SHEET_NAME = "October 2025"
+
+    try:
+        # Load ETD data
+        with st.spinner("🔄 Loading live ETD data from Google Sheets..."):
+            etd_data = load_etd_data(ETD_SHEET_ID, ETD_SHEET_NAME)
+        
+        if etd_data.empty:
+            st.warning("No ETD data found. Please check your Google Sheet connection.")
+            return
+
+        st.success(f"✅ Connected to live ETD data! Loaded {len(etd_data)} orders")
+
+        # Overview Metrics
+        st.subheader("📊 ETD Overview")
+        col1, col2, col3, col4, col5 = st.columns(5)
+        
+        with col1:
+            total_orders = len(etd_data)
+            st.metric("Total Orders", total_orders)
+        
+        with col2:
+            shipped_orders = len(etd_data[etd_data['Status'].str.lower() == 'shipped'])
+            st.metric("Shipped", shipped_orders)
+        
+        with col3:
+            production_orders = len(etd_data[etd_data['Status'].str.lower().str.contains('production', na=False)])
+            st.metric("In Production", production_orders)
+        
+        with col4:
+            pending_orders = len(etd_data[etd_data['Status'].str.lower().str.contains('pending', na=False)])
+            st.metric("Pending", pending_orders)
+        
+        with col5:
+            # Count orders needing ETD
+            need_etd = len(etd_data[
+                (etd_data['ETD _ Backaldrine'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
+                (etd_data['ETD_bateel'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
+                (etd_data['ETD _ Kasih'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
+                (etd_data['ETD_PMC'].astype(str).str.contains('NEED ETD', case=False, na=False))
+            ])
+            st.metric("Need ETD", need_etd)
+
+        # Search and Filter Section
+        st.subheader("🔍 Filter & Search Orders")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            client_filter = st.selectbox(
+                "Client",
+                ["All"] + sorted(etd_data['Client Name'].dropna().unique()),
+                key="etd_client_filter"
+            )
+        
+        with col2:
+            employee_filter = st.selectbox(
+                "Employee", 
+                ["All"] + sorted(etd_data['Concerned Employee'].dropna().unique()),
+                key="etd_employee_filter"
+            )
+        
+        with col3:
+            status_filter = st.selectbox(
+                "Status",
+                ["All", "Shipped", "In Production", "Pending", "Need ETD"],
+                key="etd_status_filter"
+            )
+        
+        with col4:
+            search_term = st.text_input("Search Order No...", key="etd_search")
+
+        # Apply filters
+        filtered_data = etd_data.copy()
+        
+        if client_filter != "All":
+            filtered_data = filtered_data[filtered_data['Client Name'] == client_filter]
+        
+        if employee_filter != "All":
+            filtered_data = filtered_data[filterd_data['Concerned Employee'] == employee_filter]
+        
+        if status_filter != "All":
+            if status_filter == "Need ETD":
+                filtered_data = filtered_data[
+                    (filtered_data['ETD _ Backaldrine'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
+                    (filtered_data['ETD_bateel'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
+                    (filtered_data['ETD _ Kasih'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
+                    (filtered_data['ETD_PMC'].astype(str).str.contains('NEED ETD', case=False, na=False))
+                ]
+            else:
+                filtered_data = filtered_data[filtered_data['Status'] == status_filter]
+        
+        if search_term:
+            filtered_data = filtered_data[
+                filtered_data['Order No.'].astype(str).str.contains(search_term, case=False, na=False)
+            ]
+
+        # Display filtered results
+        st.subheader(f"📋 Orders ({len(filtered_data)} found)")
+        
+        if not filtered_data.empty:
+            for _, order in filtered_data.iterrows():
+                display_etd_order_card(order)
+        else:
+            st.info("No orders match your filter criteria.")
+
+        # Export Section
+        st.markdown('<div class="export-section">', unsafe_allow_html=True)
+        st.subheader("📤 Export ETD Data")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            csv = filtered_data.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv,
+                file_name=f"etd_data_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="etd_csv"
+            )
+        
+        with col2:
+            summary_text = f"""
+ETD Data Export
+===============
+
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Total Orders: {len(filtered_data)}
+Filters: Client={client_filter}, Employee={employee_filter}, Status={status_filter}
+
+Orders Summary:
+{chr(10).join([f"• {row['Order No.']} - {row['Client Name']} - {row['Status']}" for _, row in filtered_data.iterrows()])}
+            """
+            st.download_button(
+                label="📄 Download Summary",
+                data=summary_text,
+                file_name=f"etd_summary_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True,
+                key="etd_summary"
+            )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    except Exception as e:
+        st.error(f"❌ Error loading ETD data: {str(e)}")
+        st.info("Please check: 1) Google Sheet is shared, 2) Sheet name is correct, 3) Internet connection")
+
+def load_etd_data(sheet_id, sheet_name):
+    """Load ETD data from Google Sheets starting from row 14"""
+    try:
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{sheet_name}!A:Z?key={API_KEY}"
+        response = requests.get(url)
+        
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if len(values) >= 15:  # Ensure we have at least headers (row 14) and one data row
+                # Headers are in row 13 (index 13), data starts from row 14 (index 14)
+                headers = values[13]  # Row 14 in your sheet (0-indexed as 13)
+                data_rows = values[14:]  # Data starts from row 15
+                
+                # Create DataFrame
+                df = pd.DataFrame(data_rows, columns=headers)
+                
+                # Clean up column names and data
+                df = df.replace('', pd.NA)
+                
+                return df
+            else:
+                st.warning("ETD sheet doesn't have enough data rows")
+                return pd.DataFrame()
+        else:
+            st.error(f"Failed to load ETD data. HTTP Status: {response.status_code}")
+            return pd.DataFrame()
+            
+    except Exception as e:
+        st.error(f"Error loading ETD data: {str(e)}")
+        return pd.DataFrame()
+
+def display_etd_order_card(order):
+    """Display individual ETD order card with supplier tracking"""
+    
+    # Determine status color
+    status = order.get('Status', 'Unknown')
+    status_color = {
+        'Shipped': '🟢',
+        'In Production': '🟡', 
+        'Pending': '🟠',
+        'Unknown': '⚫'
+    }.get(status, '⚫')
+    
+    # Check for ETD needs
+    needs_etd = []
+    for supplier in ['Backaldrine', 'bateel', 'Kasih', 'PMC']:
+        etd_col = f"ETD _{supplier}" if supplier != 'bateel' else 'ETD_bateel'
+        etd_value = order.get(etd_col, '')
+        if pd.notna(etd_value) and 'NEED ETD' in str(etd_value).upper():
+            needs_etd.append(supplier)
+    
+    with st.expander(f"{status_color} {order.get('Order No.', 'N/A')} - {order.get('Client Name', 'N/A')}", expanded=False):
+        
+        # Order Header
+        col1, col2, col3 = st.columns([2, 1, 1])
+        
+        with col1:
+            st.write(f"**Client:** {order.get('Client Name', 'N/A')}")
+            st.write(f"**Employee:** {order.get('Concerned Employee', 'N/A')}")
+            
+        with col2:
+            st.write(f"**Status:** {status}")
+            st.write(f"**Confirmation:** {order.get('Confirmation Date', 'N/A')}")
+            
+        with col3:
+            if needs_etd:
+                st.error(f"🚨 NEED ETD: {', '.join(needs_etd)}")
+            st.write(f"**Loading:** {order.get('Scheduled Date For Loading', 'N/A')}")
+        
+        # Supplier ETD Tracking
+        st.write("---")
+        st.write("**🚚 Supplier ETD Status**")
+        
+        suppliers = [
+            ('Backaldrine', 'ETD _ Backaldrine', 'bateel Order #'),
+            ('bateel', 'ETD_bateel', 'bateel Order #'),
+            ('Kasih', 'ETD _ Kasih', 'Kasih Order #'), 
+            ('PMC', 'ETD_PMC', 'PMC Order #')
+        ]
+        
+        cols = st.columns(4)
+        for idx, (supplier, etd_col, order_col) in enumerate(suppliers):
+            with cols[idx]:
+                etd_value = order.get(etd_col, '')
+                order_value = order.get(order_col, '')
+                
+                if pd.isna(etd_value) or str(etd_value).strip() == '':
+                    st.write(f"**{supplier}:** ❌ No ETD")
+                elif 'NEED ETD' in str(etd_value).upper():
+                    st.error(f"**{supplier}:** 🚨 NEED ETD")
+                elif 'READY' in str(etd_value).upper():
+                    st.success(f"**{supplier}:** ✅ Ready")
+                else:
+                    st.info(f"**{supplier}:** 📅 {etd_value}")
+                
+                if pd.notna(order_value) and str(order_value).strip() != '':
+                    st.caption(f"Order: {order_value}")
+        
+        # Additional Information
+        st.write("---")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            stock_notes = order.get('Stock Notes', '')
+            if pd.notna(stock_notes) and str(stock_notes).strip() != '':
+                st.write("**📦 Stock Notes:**")
+                st.info(stock_notes)
+                
+        with col2:
+            transport = order.get('transport Company', '')
+            if pd.notna(transport) and str(transport).strip() != '':
+                st.write("**🚛 Transport:**")
+                st.write(transport)
 
 def ceo_specials_tab():
     """CEO Special Prices tab - NOW CLIENT SPECIFIC"""
