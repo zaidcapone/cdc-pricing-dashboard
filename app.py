@@ -322,10 +322,10 @@ def main_dashboard():
     
     # Announcements that will be visible to all users
     announcements = [
-        "🚨 **NEW PRICE UPDATE**: Effective immediately - Backaldrin prices adjusted for Q1 2024",
-        "📦 **SHIPPING NOTICE**: New ETD schedules available for all clients",
-        "⭐ **SPECIAL OFFER**: CEO Special Prices updated for CakeArt & SweetHouse",
-        "🔔 **REMINDER**: Please refresh data after making Google Sheets changes",
+        "🚨 ETD is officially working!",
+        "📦 Working on palletizing",
+        "⭐ **SPECIAL OFFER**",
+        "🔔 **REMINDER**:",
         "📊 **NEW FEATURE**: HS Code search now available across all clients"
     ]
     
