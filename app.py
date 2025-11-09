@@ -224,16 +224,17 @@ API_KEY = "AIzaSyA3P-ZpLjDdVtGB82_1kaWuO7lNbKDj9HU"
 CDC_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"
 
 # User authentication - UPDATED: cakeart_user changed to Khalid
+# User authentication - UPDATED: Added Cameron client
 USERS = {
-    "admin": {"password": "admin123", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse"]},
-    "ceo": {"password": "ceo123", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse"]},
+    "admin": {"password": "admin123", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse", "Cameron"]},
+    "ceo": {"password": "ceo123", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse", "Cameron"]},
     "zaid": {"password": "zaid123", "clients": ["CDC"]},
     "mohammad": {"password": "mohammad123", "clients": ["CoteDivoire"]},
     "Khalid": {"password": "KHALID123", "clients": ["CakeArt", "SweetHouse"]},
     "Rotana": {"password": "Rotana123", "clients": ["CDC"]}
 }
 
-# Client data sheets mapping - UPDATED WITH New_client_orders
+# Client data sheets mapping - UPDATED: Added Cameron client
 CLIENT_SHEETS = {
     "CDC": {
         "backaldrin": "Backaldrin_CDC",
@@ -258,6 +259,12 @@ CLIENT_SHEETS = {
         "backaldrin": "Backaldrin_SweetHouse",
         "bateel": "Bateel_SweetHouse",
         "ceo_special": "SweetHouse_CEO_Special_Prices",
+        "new_orders": "New_client_orders"
+    },
+    "Cameron": {
+        "backaldrin": "Backaldrin_Cameron",
+        "bateel": "Bateel_Cameron", 
+        "ceo_special": "Cameron_CEO_Special_Prices",
         "new_orders": "New_client_orders"
     }
 }
