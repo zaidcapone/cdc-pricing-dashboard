@@ -961,41 +961,8 @@ def display_etd_order_card(order, month):
                 st.write(transport)
 
 def load_etd_data(sheet_id, sheet_name):
-    """Load ETD data from Google Sheets - FIXED VERSION"""
-    try:
-        # URL encode the sheet name to handle spaces
-        import urllib.parse
-        encoded_sheet_name = urllib.parse.quote(sheet_name)
-        
-        url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{encoded_sheet_name}!A:Z?key={API_KEY}"
-        response = requests.get(url)
-        
-        if response.status_code == 200:
-            data = response.json()
-            values = data.get('values', [])
-            
-            if len(values) >= 15:  # Headers in row 14, data from row 15
-                headers = values[13]  # Row 14 (0-indexed as 13)
-                data_rows = values[14:]  # Data starts from row 15
-                
-                # Create DataFrame
-                df = pd.DataFrame(data_rows, columns=headers)
-                
-                # Clean up empty values
-                df = df.replace('', pd.NA)
-                
-                return df
-            else:
-                st.warning(f"Sheet exists but not enough data. Found {len(values)} rows, need at least 15.")
-                return pd.DataFrame()
-        else:
-            st.error(f"Failed to load ETD data. HTTP Status: {response.status_code}")
-            st.info("Please check: 1) Sheet name is exact, 2) Sheet exists in the file")
-            return pd.DataFrame()
-            
-    except Exception as e:
-        st.error(f"Error loading ETD data: {str(e)}")
-        return pd.DataFrame()
+    """Optimized ETD loader using universal function"""
+    return load_sheet_data(sheet_name, start_row=13)
 
 def ceo_specials_tab():
     """CEO Special Prices tab - NOW CLIENT SPECIFIC"""
@@ -1800,116 +1767,17 @@ def load_ceo_special_prices(client="CDC"):
         return pd.DataFrame()
 
 def get_google_sheets_data(client="CDC"):
-    """Load data from Google Sheets using API key - UPDATED WITH NEW COLUMNS"""
+    """Optimized version - loads both suppliers in one call"""
     try:
-        # Get client-specific sheet names
-        client_sheets = CLIENT_SHEETS[client]
+        # Dynamic sheet names
+        backaldrin_sheet = f"Backaldrin_{client}"
+        bateel_sheet = f"Bateel_{client}"
         
-        # Load Backaldrin data for specific client
-        backaldrin_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{client_sheets['backaldrin']}!A:Z?key={API_KEY}"
-        backaldrin_response = requests.get(backaldrin_url)
+        # Load both sheets
+        backaldrin_data = load_sheet_data(backaldrin_sheet)
+        bateel_data = load_sheet_data(bateel_sheet)
         
-        # Load Bateel data for specific client
-        bateel_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{client_sheets['bateel']}!A:Z?key={API_KEY}"
-        bateel_response = requests.get(bateel_url)
-        
-        data = {"Backaldrin": {}, "Bateel": {}}
-        
-        def process_sheet_data(values, supplier_name, sheet_name):
-            """Process sheet data with NEW COLUMNS"""
-            if not values or len(values) < 2:
-                return
-                
-            headers = [str(h).strip().lower() for h in values[0]]
-            rows = values[1:]
-            
-            # Find column indices by header name - UPDATED WITH NEW COLUMNS
-            try:
-                order_no_idx = headers.index("order_number")
-                order_date_idx = headers.index("order_date") 
-                year_idx = headers.index("year") if "year" in headers else -1
-                article_idx = headers.index("article_number")
-                product_idx = headers.index("product_name")
-                hs_code_idx = headers.index("hs_code") if "hs_code" in headers else -1
-                packaging_idx = headers.index("packaging") if "packaging" in headers else -1
-                quantity_idx = headers.index("quantity") if "quantity" in headers else -1
-                total_weight_idx = headers.index("total_weight") if "total_weight" in headers else -1
-                price_idx = headers.index("price_per_kg")
-                total_price_idx = headers.index("total_price") if "total_price" in headers else -1
-            except ValueError as e:
-                st.warning(f"Missing some columns in {sheet_name}: {e}")
-                # Use basic columns if some are missing
-                if "order_number" not in headers or "article_number" not in headers or "price_per_kg" not in headers:
-                    return
-            
-            for row in rows:
-                if len(row) > max(order_no_idx, order_date_idx, article_idx, product_idx, price_idx):
-                    article = str(row[article_idx]).strip() if article_idx < len(row) and row[article_idx] else ""
-                    product_name = row[product_idx] if product_idx < len(row) and row[product_idx] else ""
-                    price_str = row[price_idx] if price_idx < len(row) and row[price_idx] else ""
-                    order_no = row[order_no_idx] if order_no_idx < len(row) and row[order_no_idx] else ""
-                    order_date = row[order_date_idx] if order_date_idx < len(row) and row[order_date_idx] else ""
-                    
-                    # NEW: Extract additional fields
-                    year = row[year_idx] if year_idx != -1 and year_idx < len(row) and row[year_idx] else ""
-                    hs_code = row[hs_code_idx] if hs_code_idx != -1 and hs_code_idx < len(row) and row[hs_code_idx] else ""
-                    packaging = row[packaging_idx] if packaging_idx != -1 and packaging_idx < len(row) and row[packaging_idx] else ""
-                    quantity = row[quantity_idx] if quantity_idx != -1 and quantity_idx < len(row) and row[quantity_idx] else ""
-                    total_weight = row[total_weight_idx] if total_weight_idx != -1 and total_weight_idx < len(row) and row[total_weight_idx] else ""
-                    total_price = row[total_price_idx] if total_price_idx != -1 and total_price_idx < len(row) and row[total_price_idx] else ""
-                    
-                    if article and price_str and article != "":
-                        # CLEAN THE PRICE - remove currency and other text
-                        try:
-                            # Remove currency symbols and text, keep only numbers and decimals
-                            cleaned_price = ''.join(c for c in price_str if c.isdigit() or c == '.' or c == '-')
-                            if cleaned_price and cleaned_price != '.':
-                                price_float = float(cleaned_price)
-                            else:
-                                continue
-                        except ValueError:
-                            continue
-                        
-                        if article not in data[supplier_name]:
-                            data[supplier_name][article] = {
-                                "prices": [],
-                                "names": [],
-                                "orders": []
-                            }
-                        
-                        data[supplier_name][article]["prices"].append(price_float)
-                        data[supplier_name][article]["orders"].append({
-                            "order_no": order_no,
-                            "date": order_date,
-                            "year": year,
-                            "product_name": product_name,
-                            "article": article,
-                            "hs_code": hs_code,
-                            "packaging": packaging,
-                            "quantity": quantity,
-                            "total_weight": total_weight,
-                            "price": price_float,
-                            "total_price": total_price
-                        })
-                        
-                        if product_name and product_name.strip() != "":
-                            data[supplier_name][article]["names"].append(product_name)
-                        else:
-                            # If no product name, add a placeholder
-                            data[supplier_name][article]["names"].append("No Name")
-        
-        # Process Backaldrin data
-        if backaldrin_response.status_code == 200:
-            backaldrin_values = backaldrin_response.json().get('values', [])
-            process_sheet_data(backaldrin_values, "Backaldrin", client_sheets['backaldrin'])
-        
-        # Process Bateel data
-        if bateel_response.status_code == 200:
-            bateel_values = bateel_response.json().get('values', [])
-            process_sheet_data(bateel_values, "Bateel", client_sheets['bateel'])
-        
-        return data
-        
+        return {"Backaldrin": backaldrin_data, "Bateel": bateel_data}
     except Exception as e:
         st.error(f"Error loading data for {client}: {str(e)}")
         return {"Backaldrin": {}, "Bateel": {}}
@@ -2243,6 +2111,41 @@ def convert_df_to_excel(df):
         df.to_excel(writer, index=False, sheet_name='Price_History')
     processed_data = output.getvalue()
     return processed_data
+
+def convert_df_to_excel(df):
+    """Convert DataFrame to Excel format"""
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Price_History')
+    processed_data = output.getvalue()
+    return processed_data
+
+# === ADD UNIVERSAL LOADER HERE ===
+def load_sheet_data(sheet_name, start_row=0):
+    """Universal Google Sheets loader for all data types"""
+    try:
+        import urllib.parse
+        encoded_sheet = urllib.parse.quote(sheet_name)
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{encoded_sheet}!A:Z?key={API_KEY}"
+        
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if len(values) > start_row:
+                headers = values[start_row]
+                rows = values[start_row + 1:] if len(values) > start_row + 1 else []
+                
+                df = pd.DataFrame(rows, columns=headers)
+                df = df.replace('', pd.NA)
+                return df
+                
+        return pd.DataFrame()
+    except Exception as e:
+        st.error(f"Error loading {sheet_name}: {str(e)}")
+        return pd.DataFrame()
+# === END UNIVERSAL LOADER ===
 
 def orders_management_tab():
     """Orders Management Dashboard"""
