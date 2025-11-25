@@ -44,6 +44,13 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 1rem;
     }
+    .palletizing-header {
+        background: linear-gradient(135deg, #7C3AED, #6D28D9);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
     .price-card {
         background: linear-gradient(135deg, #FEE2E2, #FECACA);
         padding: 1.5rem;
@@ -81,6 +88,15 @@ st.markdown("""
         color: #1F2937;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
+    .pallet-stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 2px solid #7C3AED;
+        text-align: center;
+        color: #1F2937;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
     .stat-number {
         font-size: 2em;
         font-weight: bold;
@@ -91,6 +107,12 @@ st.markdown("""
         font-size: 2em;
         font-weight: bold;
         color: #059669;
+        margin: 0;
+    }
+    .pallet-stat-number {
+        font-size: 2em;
+        font-weight: bold;
+        color: #7C3AED;
         margin: 0;
     }
     .stat-label {
@@ -153,6 +175,13 @@ st.markdown("""
         padding: 1.5rem;
         border-radius: 10px;
         border: 2px solid #059669;
+        margin: 1rem 0;
+    }
+    .palletizing-section {
+        background: #FAF5FF;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 2px solid #7C3AED;
         margin: 1rem 0;
     }
     .login-container {
@@ -241,31 +270,36 @@ CLIENT_SHEETS = {
         "bateel": "Bateel_CDC", 
         "ceo_special": "CDC_CEO_Special_Prices",
         "new_orders": "New_client_orders",
-        "paid_orders": "Paid_Orders"
+        "paid_orders": "Paid_Orders",
+        "palletizing": "Palletizing_Data"  # NEW: Added palletizing sheet
     },
     "CoteDivoire": {
         "backaldrin": "Backaldrin_CoteDivoire",
         "bateel": "Bateel_CoteDivoire", 
         "ceo_special": "CoteDivoire_CEO_Special_Prices",
-        "new_orders": "New_client_orders"
+        "new_orders": "New_client_orders",
+        "palletizing": "Palletizing_Data"  # NEW: Added palletizing sheet
     },
     "CakeArt": {
         "backaldrin": "Backaldrin_CakeArt",
         "bateel": "Bateel_CakeArt",
         "ceo_special": "CakeArt_CEO_Special_Prices",
-        "new_orders": "New_client_orders"
+        "new_orders": "New_client_orders",
+        "palletizing": "Palletizing_Data"  # NEW: Added palletizing sheet
     },
     "SweetHouse": {
         "backaldrin": "Backaldrin_SweetHouse",
         "bateel": "Bateel_SweetHouse",
         "ceo_special": "SweetHouse_CEO_Special_Prices",
-        "new_orders": "New_client_orders"
+        "new_orders": "New_client_orders",
+        "palletizing": "Palletizing_Data"  # NEW: Added palletizing sheet
     },
     "Cameron": {
         "backaldrin": "Backaldrin_Cameron",
         "bateel": "Bateel_Cameron", 
         "ceo_special": "Cameron_CEO_Special_Prices",
-        "new_orders": "New_client_orders"
+        "new_orders": "New_client_orders",
+        "palletizing": "Palletizing_Data"  # NEW: Added palletizing sheet
     }
 }
 
@@ -333,7 +367,8 @@ def main_dashboard():
         "📦 Working on palletizing",
         "⭐ **SPECIAL OFFER**",
         "🔔 **REMINDER**:",
-        "📊 **NEW FEATURE**: HS Code search now available across all clients"
+        "📊 **NEW FEATURE**: HS Code search now available across all clients",
+        "📦 **NEW**: Palletizing Calculator added!"
     ]
     
     # Display announcements with nice styling
@@ -364,16 +399,16 @@ def main_dashboard():
     
     # Create ALL tabs in one line - they will auto-scroll horizontally
     if st.session_state.username in ["ceo", "admin"]:
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
+            "🏢 CLIENTS", "📋 NEW ORDERS", "📅 ETD SHEET", 
+            "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG",
+            "📊 ORDERS MANAGEMENT", "🔍 ADVANCED ANALYTICS", "📦 PALLETIZING", "⚙️ SETTINGS"
+        ])
+    else:
         tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
             "🏢 CLIENTS", "📋 NEW ORDERS", "📅 ETD SHEET", 
             "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG",
-            "📊 ORDERS MANAGEMENT", "🔍 ADVANCED ANALYTICS", "⚙️ SETTINGS"
-        ])
-    else:
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-            "🏢 CLIENTS", "📋 NEW ORDERS", "📅 ETD SHEET", 
-            "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG",
-            "📊 ORDERS MANAGEMENT", "🔍 ADVANCED ANALYTICS"
+            "📊 ORDERS MANAGEMENT", "🔍 ADVANCED ANALYTICS", "📦 PALLETIZING"
         ])
     
     with tab1:
@@ -397,202 +432,249 @@ def main_dashboard():
     with tab7:
         orders_management_tab()
         
+    with tab8:
+        advanced_analytics_tab()
+        
+    with tab9:
+        palletizing_tab()
+        
     # Additional tabs for admin/ceo
     if st.session_state.username in ["ceo", "admin"]:
-        with tab8:
-            advanced_analytics_tab()
-        with tab9:
+        with tab10:
             settings_tab()
-    else:
-        with tab8:
-            advanced_analytics_tab()
 
-def new_orders_tab():
-    """NEW: Client Orders Management Tab"""
+def palletizing_tab():
+    """Palletizing Calculator & Optimization"""
     st.markdown("""
-    <div class="new-orders-header">
-        <h2 style="margin:0;">📋 New Client Orders Management</h2>
-        <p style="margin:0; opacity:0.9;">Order Preparation • PI Generation • Item Allocation • Availability Tracking</p>
+    <div class="palletizing-header">
+        <h2 style="margin:0;">📦 Palletizing Calculator</h2>
+        <p style="margin:0; opacity:0.9;">Optimize Container Loading • Calculate Pallet Configurations • Maximize Space Utilization</p>
     </div>
     """, unsafe_allow_html=True)
     
     # Client selection
     available_clients = st.session_state.user_clients
     client = st.selectbox(
-        "Select Client:",
+        "Select Client for Palletizing:",
         available_clients,
-        key="new_orders_client"
+        key="palletizing_client"
     )
     
     if not client:
-        st.warning("Please select a client to manage orders")
+        st.info("👆 Please select a client to start palletizing calculations")
         return
     
-    # Load new orders data
-    with st.spinner(f"📥 Loading orders data for {client}..."):
-        orders_data = load_new_orders_data(client)
+    # Load palletizing data from Google Sheets
+    with st.spinner(f"📥 Loading palletizing data for {client}..."):
+        pallet_data = load_palletizing_data(client)
     
-    if orders_data.empty:
+    if pallet_data.empty:
+        st.warning(f"📝 No palletizing data found for {client} yet!")
         st.info(f"""
-        ⚠️ **No new orders data found for {client}**
-        
         **To get started:**
         1. Go to your Google Sheet for {client}
-        2. Add data to the **'New_client_orders'** sheet
-        3. Use these headers:
-           - Order_Number, Client_Name, Product_Name, Article_No
-           - HS_Code, Origin, Packing, Qty, Type
-           - Total_Weight, Price_in_USD_kg, Total_Price, Status
+        2. Add a new tab called **'Palletizing_Data'**
+        3. Use these exact headers:
+           - Client
+           - Item Code
+           - Item Name
+           - Unit/KG
+           - Unit/Carton
+           - Unit Pack/Pallet
+           - Total Unit
+           - Pallet Order
+           - Total Weight
+           - Factory
         """)
         return
     
-    # Orders Overview
-    st.subheader("📊 Orders Overview")
+    st.success(f"✅ Loaded {len(pallet_data)} items for {client}")
+    
+    # Filter data for selected client
+    client_data = pallet_data[pallet_data['Client'] == client]
+    
+    if client_data.empty:
+        st.warning(f"No palletizing data specifically for {client}")
+        return
+    
+    # Palletizing Overview
+    st.subheader("📊 Palletizing Overview")
     
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        total_orders = orders_data['Order_Number'].nunique()
-        st.metric("Total PIs", total_orders)
-    
-    with col2:
-        total_items = len(orders_data)
+        total_items = len(client_data)
         st.metric("Total Items", total_items)
     
+    with col2:
+        total_weight = client_data['Total Weight'].sum()
+        st.metric("Total Weight", f"{total_weight:,.0f} kg")
+    
     with col3:
-        total_value = orders_data['Total_Price'].sum()
-        st.metric("Total Value", f"${total_value:,.2f}")
+        total_pallets = client_data['Pallet Order'].sum()
+        st.metric("Total Pallets", f"{total_pallets:,.0f}")
     
     with col4:
-        unique_articles = orders_data['Article_No'].nunique()
-        st.metric("Unique Articles", unique_articles)
+        total_units = client_data['Total Unit'].sum()
+        st.metric("Total Units", f"{total_units:,.0f}")
     
-    # Search and Filter Section
-    st.subheader("🔍 Search & Filter Orders")
+    # Container Configuration
+    st.subheader("🚢 Container Configuration")
     
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        search_type = st.radio("Search By:", ["Article Number", "Product Name", "PI Number", "HS Code"], 
-                              horizontal=True, key="new_orders_search_type")
+        container_type = st.selectbox(
+            "Container Type",
+            ["20ft Container", "40ft Container", "40ft HC Container", "Custom"],
+            key="container_type"
+        )
     
     with col2:
-        search_term = st.text_input("Enter search term...", key="new_orders_search")
+        # Standard container capacities
+        container_capacities = {
+            "20ft Container": {"pallets": 11, "weight": 22000},
+            "40ft Container": {"pallets": 25, "weight": 27000},
+            "40ft HC Container": {"pallets": 30, "weight": 27000},
+            "Custom": {"pallets": 0, "weight": 0}
+        }
+        
+        if container_type == "Custom":
+            max_pallets = st.number_input("Max Pallets", min_value=1, value=25, key="custom_pallets")
+            max_weight = st.number_input("Max Weight (kg)", min_value=1000, value=27000, key="custom_weight")
+        else:
+            capacity = container_capacities[container_type]
+            max_pallets = capacity["pallets"]
+            max_weight = capacity["weight"]
+            st.info(f"📦 Capacity: {max_pallets} pallets, {max_weight:,} kg")
     
     with col3:
-        status_filter = st.selectbox("Order Status", ["All", "Draft", "Confirmed", "In Production", "Shipped"], 
-                                    key="new_orders_status")
+        optimization_goal = st.selectbox(
+            "Optimize For",
+            ["Maximize Weight", "Maximize Volume", "Balance Both"],
+            key="optimization_goal"
+        )
     
-    # Filter data
-    filtered_data = orders_data.copy()
+    # Analysis and Calculations
+    st.subheader("🔍 Palletizing Analysis")
     
-    if search_term:
-        if search_type == "Article Number":
-            filtered_data = filtered_data[filtered_data['Article_No'].astype(str).str.contains(search_term, case=False, na=False)]
-        elif search_type == "Product Name":
-            filtered_data = filtered_data[filtered_data['Product_Name'].str.contains(search_term, case=False, na=False)]
-        elif search_type == "PI Number":
-            filtered_data = filtered_data[filtered_data['Order_Number'].str.contains(search_term, case=False, na=False)]
-        elif search_type == "HS Code":
-            filtered_data = filtered_data[filtered_data['HS_Code'].astype(str).str.contains(search_term, case=False, na=False)]
+    # Calculate container requirements
+    required_containers_pallets = max(1, round(total_pallets / max_pallets))
+    required_containers_weight = max(1, round(total_weight / max_weight))
+    required_containers = max(required_containers_pallets, required_containers_weight)
     
-    if status_filter != "All":
-        filtered_data = filtered_data[filtered_data['Status'] == status_filter]
+    col1, col2, col3, col4 = st.columns(4)
     
-    # Display Results
-    st.subheader(f"📋 Order Items ({len(filtered_data)} found)")
+    with col1:
+        st.markdown(f"""
+        <div class="pallet-stat-card">
+            <div class="pallet-stat-number">{required_containers}</div>
+            <div class="stat-label">Containers Needed</div>
+        </div>
+        """, unsafe_allow_html=True)
     
-    if not filtered_data.empty:
-        # Group by Order Number
-        for order_num, order_group in filtered_data.groupby('Order_Number'):
-            with st.expander(f"📦 PI: {order_num} | Items: {len(order_group)} | Status: {order_group['Status'].iloc[0]}", expanded=False):
-                
-                # Order summary
-                col1, col2, col3, col4 = st.columns(4)
-                with col1:
-                    st.metric("Total Items", len(order_group))
-                with col2:
-                    st.metric("Total Qty", order_group['Qty'].sum())
-                with col3:
-                    st.metric("Total Weight", f"{order_group['Total_Weight'].sum():.1f} kg")
-                with col4:
-                    st.metric("Total Value", f"${order_group['Total_Price'].sum():,.2f}")
-                
-                # Display items in this order
-                for _, item in order_group.iterrows():
-                    st.markdown(f"""
-                    <div class="price-card">
-                        <div style="display: flex; justify-content: space-between; align-items: start;">
-                            <div style="flex: 2;">
-                                <h4 style="margin:0; color: #991B1B;">{item['Article_No']} - {item['Product_Name']}</h4>
-                                <p style="margin:0; color: #6B7280;">
-                                    HS Code: {item['HS_Code']} | Origin: {item['Origin']} | Packing: {item['Packing']}
-                                </p>
-                            </div>
-                            <div style="flex: 1; text-align: right;">
-                                <p style="margin:0; font-weight: bold;">Qty: {item['Qty']} {item['Type']}</p>
-                                <p style="margin:0;">Weight: {item['Total_Weight']} kg</p>
-                                <p style="margin:0; color: #059669;">Price: ${item['Price_in_USD_kg']}/kg</p>
-                                <p style="margin:0; font-weight: bold;">Total: ${item['Total_Price']:,.2f}</p>
-                            </div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-        
-        # Export Section
-        st.markdown('<div class="export-section">', unsafe_allow_html=True)
-        st.subheader("📤 Export Orders Data")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            csv = filtered_data.to_csv(index=False)
-            st.download_button(
-                label="📥 Download CSV",
-                data=csv,
-                file_name=f"{client}_new_orders_{datetime.now().strftime('%Y%m%d')}.csv",
-                mime="text/csv",
-                use_container_width=True,
-                key="new_orders_csv"  # FIXED: Added unique key
-            )
-        
-        with col2:
-            # Create summary report
-            summary_text = f"""
-{client} New Orders Report
-=========================
+    with col2:
+        utilization_pallets = min(100, (total_pallets / (required_containers * max_pallets)) * 100)
+        st.metric("Pallet Utilization", f"{utilization_pallets:.1f}%")
+    
+    with col3:
+        utilization_weight = min(100, (total_weight / (required_containers * max_weight)) * 100)
+        st.metric("Weight Utilization", f"{utilization_weight:.1f}%")
+    
+    with col4:
+        avg_weight_per_pallet = total_weight / total_pallets if total_pallets > 0 else 0
+        st.metric("Avg Weight/Pallet", f"{avg_weight_per_pallet:.1f} kg")
+    
+    # Detailed Item Breakdown
+    st.subheader("📋 Item Breakdown")
+    
+    # Display items in a nice format
+    for _, item in client_data.iterrows():
+        with st.expander(f"📦 {item['Item Code']} - {item['Item Name']}", expanded=False):
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("Units/Pallet", f"{item['Unit Pack/Pallet']:,.0f}")
+            with col2:
+                st.metric("Total Units", f"{item['Total Unit']:,.0f}")
+            with col3:
+                st.metric("Pallets", f"{item['Pallet Order']:,.0f}")
+            with col4:
+                st.metric("Weight", f"{item['Total Weight']:,.0f} kg")
+            
+            # Additional details
+            st.write(f"**Factory:** {item['Factory']}")
+            st.write(f"**Unit/Carton:** {item['Unit/Carton']}")
+            st.write(f"**Unit/KG:** {item['Unit/KG']}")
+    
+    # Optimization Recommendations
+    st.subheader("💡 Optimization Recommendations")
+    
+    if utilization_pallets < 80:
+        st.warning("**📦 Low Pallet Utilization:** Consider adding more items to fill containers efficiently")
+    
+    if utilization_weight < 80:
+        st.warning("**⚖️ Low Weight Utilization:** You have room for heavier items")
+    
+    if utilization_pallets > 95 and utilization_weight > 95:
+        st.success("**✅ Excellent Optimization:** Containers are well utilized!")
+    
+    # Export Section
+    st.markdown('<div class="palletizing-section">', unsafe_allow_html=True)
+    st.subheader("📤 Export Palletizing Report")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        csv = client_data.to_csv(index=False)
+        st.download_button(
+            label="📥 Download CSV",
+            data=csv,
+            file_name=f"{client}_palletizing_{datetime.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv",
+            use_container_width=True,
+            key="palletizing_csv"
+        )
+    
+    with col2:
+        summary_text = f"""
+{client} Palletizing Report
+==========================
 
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
-Total PIs: {filtered_data['Order_Number'].nunique()}
-Total Items: {len(filtered_data)}
-Total Value: ${filtered_data['Total_Price'].sum():,.2f}
+Container Type: {container_type}
+Required Containers: {required_containers}
 
-Orders Summary:
-{chr(10).join([f"• {order_num}: {len(group)} items, ${group['Total_Price'].sum():,.2f} ({group['Status'].iloc[0]})" 
-               for order_num, group in filtered_data.groupby('Order_Number')])}
+Summary:
+- Total Items: {total_items}
+- Total Weight: {total_weight:,.0f} kg
+- Total Pallets: {total_pallets:,.0f}
+- Total Units: {total_units:,.0f}
 
-Search Criteria: {search_type} = '{search_term}' | Status: {status_filter}
-            """
-            st.download_button(
-                label="📄 Download Summary",
-                data=summary_text,
-                file_name=f"{client}_orders_summary_{datetime.now().strftime('%Y%m%d')}.txt",
-                mime="text/plain",
-                use_container_width=True,
-                key="new_orders_summary"  # FIXED: Added unique key
-            )
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-    else:
-        st.info("No orders match your search criteria.")
+Utilization:
+- Pallet Utilization: {utilization_pallets:.1f}%
+- Weight Utilization: {utilization_weight:.1f}%
 
-def load_new_orders_data(client):
-    """Load new client orders data from Google Sheets"""
+Items:
+{chr(10).join([f"• {row['Item Code']} - {row['Item Name']}: {row['Pallet Order']} pallets, {row['Total Weight']} kg" for _, row in client_data.iterrows()])}
+        """
+        st.download_button(
+            label="📄 Download Summary",
+            data=summary_text,
+            file_name=f"{client}_palletizing_summary_{datetime.now().strftime('%Y%m%d')}.txt",
+            mime="text/plain",
+            use_container_width=True,
+            key="palletizing_summary"
+        )
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+def load_palletizing_data(client):
+    """Load palletizing data from Google Sheets"""
     try:
-        sheet_name = CLIENT_SHEETS[client]["new_orders"]
-        orders_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
-        response = requests.get(orders_url)
+        sheet_name = CLIENT_SHEETS[client]["palletizing"]
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
+        response = requests.get(url)
         
         if response.status_code == 200:
             data = response.json()
@@ -605,70 +687,32 @@ def load_new_orders_data(client):
                 # Create DataFrame
                 df = pd.DataFrame(rows, columns=headers)
                 
-                # Check for required columns
-                required_cols = ['Order_Number', 'Product_Name', 'Article_No', 'HS_Code', 'Origin', 
-                                'Packing', 'Qty', 'Type', 'Total_Weight', 'Price_in_USD_kg', 'Total_Price']
+                # Required columns for palletizing
+                required_cols = ['Client', 'Item Code', 'Item Name', 'Unit/KG', 'Unit/Carton', 
+                               'Unit Pack/Pallet', 'Total Unit', 'Pallet Order', 'Total Weight', 'Factory']
                 
-                # Fill missing columns with empty values
-                for col in required_cols:
-                    if col not in df.columns:
-                        df[col] = ''
-                
-                # Ensure Status column exists
-                if 'Status' not in df.columns:
-                    df['Status'] = 'Draft'
+                # Check if required columns exist
+                missing_cols = [col for col in required_cols if col not in df.columns]
+                if missing_cols:
+                    st.error(f"Missing columns in palletizing data: {', '.join(missing_cols)}")
+                    return pd.DataFrame()
                 
                 # Convert numeric columns
-                numeric_cols = ['Qty', 'Total_Weight', 'Price_in_USD_kg', 'Total_Price']
+                numeric_cols = ['Unit/KG', 'Unit/Carton', 'Unit Pack/Pallet', 'Total Unit', 'Pallet Order', 'Total Weight']
                 for col in numeric_cols:
-                    if col in df.columns:
-                        df[col] = pd.to_numeric(df[col], errors='coerce')
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
                 
                 return df
                 
         return pd.DataFrame()
         
     except Exception as e:
-        st.error(f"Error loading new orders data for {client}: {str(e)}")
+        st.error(f"Error loading palletizing data for {client}: {str(e)}")
         return pd.DataFrame()
 
-def advanced_analytics_tab():
-    """Advanced Analytics Tab"""
-    st.markdown("""
-    <div class="intelligence-header">
-        <h2 style="margin:0;">📊 Advanced Analytics</h2>
-        <p style="margin:0; opacity:0.9;">Business Intelligence • Performance Metrics • Trend Analysis</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.info("🔧 Advanced analytics features coming soon...")
-    st.write("This tab will include:")
-    st.write("• Sales performance dashboards")
-    st.write("• Client profitability analysis") 
-    st.write("• Supplier performance metrics")
-    st.write("• Market trend analysis")
-    st.write("• Forecasting and predictions")
+# [ALL YOUR EXISTING FUNCTIONS REMAIN EXACTLY THE SAME]
+# ... (include all your existing functions like clients_tab, etd_tab, etc.)
 
-def settings_tab():
-    """Settings Tab"""
-    st.markdown("""
-    <div class="ceo-header">
-        <h2 style="margin:0;">⚙️ System Settings</h2>
-        <p style="margin:0; opacity:0.9;">Configuration • User Management • System Preferences</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.info("🔧 Settings management coming soon...")
-    st.write("This tab will include:")
-    st.write("• User management and permissions")
-    st.write("• API configuration")
-    st.write("• System preferences")
-    st.write("• Data backup and recovery")
-
-# [ALL YOUR EXISTING FUNCTIONS REMAIN THE SAME - clients_tab, etd_tab, ceo_specials_tab, price_intelligence_tab, 
-# product_catalog_tab, orders_management_tab, and all their helper functions]
-
-# Include all your existing functions here (they remain unchanged)
 def clients_tab():
     """Clients management tab"""
     st.subheader("Client Selection")
@@ -866,7 +910,6 @@ Orders Summary:
                 data=summary_text,
                 file_name=f"etd_summary_{selected_month.strip().replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.txt",
                 mime="text/plain",
-                use_container_width=True,
                 key="etd_summary"
             )
         
@@ -961,41 +1004,8 @@ def display_etd_order_card(order, month):
                 st.write(transport)
 
 def load_etd_data(sheet_id, sheet_name):
-    """Load ETD data from Google Sheets - FIXED VERSION"""
-    try:
-        # URL encode the sheet name to handle spaces
-        import urllib.parse
-        encoded_sheet_name = urllib.parse.quote(sheet_name)
-        
-        url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{encoded_sheet_name}!A:Z?key={API_KEY}"
-        response = requests.get(url)
-        
-        if response.status_code == 200:
-            data = response.json()
-            values = data.get('values', [])
-            
-            if len(values) >= 15:  # Headers in row 14, data from row 15
-                headers = values[13]  # Row 14 (0-indexed as 13)
-                data_rows = values[14:]  # Data starts from row 15
-                
-                # Create DataFrame
-                df = pd.DataFrame(data_rows, columns=headers)
-                
-                # Clean up empty values
-                df = df.replace('', pd.NA)
-                
-                return df
-            else:
-                st.warning(f"Sheet exists but not enough data. Found {len(values)} rows, need at least 15.")
-                return pd.DataFrame()
-        else:
-            st.error(f"Failed to load ETD data. HTTP Status: {response.status_code}")
-            st.info("Please check: 1) Sheet name is exact, 2) Sheet exists in the file")
-            return pd.DataFrame()
-            
-    except Exception as e:
-        st.error(f"Error loading ETD data: {str(e)}")
-        return pd.DataFrame()
+    """Optimized ETD loader using universal function"""
+    return load_sheet_data(sheet_name, start_row=13)
 
 def ceo_specials_tab():
     """CEO Special Prices tab - NOW CLIENT SPECIFIC"""
@@ -1800,116 +1810,17 @@ def load_ceo_special_prices(client="CDC"):
         return pd.DataFrame()
 
 def get_google_sheets_data(client="CDC"):
-    """Load data from Google Sheets using API key - UPDATED WITH NEW COLUMNS"""
+    """Optimized version - loads both suppliers in one call"""
     try:
-        # Get client-specific sheet names
-        client_sheets = CLIENT_SHEETS[client]
+        # Dynamic sheet names
+        backaldrin_sheet = f"Backaldrin_{client}"
+        bateel_sheet = f"Bateel_{client}"
         
-        # Load Backaldrin data for specific client
-        backaldrin_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{client_sheets['backaldrin']}!A:Z?key={API_KEY}"
-        backaldrin_response = requests.get(backaldrin_url)
+        # Load both sheets
+        backaldrin_data = load_sheet_data(backaldrin_sheet)
+        bateel_data = load_sheet_data(bateel_sheet)
         
-        # Load Bateel data for specific client
-        bateel_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{client_sheets['bateel']}!A:Z?key={API_KEY}"
-        bateel_response = requests.get(bateel_url)
-        
-        data = {"Backaldrin": {}, "Bateel": {}}
-        
-        def process_sheet_data(values, supplier_name, sheet_name):
-            """Process sheet data with NEW COLUMNS"""
-            if not values or len(values) < 2:
-                return
-                
-            headers = [str(h).strip().lower() for h in values[0]]
-            rows = values[1:]
-            
-            # Find column indices by header name - UPDATED WITH NEW COLUMNS
-            try:
-                order_no_idx = headers.index("order_number")
-                order_date_idx = headers.index("order_date") 
-                year_idx = headers.index("year") if "year" in headers else -1
-                article_idx = headers.index("article_number")
-                product_idx = headers.index("product_name")
-                hs_code_idx = headers.index("hs_code") if "hs_code" in headers else -1
-                packaging_idx = headers.index("packaging") if "packaging" in headers else -1
-                quantity_idx = headers.index("quantity") if "quantity" in headers else -1
-                total_weight_idx = headers.index("total_weight") if "total_weight" in headers else -1
-                price_idx = headers.index("price_per_kg")
-                total_price_idx = headers.index("total_price") if "total_price" in headers else -1
-            except ValueError as e:
-                st.warning(f"Missing some columns in {sheet_name}: {e}")
-                # Use basic columns if some are missing
-                if "order_number" not in headers or "article_number" not in headers or "price_per_kg" not in headers:
-                    return
-            
-            for row in rows:
-                if len(row) > max(order_no_idx, order_date_idx, article_idx, product_idx, price_idx):
-                    article = str(row[article_idx]).strip() if article_idx < len(row) and row[article_idx] else ""
-                    product_name = row[product_idx] if product_idx < len(row) and row[product_idx] else ""
-                    price_str = row[price_idx] if price_idx < len(row) and row[price_idx] else ""
-                    order_no = row[order_no_idx] if order_no_idx < len(row) and row[order_no_idx] else ""
-                    order_date = row[order_date_idx] if order_date_idx < len(row) and row[order_date_idx] else ""
-                    
-                    # NEW: Extract additional fields
-                    year = row[year_idx] if year_idx != -1 and year_idx < len(row) and row[year_idx] else ""
-                    hs_code = row[hs_code_idx] if hs_code_idx != -1 and hs_code_idx < len(row) and row[hs_code_idx] else ""
-                    packaging = row[packaging_idx] if packaging_idx != -1 and packaging_idx < len(row) and row[packaging_idx] else ""
-                    quantity = row[quantity_idx] if quantity_idx != -1 and quantity_idx < len(row) and row[quantity_idx] else ""
-                    total_weight = row[total_weight_idx] if total_weight_idx != -1 and total_weight_idx < len(row) and row[total_weight_idx] else ""
-                    total_price = row[total_price_idx] if total_price_idx != -1 and total_price_idx < len(row) and row[total_price_idx] else ""
-                    
-                    if article and price_str and article != "":
-                        # CLEAN THE PRICE - remove currency and other text
-                        try:
-                            # Remove currency symbols and text, keep only numbers and decimals
-                            cleaned_price = ''.join(c for c in price_str if c.isdigit() or c == '.' or c == '-')
-                            if cleaned_price and cleaned_price != '.':
-                                price_float = float(cleaned_price)
-                            else:
-                                continue
-                        except ValueError:
-                            continue
-                        
-                        if article not in data[supplier_name]:
-                            data[supplier_name][article] = {
-                                "prices": [],
-                                "names": [],
-                                "orders": []
-                            }
-                        
-                        data[supplier_name][article]["prices"].append(price_float)
-                        data[supplier_name][article]["orders"].append({
-                            "order_no": order_no,
-                            "date": order_date,
-                            "year": year,
-                            "product_name": product_name,
-                            "article": article,
-                            "hs_code": hs_code,
-                            "packaging": packaging,
-                            "quantity": quantity,
-                            "total_weight": total_weight,
-                            "price": price_float,
-                            "total_price": total_price
-                        })
-                        
-                        if product_name and product_name.strip() != "":
-                            data[supplier_name][article]["names"].append(product_name)
-                        else:
-                            # If no product name, add a placeholder
-                            data[supplier_name][article]["names"].append("No Name")
-        
-        # Process Backaldrin data
-        if backaldrin_response.status_code == 200:
-            backaldrin_values = backaldrin_response.json().get('values', [])
-            process_sheet_data(backaldrin_values, "Backaldrin", client_sheets['backaldrin'])
-        
-        # Process Bateel data
-        if bateel_response.status_code == 200:
-            bateel_values = bateel_response.json().get('values', [])
-            process_sheet_data(bateel_values, "Bateel", client_sheets['bateel'])
-        
-        return data
-        
+        return {"Backaldrin": backaldrin_data, "Bateel": bateel_data}
     except Exception as e:
         st.error(f"Error loading data for {client}: {str(e)}")
         return {"Backaldrin": {}, "Bateel": {}}
@@ -2244,6 +2155,41 @@ def convert_df_to_excel(df):
     processed_data = output.getvalue()
     return processed_data
 
+def convert_df_to_excel(df):
+    """Convert DataFrame to Excel format"""
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Price_History')
+    processed_data = output.getvalue()
+    return processed_data
+
+# === ADD UNIVERSAL LOADER HERE ===
+def load_sheet_data(sheet_name, start_row=0):
+    """Universal Google Sheets loader for all data types"""
+    try:
+        import urllib.parse
+        encoded_sheet = urllib.parse.quote(sheet_name)
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{encoded_sheet}!A:Z?key={API_KEY}"
+        
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if len(values) > start_row:
+                headers = values[start_row]
+                rows = values[start_row + 1:] if len(values) > start_row + 1 else []
+                
+                df = pd.DataFrame(rows, columns=headers)
+                df = df.replace('', pd.NA)
+                return df
+                
+        return pd.DataFrame()
+    except Exception as e:
+        st.error(f"Error loading {sheet_name}: {str(e)}")
+        return pd.DataFrame()
+# === END UNIVERSAL LOADER ===
+
 def orders_management_tab():
     """Orders Management Dashboard"""
     st.markdown("""
@@ -2420,7 +2366,7 @@ def display_order_card(order):
         with col2:
             st.write("**💰 Financial Details**")
             st.write(f"Payment Due: {order.get('Payment due date', 'N/A')}")
-            st.write(f"Invoice: {order.get('Payment', 'N/A')}")
+            st.write(f"Invoice: {order.get('Invoice', 'N/A')}")
             st.write(f"Client Signed: {order.get('Date of Client signing', 'N/A')}")
         
         # Notes section
@@ -2534,6 +2480,264 @@ def load_orders_data(client):
         
     except Exception as e:
         st.error(f"Error loading orders data: {str(e)}")
+        return pd.DataFrame()
+
+def advanced_analytics_tab():
+    """Advanced Analytics Tab"""
+    st.markdown("""
+    <div class="intelligence-header">
+        <h2 style="margin:0;">📊 Advanced Analytics</h2>
+        <p style="margin:0; opacity:0.9;">Business Intelligence • Performance Metrics • Trend Analysis</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.info("🔧 Advanced analytics features coming soon...")
+    st.write("This tab will include:")
+    st.write("• Sales performance dashboards")
+    st.write("• Client profitability analysis") 
+    st.write("• Supplier performance metrics")
+    st.write("• Market trend analysis")
+    st.write("• Forecasting and predictions")
+
+def settings_tab():
+    """Settings Tab"""
+    st.markdown("""
+    <div class="ceo-header">
+        <h2 style="margin:0;">⚙️ System Settings</h2>
+        <p style="margin:0; opacity:0.9;">Configuration • User Management • System Preferences</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.info("🔧 Settings management coming soon...")
+    st.write("This tab will include:")
+    st.write("• User management and permissions")
+    st.write("• API configuration")
+    st.write("• System preferences")
+    st.write("• Data backup and recovery")
+
+def new_orders_tab():
+    """NEW: Client Orders Management Tab"""
+    st.markdown("""
+    <div class="new-orders-header">
+        <h2 style="margin:0;">📋 New Client Orders Management</h2>
+        <p style="margin:0; opacity:0.9;">Order Preparation • PI Generation • Item Allocation • Availability Tracking</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Client selection
+    available_clients = st.session_state.user_clients
+    client = st.selectbox(
+        "Select Client:",
+        available_clients,
+        key="new_orders_client"
+    )
+    
+    if not client:
+        st.warning("Please select a client to manage orders")
+        return
+    
+    # Load new orders data
+    with st.spinner(f"📥 Loading orders data for {client}..."):
+        orders_data = load_new_orders_data(client)
+    
+    if orders_data.empty:
+        st.info(f"""
+        ⚠️ **No new orders data found for {client}**
+        
+        **To get started:**
+        1. Go to your Google Sheet for {client}
+        2. Add data to the **'New_client_orders'** sheet
+        3. Use these headers:
+           - Order_Number, Client_Name, Product_Name, Article_No
+           - HS_Code, Origin, Packing, Qty, Type
+           - Total_Weight, Price_in_USD_kg, Total_Price, Status
+        """)
+        return
+    
+    # Orders Overview
+    st.subheader("📊 Orders Overview")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        total_orders = orders_data['Order_Number'].nunique()
+        st.metric("Total PIs", total_orders)
+    
+    with col2:
+        total_items = len(orders_data)
+        st.metric("Total Items", total_items)
+    
+    with col3:
+        total_value = orders_data['Total_Price'].sum()
+        st.metric("Total Value", f"${total_value:,.2f}")
+    
+    with col4:
+        unique_articles = orders_data['Article_No'].nunique()
+        st.metric("Unique Articles", unique_articles)
+    
+    # Search and Filter Section
+    st.subheader("🔍 Search & Filter Orders")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        search_type = st.radio("Search By:", ["Article Number", "Product Name", "PI Number", "HS Code"], 
+                              horizontal=True, key="new_orders_search_type")
+    
+    with col2:
+        search_term = st.text_input("Enter search term...", key="new_orders_search")
+    
+    with col3:
+        status_filter = st.selectbox("Order Status", ["All", "Draft", "Confirmed", "In Production", "Shipped"], 
+                                    key="new_orders_status")
+    
+    # Filter data
+    filtered_data = orders_data.copy()
+    
+    if search_term:
+        if search_type == "Article Number":
+            filtered_data = filtered_data[filtered_data['Article_No'].astype(str).str.contains(search_term, case=False, na=False)]
+        elif search_type == "Product Name":
+            filtered_data = filtered_data[filtered_data['Product_Name'].str.contains(search_term, case=False, na=False)]
+        elif search_type == "PI Number":
+            filtered_data = filtered_data[filtered_data['Order_Number'].str.contains(search_term, case=False, na=False)]
+        elif search_type == "HS Code":
+            filtered_data = filtered_data[filtered_data['HS_Code'].astype(str).str.contains(search_term, case=False, na=False)]
+    
+    if status_filter != "All":
+        filtered_data = filtered_data[filtered_data['Status'] == status_filter]
+    
+    # Display Results
+    st.subheader(f"📋 Order Items ({len(filtered_data)} found)")
+    
+    if not filtered_data.empty:
+        # Group by Order Number
+        for order_num, order_group in filtered_data.groupby('Order_Number'):
+            with st.expander(f"📦 PI: {order_num} | Items: {len(order_group)} | Status: {order_group['Status'].iloc[0]}", expanded=False):
+                
+                # Order summary
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Total Items", len(order_group))
+                with col2:
+                    st.metric("Total Qty", order_group['Qty'].sum())
+                with col3:
+                    st.metric("Total Weight", f"{order_group['Total_Weight'].sum():.1f} kg")
+                with col4:
+                    st.metric("Total Value", f"${order_group['Total_Price'].sum():,.2f}")
+                
+                # Display items in this order
+                for _, item in order_group.iterrows():
+                    st.markdown(f"""
+                    <div class="price-card">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div style="flex: 2;">
+                                <h4 style="margin:0; color: #991B1B;">{item['Article_No']} - {item['Product_Name']}</h4>
+                                <p style="margin:0; color: #6B7280;">
+                                    HS Code: {item['HS_Code']} | Origin: {item['Origin']} | Packing: {item['Packing']}
+                                </p>
+                            </div>
+                            <div style="flex: 1; text-align: right;">
+                                <p style="margin:0; font-weight: bold;">Qty: {item['Qty']} {item['Type']}</p>
+                                <p style="margin:0;">Weight: {item['Total_Weight']} kg</p>
+                                <p style="margin:0; color: #059669;">Price: ${item['Price_in_USD_kg']}/kg</p>
+                                <p style="margin:0; font-weight: bold;">Total: ${item['Total_Price']:,.2f}</p>
+                            </div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+        
+        # Export Section
+        st.markdown('<div class="export-section">', unsafe_allow_html=True)
+        st.subheader("📤 Export Orders Data")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            csv = filtered_data.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv,
+                file_name=f"{client}_new_orders_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="new_orders_csv"
+            )
+        
+        with col2:
+            # Create summary report
+            summary_text = f"""
+{client} New Orders Report
+=========================
+
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Total PIs: {filtered_data['Order_Number'].nunique()}
+Total Items: {len(filtered_data)}
+Total Value: ${filtered_data['Total_Price'].sum():,.2f}
+
+Orders Summary:
+{chr(10).join([f"• {order_num}: {len(group)} items, ${group['Total_Price'].sum():,.2f} ({group['Status'].iloc[0]})" 
+               for order_num, group in filtered_data.groupby('Order_Number')])}
+
+Search Criteria: {search_type} = '{search_term}' | Status: {status_filter}
+            """
+            st.download_button(
+                label="📄 Download Summary",
+                data=summary_text,
+                file_name=f"{client}_orders_summary_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True,
+                key="new_orders_summary"
+            )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    else:
+        st.info("No orders match your search criteria.")
+
+def load_new_orders_data(client):
+    """Load new client orders data from Google Sheets"""
+    try:
+        sheet_name = CLIENT_SHEETS[client]["new_orders"]
+        orders_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
+        response = requests.get(orders_url)
+        
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if values and len(values) > 1:
+                headers = values[0]
+                rows = values[1:]
+                
+                # Create DataFrame
+                df = pd.DataFrame(rows, columns=headers)
+                
+                # Check for required columns
+                required_cols = ['Order_Number', 'Product_Name', 'Article_No', 'HS_Code', 'Origin', 
+                                'Packing', 'Qty', 'Type', 'Total_Weight', 'Price_in_USD_kg', 'Total_Price']
+                
+                # Fill missing columns with empty values
+                for col in required_cols:
+                    if col not in df.columns:
+                        df[col] = ''
+                
+                # Ensure Status column exists
+                if 'Status' not in df.columns:
+                    df['Status'] = 'Draft'
+                
+                # Convert numeric columns
+                numeric_cols = ['Qty', 'Total_Weight', 'Price_in_USD_kg', 'Total_Price']
+                for col in numeric_cols:
+                    if col in df.columns:
+                        df[col] = pd.to_numeric(df[col], errors='coerce')
+                
+                return df
+                
+        return pd.DataFrame()
+        
+    except Exception as e:
+        st.error(f"Error loading new orders data for {client}: {str(e)}")
         return pd.DataFrame()
 
 # Run the main dashboard
