@@ -444,18 +444,109 @@ def main_dashboard():
             settings_tab()
 
 def palletizing_tab():
-    """Palletizing Calculator & Optimization"""
+    """Interactive Palletizing Calculator"""
     st.markdown("""
     <div class="palletizing-header">
-        <h2 style="margin:0;">📦 Palletizing Calculator</h2>
-        <p style="margin:0; opacity:0.9;">Optimize Container Loading • Calculate Pallet Configurations • Maximize Space Utilization</p>
+        <h2 style="margin:0;">📦 Interactive Palletizing Calculator</h2>
+        <p style="margin:0; opacity:0.9;">Real-time Calculations • Custom Inputs • Instant Pallet Counts</p>
     </div>
     """, unsafe_allow_html=True)
+
+    # Two modes: Quick Calculator or Bulk Analysis
+    calc_mode = st.radio(
+        "Choose Calculation Mode:",
+        ["🧮 Quick Item Calculator", "📊 Bulk Analysis from Sheet"],
+        horizontal=True,
+        key="pallet_mode"
+    )
+
+    if calc_mode == "🧮 Quick Item Calculator":
+        quick_pallet_calculator()
+    else:
+        bulk_sheet_analysis()
+
+def quick_pallet_calculator():
+    """Interactive calculator for single items"""
+    st.subheader("🧮 Enter Item Details")
     
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        item_code = st.text_input("Item Code", placeholder="e.g., 1-366")
+        item_name = st.text_input("Item Name", placeholder="e.g., Chocolate Chips")
+        unit_per_kg = st.number_input("Units per KG", min_value=0.1, value=25.0, step=0.1)
+    
+    with col2:
+        unit_per_carton = st.number_input("Units per Carton", min_value=1, value=20, step=1)
+        cartons_per_pallet = st.number_input("Cartons per Pallet", min_value=1, value=40, step=1)
+        total_units_ordered = st.number_input("Total Units Ordered", min_value=1, value=1000, step=1)
+    
+    with col3:
+        carton_weight_kg = st.number_input("Carton Weight (KG)", min_value=0.1, value=25.0, step=0.1)
+        pallet_weight_kg = st.number_input("Pallet Weight (KG)", min_value=1.0, value=25.0, step=1.0)
+        container_type = st.selectbox("Container Type", ["20ft", "40ft", "40ft HC"])
+    
+    # REAL-TIME CALCULATIONS
+    if total_units_ordered > 0:
+        st.subheader("📊 Instant Calculations")
+        
+        # Calculate everything
+        cartons_needed = total_units_ordered / unit_per_carton
+        pallets_needed = cartons_needed / cartons_per_pallet
+        total_weight = (total_units_ordered / unit_per_kg) + (pallets_needed * pallet_weight_kg)
+        
+        # Container capacities
+        container_capacities = {
+            "20ft": {"pallets": 11, "weight": 22000},
+            "40ft": {"pallets": 25, "weight": 27000}, 
+            "40ft HC": {"pallets": 30, "weight": 27000}
+        }
+        
+        capacity = container_capacities[container_type]
+        containers_by_pallets = pallets_needed / capacity["pallets"]
+        containers_by_weight = total_weight / capacity["weight"]
+        containers_needed = max(containers_by_pallets, containers_by_weight)
+        
+        # Display results
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("📦 Pallets Needed", f"{pallets_needed:,.1f}")
+        with col2:
+            st.metric("📦 Cartons Needed", f"{cartons_needed:,.0f}")
+        with col3:
+            st.metric("⚖️ Total Weight", f"{total_weight:,.0f} kg")
+        with col4:
+            st.metric("🚢 Containers", f"{containers_needed:,.1f}")
+        
+        # Detailed breakdown
+        st.subheader("🔍 Detailed Breakdown")
+        
+        with st.expander("View Calculation Details", expanded=True):
+            st.write(f"**Item:** {item_code} - {item_name}")
+            st.write(f"**Units Calculation:** {total_units_ordered:,} units ÷ {unit_per_carton} units/carton = {cartons_needed:,.1f} cartons")
+            st.write(f"**Pallets Calculation:** {cartons_needed:,.1f} cartons ÷ {cartons_per_pallet} cartons/pallet = {pallets_needed:,.1f} pallets")
+            st.write(f"**Weight Calculation:** {total_units_ordered:,} units ÷ {unit_per_kg} units/kg = {total_units_ordered/unit_per_kg:,.1f} kg product + {pallets_needed:,.1f} pallets × {pallet_weight_kg} kg/pallet = {total_weight:,.0f} kg total")
+            st.write(f"**Container Check:** {pallets_needed:,.1f} pallets ÷ {capacity['pallets']} pallets/container = {containers_by_pallets:,.1f} containers by space")
+            st.write(f"**Weight Check:** {total_weight:,.0f} kg ÷ {capacity['weight']:,} kg/container = {containers_by_weight:,.1f} containers by weight")
+        
+        # Optimization tips
+        st.subheader("💡 Optimization Tips")
+        
+        if containers_by_pallets > containers_by_weight:
+            st.info("**📦 Space Limited:** You're limited by pallet space, not weight. Consider higher-density packaging.")
+        else:
+            st.info("**⚖️ Weight Limited:** You're limited by weight capacity. Consider lighter packaging materials.")
+            
+        if pallets_needed % 1 != 0:
+            st.warning(f"**🔢 Partial Pallet:** You have {pallets_needed % 1:.1f} partial pallet. Consider adjusting order quantity to use full pallets.")
+
+def bulk_sheet_analysis():
+    """Analysis of existing sheet data"""
     # Client selection
     available_clients = st.session_state.user_clients
     client = st.selectbox(
-        "Select Client for Palletizing:",
+        "Select Client:",
         available_clients,
         key="palletizing_client"
     )
@@ -668,6 +759,7 @@ Items:
         )
     
     st.markdown('</div>', unsafe_allow_html=True)
+    
 
 def load_palletizing_data(client):
     """Load palletizing data from Google Sheets"""
