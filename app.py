@@ -466,80 +466,140 @@ def palletizing_tab():
         bulk_sheet_analysis()
 
 def quick_pallet_calculator():
-    """Interactive calculator for single items"""
-    st.subheader("🧮 Enter Item Details")
+    """Quick Pallet Calculator for CDC Items"""
+    st.subheader("🧮 Quick Pallet Calculator")
     
-    col1, col2, col3 = st.columns(3)
+    # CDC Common Items Database
+    cdc_items = {
+        "Vermicelli Color": {"packing": "5kg", "cartons_per_pallet": 100, "weight_per_carton": 5},
+        "Vermicelli Dark": {"packing": "5kg", "cartons_per_pallet": 100, "weight_per_carton": 5},
+        "Vermicelli White": {"packing": "5kg", "cartons_per_pallet": 100, "weight_per_carton": 5},
+        "Chocolate Chips": {"packing": "25kg", "cartons_per_pallet": 40, "weight_per_carton": 25},
+        "Date Mix": {"packing": "30kg", "cartons_per_pallet": 36, "weight_per_carton": 30},
+        "Vanilla Powder": {"packing": "15kg", "cartons_per_pallet": 60, "weight_per_carton": 15},
+        "Custom Item": {"packing": "Custom", "cartons_per_pallet": 0, "weight_per_carton": 0}
+    }
+    
+    col1, col2 = st.columns(2)
     
     with col1:
-        item_code = st.text_input("Item Code", placeholder="e.g., 1-366")
-        item_name = st.text_input("Item Name", placeholder="e.g., Chocolate Chips")
-        unit_per_kg = st.number_input("Units per KG", min_value=0.1, value=25.0, step=0.1)
+        # Item Selection
+        selected_item = st.selectbox(
+            "Select Item:",
+            list(cdc_items.keys()),
+            key="item_select"
+        )
+        
+        # Quantity Input
+        quantity = st.number_input(
+            "Quantity:",
+            min_value=1,
+            value=100,
+            step=1,
+            key="quantity"
+        )
+        
+        # Unit of Measure
+        uom = st.selectbox(
+            "Unit of Measure:",
+            ["Cartons", "KGs", "Pallets"],
+            key="uom"
+        )
     
     with col2:
-        unit_per_carton = st.number_input("Units per Carton", min_value=1, value=20, step=1)
-        cartons_per_pallet = st.number_input("Cartons per Pallet", min_value=1, value=40, step=1)
-        total_units_ordered = st.number_input("Total Units Ordered", min_value=1, value=1000, step=1)
-    
-    with col3:
-        carton_weight_kg = st.number_input("Carton Weight (KG)", min_value=0.1, value=25.0, step=0.1)
-        pallet_weight_kg = st.number_input("Pallet Weight (KG)", min_value=1.0, value=25.0, step=1.0)
-        container_type = st.selectbox("Container Type", ["20ft", "40ft", "40ft HC"])
+        # For custom items, allow manual entry
+        if selected_item == "Custom Item":
+            st.info("🔧 Enter Custom Item Details:")
+            packing = st.text_input("Packing (e.g., 5kg, 25kg):", value="5kg")
+            cartons_per_pallet = st.number_input("Cartons per Pallet:", min_value=1, value=100, step=1)
+            weight_per_carton = st.number_input("Weight per Carton (kg):", min_value=0.1, value=5.0, step=0.1)
+        else:
+            item_data = cdc_items[selected_item]
+            packing = item_data["packing"]
+            cartons_per_pallet = item_data["cartons_per_pallet"]
+            weight_per_carton = item_data["weight_per_carton"]
+            
+            st.info(f"📦 **Standard Packing:** {packing}")
+            st.info(f"📊 **Cartons per Pallet:** {cartons_per_pallet}")
+            st.info(f"⚖️ **Weight per Carton:** {weight_per_carton} kg")
     
     # REAL-TIME CALCULATIONS
-    if total_units_ordered > 0:
-        st.subheader("📊 Instant Calculations")
+    if quantity > 0:
+        st.subheader("🎯 INSTANT PALCALC RESULTS")
         
-        # Calculate everything
-        cartons_needed = total_units_ordered / unit_per_carton
-        pallets_needed = cartons_needed / cartons_per_pallet
-        total_weight = (total_units_ordered / unit_per_kg) + (pallets_needed * pallet_weight_kg)
+        # Convert everything to cartons first
+        if uom == "Cartons":
+            total_cartons = quantity
+        elif uom == "KGs":
+            total_cartons = quantity / weight_per_carton
+        else:  # Pallets
+            total_cartons = quantity * cartons_per_pallet
         
-        # Container capacities
-        container_capacities = {
-            "20ft": {"pallets": 11, "weight": 22000},
-            "40ft": {"pallets": 25, "weight": 27000}, 
-            "40ft HC": {"pallets": 30, "weight": 27000}
-        }
+        # Calculate pallets
+        full_pallets = total_cartons // cartons_per_pallet
+        partial_pallet_cartons = total_cartons % cartons_per_pallet
+        partial_pallet_percentage = (partial_pallet_cartons / cartons_per_pallet) * 100
         
-        capacity = container_capacities[container_type]
-        containers_by_pallets = pallets_needed / capacity["pallets"]
-        containers_by_weight = total_weight / capacity["weight"]
-        containers_needed = max(containers_by_pallets, containers_by_weight)
+        total_weight = total_cartons * weight_per_carton
         
-        # Display results
-        col1, col2, col3, col4 = st.columns(4)
+        # Display Results - SIMPLE AND CLEAR
+        col1, col2, col3 = st.columns(3)
         
         with col1:
-            st.metric("📦 Pallets Needed", f"{pallets_needed:,.1f}")
+            if full_pallets > 0:
+                st.success(f"### 📦 {full_pallets:,.0f} FULL PALLET{'S' if full_pallets > 1 else ''}")
+            else:
+                st.info("### 📦 0 FULL PALLETS")
+                
         with col2:
-            st.metric("📦 Cartons Needed", f"{cartons_needed:,.0f}")
+            if partial_pallet_cartons > 0:
+                st.warning(f"### 📦 1 PARTIAL PALLET")
+                st.write(f"({partial_pallet_cartons:,.0f} cartons - {partial_pallet_percentage:.1f}% full)")
+            else:
+                st.success("### ✅ NO PARTIAL PALLETS")
+                
         with col3:
-            st.metric("⚖️ Total Weight", f"{total_weight:,.0f} kg")
-        with col4:
-            st.metric("🚢 Containers", f"{containers_needed:,.1f}")
+            st.info(f"### ⚖️ {total_weight:,.0f} kg")
+            st.write(f"({total_cartons:,.0f} cartons total)")
         
-        # Detailed breakdown
-        st.subheader("🔍 Detailed Breakdown")
-        
-        with st.expander("View Calculation Details", expanded=True):
-            st.write(f"**Item:** {item_code} - {item_name}")
-            st.write(f"**Units Calculation:** {total_units_ordered:,} units ÷ {unit_per_carton} units/carton = {cartons_needed:,.1f} cartons")
-            st.write(f"**Pallets Calculation:** {cartons_needed:,.1f} cartons ÷ {cartons_per_pallet} cartons/pallet = {pallets_needed:,.1f} pallets")
-            st.write(f"**Weight Calculation:** {total_units_ordered:,} units ÷ {unit_per_kg} units/kg = {total_units_ordered/unit_per_kg:,.1f} kg product + {pallets_needed:,.1f} pallets × {pallet_weight_kg} kg/pallet = {total_weight:,.0f} kg total")
-            st.write(f"**Container Check:** {pallets_needed:,.1f} pallets ÷ {capacity['pallets']} pallets/container = {containers_by_pallets:,.1f} containers by space")
-            st.write(f"**Weight Check:** {total_weight:,.0f} kg ÷ {capacity['weight']:,} kg/container = {containers_by_weight:,.1f} containers by weight")
-        
-        # Optimization tips
-        st.subheader("💡 Optimization Tips")
-        
-        if containers_by_pallets > containers_by_weight:
-            st.info("**📦 Space Limited:** You're limited by pallet space, not weight. Consider higher-density packaging.")
-        else:
-            st.info("**⚖️ Weight Limited:** You're limited by weight capacity. Consider lighter packaging materials.")
+        # Detailed Breakdown
+        with st.expander("📊 View Detailed Calculation", expanded=False):
+            st.write(f"**Item:** {selected_item} ({packing})")
             
-        if pallets_needed % 1 != 0:
-            st.warning(f"**🔢 Partial Pallet:** You have {pallets_needed % 1:.1f} partial pallet. Consider adjusting order quantity to use full pallets.")
+            if uom == "Cartons":
+                st.write(f"**Input:** {quantity:,.0f} cartons")
+            elif uom == "KGs":
+                st.write(f"**Input:** {quantity:,.0f} kg = {total_cartons:,.0f} cartons")
+            else:
+                st.write(f"**Input:** {quantity:,.0f} pallets = {total_cartons:,.0f} cartons")
+            
+            st.write(f"**Calculation:** {total_cartons:,.0f} cartons ÷ {cartons_per_pallet} cartons/pallet")
+            st.write(f"**Result:** {full_pallets:,.0f} full pallets + {partial_pallet_cartons:,.0f} cartons partial")
+        
+        # Quick Examples
+        st.subheader("💡 Quick Examples")
+        
+        examples_col1, examples_col2 = st.columns(2)
+        
+        with examples_col1:
+            if st.button(f"Example: 100 cartons {selected_item}"):
+                st.session_state.quantity = 100
+                st.session_state.uom = "Cartons"
+                st.rerun()
+                
+        with examples_col2:
+            if st.button(f"Example: 1 pallet {selected_item}"):
+                st.session_state.quantity = 1
+                st.session_state.uom = "Pallets"
+                st.rerun()
+
+def bulk_sheet_analysis():
+    """Analysis of existing sheet data - SIMPLIFIED"""
+    st.info("📊 **Bulk Analysis from Google Sheets**")
+    st.write("This section analyzes your existing Palletizing_Data sheet")
+    st.write("Use the Quick Calculator above for instant pallet calculations!")
+    
+    # [Keep the existing bulk analysis code but add this message at top]
 
 def bulk_sheet_analysis():
     """Analysis of existing sheet data"""
