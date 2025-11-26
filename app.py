@@ -599,10 +599,6 @@ def bulk_sheet_analysis():
     st.write("This section analyzes your existing Palletizing_Data sheet")
     st.write("Use the Quick Calculator above for instant pallet calculations!")
     
-    # [Keep the existing bulk analysis code but add this message at top]
-
-def bulk_sheet_analysis():
-    """Analysis of existing sheet data"""
     # Client selection
     available_clients = st.session_state.user_clients
     client = st.selectbox(
@@ -819,7 +815,6 @@ Items:
         )
     
     st.markdown('</div>', unsafe_allow_html=True)
-    
 
 def load_palletizing_data(client):
     """Load palletizing data from Google Sheets"""
@@ -862,8 +857,102 @@ def load_palletizing_data(client):
         st.error(f"Error loading palletizing data for {client}: {str(e)}")
         return pd.DataFrame()
 
-# [ALL YOUR EXISTING FUNCTIONS REMAIN EXACTLY THE SAME]
-# ... (include all your existing functions like clients_tab, etd_tab, etc.)
+def etd_tab():
+    """ETD Management - Working Version"""
+    st.markdown("""
+    <div class="intelligence-header">
+        <h2 style="margin:0;">📅 ETD Management Dashboard</h2>
+        <p style="margin:0; opacity:0.9;">Live Order Tracking • Multi-Supplier ETD</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.info("🔄 Loading ETD data...")
+    
+    # ETD Sheet configuration
+    ETD_SHEET_ID = "1eA-mtD3aK_n9VYNV_bxnmqm58IywF0f5-7vr3PT51hs"
+    
+    # Try common month names
+    possible_months = [
+        "November 2025", "November 2025 ", "November2025",
+        "October 2025", "October 2025 ", "October2025", 
+        "December 2025", "December 2025 ", "December2025"
+    ]
+    
+    # Find which month sheet exists
+    available_months = []
+    for month in possible_months:
+        try:
+            test_data = load_etd_data(ETD_SHEET_ID, month)
+            if not test_data.empty:
+                available_months.append(month)
+                st.success(f"✅ Found: {month}")
+        except:
+            pass
+    
+    if not available_months:
+        st.error("❌ No ETD data found! Please check:")
+        st.info("""
+        1. Go to your ETD Google Sheet
+        2. Check the exact name of your month sheet
+        3. Make sure it's shared properly
+        4. Current sheet ID: 1eA-mtD3aK_n9VYNV_bxnmqm58IywF0f5-7vr3PT51hs
+        """)
+        
+        # Debug: Show all sheets in the document
+        try:
+            st.subheader("🔍 Debug: All sheets in this document")
+            url = f"https://sheets.googleapis.com/v4/spreadsheets/{ETD_SHEET_ID}?key={API_KEY}"
+            response = requests.get(url)
+            if response.status_code == 200:
+                data = response.json()
+                sheets = data.get('sheets', [])
+                sheet_names = [sheet['properties']['title'] for sheet in sheets]
+                st.write("**Available sheets:**", sheet_names)
+            else:
+                st.write(f"**API Response:** {response.status_code}")
+        except Exception as e:
+            st.write(f"**Debug Error:** {e}")
+        
+        return
+    
+    # If we found months, proceed
+    selected_month = st.selectbox("Select Month:", available_months, key="etd_month")
+    
+    try:
+        with st.spinner(f"Loading {selected_month}..."):
+            etd_data = load_etd_data(ETD_SHEET_ID, selected_month)
+        
+        if etd_data.empty:
+            st.warning(f"Sheet '{selected_month}' exists but has no data")
+            return
+            
+        st.success(f"✅ Loaded {len(etd_data)} orders from {selected_month}")
+        
+        # Show basic info
+        st.subheader("📊 Quick Overview")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Orders", len(etd_data))
+        with col2:
+            st.metric("Columns", len(etd_data.columns))
+        with col3:
+            st.metric("First 5 Columns", ", ".join(etd_data.columns[:5]))
+        
+        # Show sample data
+        st.subheader("📋 Sample Data")
+        st.dataframe(etd_data.head(10), use_container_width=True)
+        
+    except Exception as e:
+        st.error(f"❌ Error loading data: {str(e)}")
+
+def load_etd_data(sheet_id, sheet_name):
+    """Optimized ETD loader using universal function"""
+    return load_sheet_data(sheet_name, start_row=13)
+
+# [ALL YOUR OTHER EXISTING FUNCTIONS REMAIN EXACTLY THE SAME]
+# ... clients_tab, ceo_specials_tab, price_intelligence_tab, product_catalog_tab, 
+# ... orders_management_tab, advanced_analytics_tab, settings_tab, new_orders_tab,
+# ... and all their helper functions stay exactly as they were ...
 
 def clients_tab():
     """Clients management tab"""
@@ -880,188 +969,376 @@ def clients_tab():
     if client:
         cdc_dashboard(client)
 
-def detect_etd_months(sheet_id):
-    """Auto-detect all available ETD month sheets with flexible naming"""
-    try:
-        # Get all sheet names from the spreadsheet
-        url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}?key={API_KEY}"
-        response = requests.get(url)
-        
-        if response.status_code == 200:
-            data = response.json()
-            sheets = data.get('sheets', [])
-            
-            # Extract all sheet names
-            all_sheets = []
-            for sheet in sheets:
-                sheet_name = sheet['properties']['title']
-                all_sheets.append(sheet_name)
-            
-            # Filter for likely month sheets (more flexible)
-            month_keywords = [
-                'january', 'february', 'march', 'april', 'may', 'june',
-                'july', 'august', 'september', 'october', 'november', 'december',
-                'jan', 'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'
-            ]
-            
-            month_sheets = []
-            for sheet_name in all_sheets:
-                sheet_lower = sheet_name.lower()
-                # Check if sheet contains month keywords or year (more flexible)
-                if (any(month in sheet_lower for month in month_keywords) or 
-                    any(year in sheet_lower for year in ['2024', '2025', '2026'])):
-                    month_sheets.append(sheet_name)
-            
-            # If no month sheets found, return all sheets (fallback)
-            if not month_sheets:
-                return all_sheets
-            
-            return sorted(month_sheets)
-        
-        return []  # Return empty if API call fails
-        
-    except Exception as e:
-        st.error(f"Error detecting ETD sheets: {str(e)}")
-        return []  # Return empty on error
-def etd_tab():
-    """ETD Sheet - Live Google Sheets Integration with Auto Month Detection"""
-    # ... [THE COMPLETE NEW etd_tab CODE I JUST GAVE YOU] ...
+def cdc_dashboard(client):
+    """Client pricing dashboard with THREE SEARCH OPTIONS"""
+    
+    # Initialize session state
+    if 'search_results' not in st.session_state:
+        st.session_state.search_results = None
+    if 'export_data' not in st.session_state:
+        st.session_state.export_data = None
+    
+    st.markdown(f"""
+    <div class="cdc-header">
+        <h2 style="margin:0;">📊 {client} Pricing Dashboard</h2>
+        <p style="margin:0; opacity:0.9;">Backaldrin & Bateel • Live Google Sheets Data • Export Ready</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-def detect_etd_months(sheet_id):
-    """Auto-detect all available ETD month sheets with flexible naming"""
-    try:
-        # Get all sheet names from the spreadsheet
-        url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}?key={API_KEY}"
-        response = requests.get(url)
-        
-        if response.status_code == 200:
-            data = response.json()
-            sheets = data.get('sheets', [])
-            
-            # Extract all sheet names
-            all_sheets = []
-            for sheet in sheets:
-                sheet_name = sheet['properties']['title']
-                all_sheets.append(sheet_name)
-            
-            # Filter for likely month sheets (more flexible)
-            month_keywords = [
-                'january', 'february', 'march', 'april', 'may', 'june',
-                'july', 'august', 'september', 'october', 'november', 'december',
-                'jan', 'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'
-            ]
-            
-            month_sheets = []
-            for sheet_name in all_sheets:
-                sheet_lower = sheet_name.lower()
-                # Check if sheet contains month keywords or year (more flexible)
-                if (any(month in sheet_lower for month in month_keywords) or 
-                    any(year in sheet_lower for year in ['2024', '2025', '2026'])):
-                    month_sheets.append(sheet_name)
-            
-            # If no month sheets found, return all sheets (fallback)
-            if not month_sheets:
-                return all_sheets
-            
-            return sorted(month_sheets)
-        
-        return []  # Return empty if API call fails
-        
-    except Exception as e:
-        st.error(f"Error detecting ETD sheets: {str(e)}")
-        return []  # Return empty on error
+    # Load data directly from Google Sheets
+    DATA = get_google_sheets_data(client)
+    st.success(f"✅ Connected to Google Sheets - Live Data for {client}!")
 
-def display_etd_order_card(order, month):
-    """Display individual ETD order card with supplier tracking"""
-    # ... [YOUR EXISTING display_etd_order_card CODE STAYS HERE] ...
+    # Refresh button
+    if st.button("🔄 Refresh Data", use_container_width=True, type="secondary", key=f"{client}_refresh"):
+        st.rerun()
+
+    # Supplier selection - CLEAN VERSION (no white box)
+    st.subheader("🏢 Select Supplier")
+    supplier = st.radio("", ["Backaldrin", "Bateel"], horizontal=True, label_visibility="collapsed", key=f"{client}_supplier")
+
+    # Search section - THREE SEARCH OPTIONS
+    st.subheader("🔍 Search Historical Prices")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        article = st.text_input("**ARTICLE NUMBER**", placeholder="e.g., 1-366, 1-367...", key=f"{client}_article")
+    with col2:
+        product = st.text_input("**PRODUCT NAME**", placeholder="e.g., Moist Muffin, Date Mix...", key=f"{client}_product")
+    with col3:
+        hs_code = st.text_input("**HS CODE**", placeholder="e.g., 1901200000, 180690...", key=f"{client}_hscode")
+
+    # Auto-suggestions
+    search_term = article or product or hs_code
+    if search_term:
+        suggestions = get_suggestions(search_term, supplier, DATA)
+        if suggestions:
+            st.markdown("**💡 Quick Suggestions:**")
+            for i, suggestion in enumerate(suggestions[:4]):
+                with st.form(key=f"{client}_form_{i}"):
+                    if st.form_submit_button(suggestion["display"], use_container_width=True):
+                        st.session_state.search_results = {
+                            "article": suggestion["value"],
+                            "supplier": supplier,
+                            "client": client
+                        }
+                        st.rerun()
+    
+    # Manual search - UPDATED: Added hs_code parameter
+    if st.button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary", key=f"{client}_search"):
+        handle_search(article, product, hs_code, supplier, DATA, client)
+
+    # Display results from session state
+    if st.session_state.search_results and st.session_state.search_results.get("client") == client:
+        display_from_session_state(DATA, client)
+
+def get_suggestions(search_term, supplier, data):
+    """Get search suggestions for article, product name, or HS code"""
+    suggestions = []
+    supplier_data = data[supplier]
+    
+    for article_num, article_data in supplier_data.items():
+        # Article number search
+        if search_term.lower() in article_num.lower():
+            suggestions.append({
+                "type": "article",
+                "value": article_num,
+                "display": f"🔢 {article_num} - {article_data['names'][0] if article_data['names'] else 'No Name'}"
+            })
         
-def display_etd_order_card(order, month):
-    """Display individual ETD order card with supplier tracking"""
-    
-    # Determine status color
-    status = order.get('Status', 'Unknown')
-    status_color = {
-        'Shipped': '🟢',
-        'In Production': '🟡', 
-        'Pending': '🟠',
-        'Unknown': '⚫'
-    }.get(status, '⚫')
-    
-    # Check for ETD needs
-    needs_etd = []
-    for supplier in ['Backaldrine', 'bateel', 'Kasih', 'PMC']:
-        etd_col = f"ETD _{supplier}" if supplier != 'bateel' else 'ETD_bateel'
-        etd_value = order.get(etd_col, '')
-        if pd.notna(etd_value) and 'NEED ETD' in str(etd_value).upper():
-            needs_etd.append(supplier)
-    
-    with st.expander(f"{status_color} {order.get('Order No.', 'N/A')} - {order.get('Client Name', 'N/A')} | {month}", expanded=False):
+        # Product name search
+        for name in article_data['names']:
+            if search_term.lower() in name.lower():
+                suggestions.append({
+                    "type": "product", 
+                    "value": article_num,
+                    "display": f"📝 {article_num} - {name}"
+                })
         
-        # Order Header
-        col1, col2, col3 = st.columns([2, 1, 1])
+        # NEW: HS Code search
+        for order in article_data['orders']:
+            if (order.get('hs_code') and 
+                search_term.lower() in str(order['hs_code']).lower() and
+                article_num not in [s['value'] for s in suggestions]):
+                suggestions.append({
+                    "type": "hs_code",
+                    "value": article_num,
+                    "display": f"🏷️ {article_num} - HS: {order['hs_code']} - {article_data['names'][0] if article_data['names'] else 'No Name'}"
+                })
+    
+    # Remove duplicates
+    unique_suggestions = {}
+    for sugg in suggestions:
+        if sugg["value"] not in unique_suggestions:
+            unique_suggestions[sugg["value"]] = sugg
+    
+    return list(unique_suggestions.values())
+
+def handle_search(article, product, hs_code, supplier, data, client):
+    """Handle search across article, product name, and HS code"""
+    search_term = article or product or hs_code
+    if not search_term:
+        st.error("❌ Please enter an article number, product name, or HS code")
+        return
+    
+    found = False
+    for article_num, article_data in data[supplier].items():
+        article_match = article and article == article_num
+        product_match = product and any(product.lower() in name.lower() for name in article_data['names'])
+        hs_code_match = hs_code and any(
+            hs_code.lower() in str(order.get('hs_code', '')).lower() 
+            for order in article_data['orders']
+        )
+        
+        if article_match or product_match or hs_code_match:
+            st.session_state.search_results = {
+                "article": article_num,
+                "supplier": supplier,
+                "client": client
+            }
+            # Prepare export data
+            st.session_state.export_data = create_export_data(article_data, article_num, supplier, client)
+            found = True
+            break
+    
+    if not found:
+        st.error(f"❌ No results found for '{search_term}' in {supplier}")
+
+def display_from_session_state(data, client):
+    """Display search results with NEW CARD DESIGN"""
+    results = st.session_state.search_results
+    article = results["article"]
+    supplier = results["supplier"]
+    
+    if article not in data[supplier]:
+        st.error("❌ Article not found in current data")
+        return
+        
+    article_data = data[supplier][article]
+    
+    st.success(f"✅ **Article {article}** found in **{supplier}** for **{client}**")
+    
+    # Product names - SHOW ONLY UNIQUE NAMES
+    st.subheader("📝 Product Names")
+    unique_names = list(set(article_data['names']))  # Remove duplicates
+    for name in unique_names:
+        st.markdown(f'<div class="price-card">{name}</div>', unsafe_allow_html=True)
+    
+    # Statistics
+    prices = article_data['prices']
+    st.subheader("📊 Price Statistics")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown(f"""
+        <div class="stat-card">
+            <div class="stat-number">{len(prices)}</div>
+            <div class="stat-label">Total Records</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown(f"""
+        <div class="stat-card">
+            <div class="stat-number">${min(prices):.2f}</div>
+            <div class="stat-label">Min Price/kg</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown(f"""
+        <div class="stat-card">
+            <div class="stat-number">${max(prices):.2f}</div>
+            <div class="stat-label">Max Price/kg</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col4:
+        st.markdown(f"""
+        <div class="stat-card">
+            <div class="stat-number">${max(prices) - min(prices):.2f}</div>
+            <div class="stat-label">Price Range/kg</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # UPDATED: NEW CARD DESIGN
+    st.subheader("💵 Historical Prices with Order Details")
+    cols = st.columns(2)
+    for i, order in enumerate(article_data['orders']):
+        with cols[i % 2]:
+            # NEW CARD DESIGN: Order Number as header, then date, then price, then details
+            order_details = f"""
+            <div class="price-box">
+                <div style="font-size: 1.4em; font-weight: bold; border-bottom: 2px solid white; padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                    📦 {order['order_no']}
+                </div>
+                <div style="font-size: 1.1em; margin-bottom: 0.5rem;">
+                    <strong>📅 Date:</strong> {order['date']}
+                </div>
+                <div style="font-size: 1.3em; font-weight: bold; color: #FEF3C7; margin-bottom: 0.8rem;">
+                    ${order['price']:.2f}/kg
+                </div>
+                <div class="order-info">
+                    <strong>📦 Product:</strong> {order['product_name']}<br>
+                    <strong>🔢 Article:</strong> {order['article']}<br>
+                    {f"<strong>🏷️ Year:</strong> {order['year']}<br>" if order['year'] else ""}
+                    {f"<strong>📊 HS Code:</strong> {order['hs_code']}<br>" if order['hs_code'] else ""}
+                    {f"<strong>📦 Packaging:</strong> {order['packaging']}<br>" if order['packaging'] else ""}
+                    {f"<strong>🔢 Quantity:</strong> {order['quantity']}<br>" if order['quantity'] else ""}
+                    {f"<strong>⚖️ Total Weight:</strong> {order['total_weight']}<br>" if order['total_weight'] else ""}
+                    {f"<strong>💰 Total Price:</strong> {order['total_price']}<br>" if order['total_price'] else ""}
+                </div>
+            </div>
+            """
+            st.markdown(order_details, unsafe_allow_html=True)
+    
+    # EXPORT SECTION
+    st.markdown('<div class="export-section">', unsafe_allow_html=True)
+    st.subheader("📤 Export Data")
+    
+    if st.session_state.export_data is not None:
+        export_df = st.session_state.export_data
+        
+        col1, col2, col3 = st.columns(3)
         
         with col1:
-            st.write(f"**Client:** {order.get('Client Name', 'N/A')}")
-            st.write(f"**Employee:** {order.get('Concerned Employee', 'N/A')}")
-            st.write(f"**Month:** {month}")
-            
+            # CSV Export
+            csv = export_df.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv,
+                file_name=f"{client}_pricing_{article}_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                type="primary",
+                key=f"{client}_csv"
+            )
+        
         with col2:
-            st.write(f"**Status:** {status}")
-            st.write(f"**Confirmation:** {order.get('Confirmation Date', 'N/A')}")
-            
+            # Excel Export
+            try:
+                excel_data = convert_df_to_excel(export_df)
+                st.download_button(
+                    label="📊 Download Excel",
+                    data=excel_data,
+                    file_name=f"{client}_pricing_{article}_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                    mime="application/vnd.ms-excel",
+                    use_container_width=True,
+                    key=f"{client}_excel"
+                )
+            except:
+                st.info("📊 Excel export requires openpyxl package")
+        
         with col3:
-            if needs_etd:
-                st.error(f"🚨 NEED ETD: {', '.join(needs_etd)}")
-            st.write(f"**Loading:** {order.get('Scheduled Date For Loading', 'N/A')}")
-        
-        # Supplier ETD Tracking
-        st.write("---")
-        st.write("**🚚 Supplier ETD Status**")
-        
-        suppliers = [
-            ('Backaldrine', 'ETD _ Backaldrine', 'bateel Order #'),
-            ('bateel', 'ETD_bateel', 'bateel Order #'),
-            ('Kasih', 'ETD _ Kasih', 'Kasih Order #'), 
-            ('PMC', 'ETD_PMC', 'PMC Order #')
-        ]
-        
-        cols = st.columns(4)
-        for idx, (supplier, etd_col, order_col) in enumerate(suppliers):
-            with cols[idx]:
-                etd_value = order.get(etd_col, '')
-                order_value = order.get(order_col, '')
-                
-                if pd.isna(etd_value) or str(etd_value).strip() == '':
-                    st.write(f"**{supplier}:** ❌ No ETD")
-                elif 'NEED ETD' in str(etd_value).upper():
-                    st.error(f"**{supplier}:** 🚨 NEED ETD")
-                elif 'READY' in str(etd_value).upper():
-                    st.success(f"**{supplier}:** ✅ Ready")
-                else:
-                    st.info(f"**{supplier}:** 📅 {etd_value}")
-                
-                if pd.notna(order_value) and str(order_value).strip() != '':
-                    st.caption(f"Order: {order_value}")
-        
-        # Additional Information
-        st.write("---")
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            stock_notes = order.get('Stock Notes', '')
-            if pd.notna(stock_notes) and str(stock_notes).strip() != '':
-                st.write("**📦 Stock Notes:**")
-                st.info(stock_notes)
-                
-        with col2:
-            transport = order.get('transport Company', '')
-            if pd.notna(transport) and str(transport).strip() != '':
-                st.write("**🚛 Transport:**")
-                st.write(transport)
+            # Quick Stats Summary
+            st.download_button(
+                label="📄 Download Summary",
+                data=f"""
+{client} Pricing Summary Report
+===============================
 
-def load_etd_data(sheet_id, sheet_name):
-    """Optimized ETD loader using universal function"""
-    return load_sheet_data(sheet_name, start_row=13)
+Article: {article}
+Supplier: {supplier}
+Client: {client}
+Product: {export_df['Product_Name'].iloc[0]}
+Report Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+Price Statistics:
+• Total Records: {len(export_df)}
+• Minimum Price: ${min(prices):.2f}/kg
+• Maximum Price: ${max(prices):.2f}/kg  
+• Price Range: ${max(prices) - min(prices):.2f}/kg
+
+Orders Included: {', '.join(export_df['Order_Number'].tolist())}
+                """,
+                file_name=f"{client}_summary_{article}_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True,
+                key=f"{client}_summary"
+            )
+        
+        # Show export preview
+        with st.expander("👀 Preview Export Data"):
+            st.dataframe(export_df, use_container_width=True)
+            
+    else:
+        st.info("Search for an article to enable export options")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+def convert_df_to_excel(df):
+    """Convert DataFrame to Excel format"""
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Price_History')
+    processed_data = output.getvalue()
+    return processed_data
+
+def get_google_sheets_data(client="CDC"):
+    """Optimized version - loads both suppliers in one call"""
+    try:
+        # Dynamic sheet names
+        backaldrin_sheet = f"Backaldrin_{client}"
+        bateel_sheet = f"Bateel_{client}"
+        
+        # Load both sheets
+        backaldrin_data = load_sheet_data(backaldrin_sheet)
+        bateel_data = load_sheet_data(bateel_sheet)
+        
+        return {"Backaldrin": backaldrin_data, "Bateel": bateel_data}
+    except Exception as e:
+        st.error(f"Error loading data for {client}: {str(e)}")
+        return {"Backaldrin": {}, "Bateel": {}}
+
+def create_export_data(article_data, article, supplier, client):
+    """Create export data in different formats - UPDATED WITH NEW COLUMNS"""
+    # Create DataFrame for export
+    export_data = []
+    for order in article_data['orders']:
+        export_data.append({
+            'Client': client,
+            'Order_Number': order['order_no'],
+            'Date': order['date'],
+            'Year': order['year'],
+            'Product_Name': order['product_name'],
+            'Article_Number': article,
+            'HS_Code': order['hs_code'],
+            'Packaging': order['packaging'],
+            'Quantity': order['quantity'],
+            'Total_Weight': order['total_weight'],
+            'Price_per_kg': order['price'],
+            'Total_Price': order['total_price'],
+            'Supplier': supplier,
+            'Export_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+    
+    return pd.DataFrame(export_data)
+
+def load_sheet_data(sheet_name, start_row=0):
+    """Universal Google Sheets loader for all data types"""
+    try:
+        import urllib.parse
+        encoded_sheet = urllib.parse.quote(sheet_name)
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{encoded_sheet}!A:Z?key={API_KEY}"
+        
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if len(values) > start_row:
+                headers = values[start_row]
+                rows = values[start_row + 1:] if len(values) > start_row + 1 else []
+                
+                df = pd.DataFrame(rows, columns=headers)
+                df = df.replace('', pd.NA)
+                return df
+                
+        return pd.DataFrame()
+    except Exception as e:
+        st.error(f"Error loading {sheet_name}: {str(e)}")
+        return pd.DataFrame()
 
 def ceo_specials_tab():
     """CEO Special Prices tab - NOW CLIENT SPECIFIC"""
@@ -1229,6 +1506,49 @@ Special Prices:
         
     else:
         st.info("No CEO special prices match your search criteria.")
+
+def load_ceo_special_prices(client="CDC"):
+    """Load CEO special prices from Google Sheets for specific client"""
+    try:
+        sheet_name = CLIENT_SHEETS[client]["ceo_special"]
+        ceo_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
+        response = requests.get(ceo_url)
+        
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if values and len(values) > 1:
+                headers = values[0]
+                rows = values[1:]
+                
+                # Create DataFrame
+                df = pd.DataFrame(rows, columns=headers)
+                
+                # UPDATED: Ensure required columns exist (now 8 columns)
+                required_cols = ['Article_Number', 'Product_Name', 'Special_Price', 'Currency', 'Incoterm']
+                if all(col in df.columns for col in required_cols):
+                    # Clean up data - include all 8 columns
+                    df = df[required_cols + [col for col in df.columns if col not in required_cols]]
+                    
+                    # Add default values if missing
+                    if 'Notes' not in df.columns:
+                        df['Notes'] = ''
+                    if 'Effective_Date' not in df.columns:
+                        df['Effective_Date'] = datetime.now().strftime('%Y-%m-%d')
+                    if 'Expiry_Date' not in df.columns:
+                        df['Expiry_Date'] = (datetime.now() + pd.Timedelta(days=365)).strftime('%Y-%m-%d')
+                    
+                    return df
+                else:
+                    st.error(f"Missing required columns in {sheet_name}. Found: {list(df.columns)}")
+                    return pd.DataFrame()
+                
+        return pd.DataFrame()
+        
+    except Exception as e:
+        st.error(f"Error loading CEO special prices for {client}: {str(e)}")
+        return pd.DataFrame()
 
 def price_intelligence_tab():
     """CEO Price Intelligence - Cross-client price comparison"""
@@ -1821,430 +2141,6 @@ def load_product_catalog():
     except Exception as e:
         st.error(f"Error loading product catalog: {str(e)}")
         return pd.DataFrame()
-
-def load_ceo_special_prices(client="CDC"):
-    """Load CEO special prices from Google Sheets for specific client"""
-    try:
-        sheet_name = CLIENT_SHEETS[client]["ceo_special"]
-        ceo_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
-        response = requests.get(ceo_url)
-        
-        if response.status_code == 200:
-            data = response.json()
-            values = data.get('values', [])
-            
-            if values and len(values) > 1:
-                headers = values[0]
-                rows = values[1:]
-                
-                # Create DataFrame
-                df = pd.DataFrame(rows, columns=headers)
-                
-                # UPDATED: Ensure required columns exist (now 8 columns)
-                required_cols = ['Article_Number', 'Product_Name', 'Special_Price', 'Currency', 'Incoterm']
-                if all(col in df.columns for col in required_cols):
-                    # Clean up data - include all 8 columns
-                    df = df[required_cols + [col for col in df.columns if col not in required_cols]]
-                    
-                    # Add default values if missing
-                    if 'Notes' not in df.columns:
-                        df['Notes'] = ''
-                    if 'Effective_Date' not in df.columns:
-                        df['Effective_Date'] = datetime.now().strftime('%Y-%m-%d')
-                    if 'Expiry_Date' not in df.columns:
-                        df['Expiry_Date'] = (datetime.now() + pd.Timedelta(days=365)).strftime('%Y-%m-%d')
-                    
-                    return df
-                else:
-                    st.error(f"Missing required columns in {sheet_name}. Found: {list(df.columns)}")
-                    return pd.DataFrame()
-                
-        return pd.DataFrame()
-        
-    except Exception as e:
-        st.error(f"Error loading CEO special prices for {client}: {str(e)}")
-        return pd.DataFrame()
-
-def get_google_sheets_data(client="CDC"):
-    """Optimized version - loads both suppliers in one call"""
-    try:
-        # Dynamic sheet names
-        backaldrin_sheet = f"Backaldrin_{client}"
-        bateel_sheet = f"Bateel_{client}"
-        
-        # Load both sheets
-        backaldrin_data = load_sheet_data(backaldrin_sheet)
-        bateel_data = load_sheet_data(bateel_sheet)
-        
-        return {"Backaldrin": backaldrin_data, "Bateel": bateel_data}
-    except Exception as e:
-        st.error(f"Error loading data for {client}: {str(e)}")
-        return {"Backaldrin": {}, "Bateel": {}}
-
-def create_export_data(article_data, article, supplier, client):
-    """Create export data in different formats - UPDATED WITH NEW COLUMNS"""
-    # Create DataFrame for export
-    export_data = []
-    for order in article_data['orders']:
-        export_data.append({
-            'Client': client,
-            'Order_Number': order['order_no'],
-            'Date': order['date'],
-            'Year': order['year'],
-            'Product_Name': order['product_name'],
-            'Article_Number': article,
-            'HS_Code': order['hs_code'],
-            'Packaging': order['packaging'],
-            'Quantity': order['quantity'],
-            'Total_Weight': order['total_weight'],
-            'Price_per_kg': order['price'],
-            'Total_Price': order['total_price'],
-            'Supplier': supplier,
-            'Export_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        })
-    
-    return pd.DataFrame(export_data)
-
-def cdc_dashboard(client):
-    """Client pricing dashboard with THREE SEARCH OPTIONS"""
-    
-    # Initialize session state
-    if 'search_results' not in st.session_state:
-        st.session_state.search_results = None
-    if 'export_data' not in st.session_state:
-        st.session_state.export_data = None
-    
-    st.markdown(f"""
-    <div class="cdc-header">
-        <h2 style="margin:0;">📊 {client} Pricing Dashboard</h2>
-        <p style="margin:0; opacity:0.9;">Backaldrin & Bateel • Live Google Sheets Data • Export Ready</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Load data directly from Google Sheets
-    DATA = get_google_sheets_data(client)
-    st.success(f"✅ Connected to Google Sheets - Live Data for {client}!")
-
-    # Refresh button
-    if st.button("🔄 Refresh Data", use_container_width=True, type="secondary", key=f"{client}_refresh"):
-        st.rerun()
-
-    # Supplier selection - CLEAN VERSION (no white box)
-    st.subheader("🏢 Select Supplier")
-    supplier = st.radio("", ["Backaldrin", "Bateel"], horizontal=True, label_visibility="collapsed", key=f"{client}_supplier")
-
-    # Search section - THREE SEARCH OPTIONS
-    st.subheader("🔍 Search Historical Prices")
-    
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        article = st.text_input("**ARTICLE NUMBER**", placeholder="e.g., 1-366, 1-367...", key=f"{client}_article")
-    with col2:
-        product = st.text_input("**PRODUCT NAME**", placeholder="e.g., Moist Muffin, Date Mix...", key=f"{client}_product")
-    with col3:
-        hs_code = st.text_input("**HS CODE**", placeholder="e.g., 1901200000, 180690...", key=f"{client}_hscode")
-
-    # Auto-suggestions
-    search_term = article or product or hs_code
-    if search_term:
-        suggestions = get_suggestions(search_term, supplier, DATA)
-        if suggestions:
-            st.markdown("**💡 Quick Suggestions:**")
-            for i, suggestion in enumerate(suggestions[:4]):
-                with st.form(key=f"{client}_form_{i}"):
-                    if st.form_submit_button(suggestion["display"], use_container_width=True):
-                        st.session_state.search_results = {
-                            "article": suggestion["value"],
-                            "supplier": supplier,
-                            "client": client
-                        }
-                        st.rerun()
-    
-    # Manual search - UPDATED: Added hs_code parameter
-    if st.button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary", key=f"{client}_search"):
-        handle_search(article, product, hs_code, supplier, DATA, client)
-
-    # Display results from session state
-    if st.session_state.search_results and st.session_state.search_results.get("client") == client:
-        display_from_session_state(DATA, client)
-
-def get_suggestions(search_term, supplier, data):
-    """Get search suggestions for article, product name, or HS code"""
-    suggestions = []
-    supplier_data = data[supplier]
-    
-    for article_num, article_data in supplier_data.items():
-        # Article number search
-        if search_term.lower() in article_num.lower():
-            suggestions.append({
-                "type": "article",
-                "value": article_num,
-                "display": f"🔢 {article_num} - {article_data['names'][0] if article_data['names'] else 'No Name'}"
-            })
-        
-        # Product name search
-        for name in article_data['names']:
-            if search_term.lower() in name.lower():
-                suggestions.append({
-                    "type": "product", 
-                    "value": article_num,
-                    "display": f"📝 {article_num} - {name}"
-                })
-        
-        # NEW: HS Code search
-        for order in article_data['orders']:
-            if (order.get('hs_code') and 
-                search_term.lower() in str(order['hs_code']).lower() and
-                article_num not in [s['value'] for s in suggestions]):
-                suggestions.append({
-                    "type": "hs_code",
-                    "value": article_num,
-                    "display": f"🏷️ {article_num} - HS: {order['hs_code']} - {article_data['names'][0] if article_data['names'] else 'No Name'}"
-                })
-    
-    # Remove duplicates
-    unique_suggestions = {}
-    for sugg in suggestions:
-        if sugg["value"] not in unique_suggestions:
-            unique_suggestions[sugg["value"]] = sugg
-    
-    return list(unique_suggestions.values())
-
-def handle_search(article, product, hs_code, supplier, data, client):
-    """Handle search across article, product name, and HS code"""
-    search_term = article or product or hs_code
-    if not search_term:
-        st.error("❌ Please enter an article number, product name, or HS code")
-        return
-    
-    found = False
-    for article_num, article_data in data[supplier].items():
-        article_match = article and article == article_num
-        product_match = product and any(product.lower() in name.lower() for name in article_data['names'])
-        hs_code_match = hs_code and any(
-            hs_code.lower() in str(order.get('hs_code', '')).lower() 
-            for order in article_data['orders']
-        )
-        
-        if article_match or product_match or hs_code_match:
-            st.session_state.search_results = {
-                "article": article_num,
-                "supplier": supplier,
-                "client": client
-            }
-            # Prepare export data
-            st.session_state.export_data = create_export_data(article_data, article_num, supplier, client)
-            found = True
-            break
-    
-    if not found:
-        st.error(f"❌ No results found for '{search_term}' in {supplier}")
-
-def display_from_session_state(data, client):
-    """Display search results with NEW CARD DESIGN"""
-    results = st.session_state.search_results
-    article = results["article"]
-    supplier = results["supplier"]
-    
-    if article not in data[supplier]:
-        st.error("❌ Article not found in current data")
-        return
-        
-    article_data = data[supplier][article]
-    
-    st.success(f"✅ **Article {article}** found in **{supplier}** for **{client}**")
-    
-    # Product names - SHOW ONLY UNIQUE NAMES
-    st.subheader("📝 Product Names")
-    unique_names = list(set(article_data['names']))  # Remove duplicates
-    for name in unique_names:
-        st.markdown(f'<div class="price-card">{name}</div>', unsafe_allow_html=True)
-    
-    # Statistics
-    prices = article_data['prices']
-    st.subheader("📊 Price Statistics")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-number">{len(prices)}</div>
-            <div class="stat-label">Total Records</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-number">${min(prices):.2f}</div>
-            <div class="stat-label">Min Price/kg</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-number">${max(prices):.2f}</div>
-            <div class="stat-label">Max Price/kg</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col4:
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-number">${max(prices) - min(prices):.2f}</div>
-            <div class="stat-label">Price Range/kg</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # UPDATED: NEW CARD DESIGN
-    st.subheader("💵 Historical Prices with Order Details")
-    cols = st.columns(2)
-    for i, order in enumerate(article_data['orders']):
-        with cols[i % 2]:
-            # NEW CARD DESIGN: Order Number as header, then date, then price, then details
-            order_details = f"""
-            <div class="price-box">
-                <div style="font-size: 1.4em; font-weight: bold; border-bottom: 2px solid white; padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
-                    📦 {order['order_no']}
-                </div>
-                <div style="font-size: 1.1em; margin-bottom: 0.5rem;">
-                    <strong>📅 Date:</strong> {order['date']}
-                </div>
-                <div style="font-size: 1.3em; font-weight: bold; color: #FEF3C7; margin-bottom: 0.8rem;">
-                    ${order['price']:.2f}/kg
-                </div>
-                <div class="order-info">
-                    <strong>📦 Product:</strong> {order['product_name']}<br>
-                    <strong>🔢 Article:</strong> {order['article']}<br>
-                    {f"<strong>🏷️ Year:</strong> {order['year']}<br>" if order['year'] else ""}
-                    {f"<strong>📊 HS Code:</strong> {order['hs_code']}<br>" if order['hs_code'] else ""}
-                    {f"<strong>📦 Packaging:</strong> {order['packaging']}<br>" if order['packaging'] else ""}
-                    {f"<strong>🔢 Quantity:</strong> {order['quantity']}<br>" if order['quantity'] else ""}
-                    {f"<strong>⚖️ Total Weight:</strong> {order['total_weight']}<br>" if order['total_weight'] else ""}
-                    {f"<strong>💰 Total Price:</strong> {order['total_price']}<br>" if order['total_price'] else ""}
-                </div>
-            </div>
-            """
-            st.markdown(order_details, unsafe_allow_html=True)
-    
-    # EXPORT SECTION
-    st.markdown('<div class="export-section">', unsafe_allow_html=True)
-    st.subheader("📤 Export Data")
-    
-    if st.session_state.export_data is not None:
-        export_df = st.session_state.export_data
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            # CSV Export
-            csv = export_df.to_csv(index=False)
-            st.download_button(
-                label="📥 Download CSV",
-                data=csv,
-                file_name=f"{client}_pricing_{article}_{datetime.now().strftime('%Y%m%d')}.csv",
-                mime="text/csv",
-                use_container_width=True,
-                type="primary",
-                key=f"{client}_csv"
-            )
-        
-        with col2:
-            # Excel Export
-            try:
-                excel_data = convert_df_to_excel(export_df)
-                st.download_button(
-                    label="📊 Download Excel",
-                    data=excel_data,
-                    file_name=f"{client}_pricing_{article}_{datetime.now().strftime('%Y%m%d')}.xlsx",
-                    mime="application/vnd.ms-excel",
-                    use_container_width=True,
-                    key=f"{client}_excel"
-                )
-            except:
-                st.info("📊 Excel export requires openpyxl package")
-        
-        with col3:
-            # Quick Stats Summary
-            st.download_button(
-                label="📄 Download Summary",
-                data=f"""
-{client} Pricing Summary Report
-===============================
-
-Article: {article}
-Supplier: {supplier}
-Client: {client}
-Product: {export_df['Product_Name'].iloc[0]}
-Report Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}
-
-Price Statistics:
-• Total Records: {len(export_df)}
-• Minimum Price: ${min(prices):.2f}/kg
-• Maximum Price: ${max(prices):.2f}/kg  
-• Price Range: ${max(prices) - min(prices):.2f}/kg
-
-Orders Included: {', '.join(export_df['Order_Number'].tolist())}
-                """,
-                file_name=f"{client}_summary_{article}_{datetime.now().strftime('%Y%m%d')}.txt",
-                mime="text/plain",
-                use_container_width=True,
-                key=f"{client}_summary"
-            )
-        
-        # Show export preview
-        with st.expander("👀 Preview Export Data"):
-            st.dataframe(export_df, use_container_width=True)
-            
-    else:
-        st.info("Search for an article to enable export options")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-
-def convert_df_to_excel(df):
-    """Convert DataFrame to Excel format"""
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Price_History')
-    processed_data = output.getvalue()
-    return processed_data
-
-def convert_df_to_excel(df):
-    """Convert DataFrame to Excel format"""
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Price_History')
-    processed_data = output.getvalue()
-    return processed_data
-
-# === ADD UNIVERSAL LOADER HERE ===
-def load_sheet_data(sheet_name, start_row=0):
-    """Universal Google Sheets loader for all data types"""
-    try:
-        import urllib.parse
-        encoded_sheet = urllib.parse.quote(sheet_name)
-        url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{encoded_sheet}!A:Z?key={API_KEY}"
-        
-        response = requests.get(url)
-        if response.status_code == 200:
-            data = response.json()
-            values = data.get('values', [])
-            
-            if len(values) > start_row:
-                headers = values[start_row]
-                rows = values[start_row + 1:] if len(values) > start_row + 1 else []
-                
-                df = pd.DataFrame(rows, columns=headers)
-                df = df.replace('', pd.NA)
-                return df
-                
-        return pd.DataFrame()
-    except Exception as e:
-        st.error(f"Error loading {sheet_name}: {str(e)}")
-        return pd.DataFrame()
-# === END UNIVERSAL LOADER ===
 
 def orders_management_tab():
     """Orders Management Dashboard"""
