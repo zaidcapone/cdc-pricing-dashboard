@@ -858,7 +858,7 @@ def load_palletizing_data(client):
         return pd.DataFrame()
 
 def etd_tab():
-    """ETD Management - Fixed Version"""
+    """ETD Management - Fixed for Row 14"""
     st.markdown("""
     <div class="intelligence-header">
         <h2 style="margin:0;">📅 ETD Management Dashboard</h2>
@@ -870,54 +870,61 @@ def etd_tab():
     ETD_SHEET_ID = "1eA-mtD3aK_n9VYNV_bxnmqm58IywF0f5-7vr3PT51hs"
     
     st.success("✅ ETD Sheet Found: 'November 2025'")
+    st.info("📊 Loading data starting from **Row 14**...")
     
     try:
-        with st.spinner("🔄 Loading ETD data from 'November 2025'..."):
-            # Try different starting rows to find where your data begins
-            etd_data = load_etd_data_flexible(ETD_SHEET_ID, "November 2025")
+        with st.spinner("🔄 Loading ETD data..."):
+            # Load with correct starting row
+            etd_data = load_etd_data(ETD_SHEET_ID, "November 2025")
         
         if etd_data.empty:
-            st.error("❌ Sheet exists but no data found!")
+            st.error("❌ Still no data found starting from row 14!")
             st.info("""
-            **Possible issues:**
-            1. Data starts from a different row than expected
-            2. Sheet is empty
-            3. Column structure is different
-            
-            **Let's try manual loading:**
+            **Let's try loading raw data to see what's happening:**
             """)
             
-            # Manual row selection
-            start_row = st.number_input("Try starting from row:", min_value=1, value=1, key="start_row")
-            if st.button("Try Loading with this row"):
-                etd_data = load_sheet_data("November 2025", start_row-1)
-                if not etd_data.empty:
-                    st.success(f"✅ Data loaded starting from row {start_row}!")
-                    st.dataframe(etd_data.head(), use_container_width=True)
+            # Load raw data to debug
+            raw_url = f"https://sheets.googleapis.com/v4/spreadsheets/{ETD_SHEET_ID}/values/November%202025!A14:Z100?key={API_KEY}"
+            raw_response = requests.get(raw_url)
+            
+            if raw_response.status_code == 200:
+                raw_data = raw_response.json()
+                raw_values = raw_data.get('values', [])
+                
+                if raw_values:
+                    st.success(f"✅ Raw data found: {len(raw_values)} rows")
+                    st.write("**First few rows of raw data:**")
+                    for i, row in enumerate(raw_values[:5]):
+                        st.write(f"Row {i+14}: {row}")
                 else:
-                    st.error("Still no data found with this row")
+                    st.error("❌ No data found even in raw request!")
             return
             
-        st.success(f"✅ Loaded {len(etd_data)} orders from November 2025!")
+        st.success(f"✅ **SUCCESS!** Loaded {len(etd_data)} orders from November 2025!")
         
-        # Show what we found
+        # Show overview
         st.subheader("📊 ETD Overview")
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
+        
         with col1:
             st.metric("Total Orders", len(etd_data))
         with col2:
-            st.metric("Columns Found", len(etd_data.columns))
+            st.metric("Columns", len(etd_data.columns))
         with col3:
-            st.metric("Data Starts From", "Row 1")
+            st.metric("Data Range", f"Rows 14-{14 + len(etd_data)}")
+        with col4:
+            st.metric("First Columns", ", ".join(etd_data.columns[:3]))
         
-        # Show column names
+        # Show data preview
         st.subheader("📋 Data Preview")
-        st.write("**Columns:**", list(etd_data.columns))
         st.dataframe(etd_data.head(10), use_container_width=True)
         
+        # Show column names
+        with st.expander("🔍 View All Column Names"):
+            st.write("**All columns:**", list(etd_data.columns))
+        
     except Exception as e:
-        st.error(f"❌ Error: {str(e)}")
-        st.info("Please check if the 'November 2025' sheet has data and is properly formatted")
+        st.error(f"❌ Error loading data: {str(e)}")
 
 def load_etd_data_flexible(sheet_id, sheet_name):
     """Try multiple starting rows to find ETD data"""
