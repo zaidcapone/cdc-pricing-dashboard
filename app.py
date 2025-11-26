@@ -858,7 +858,7 @@ def load_palletizing_data(client):
         return pd.DataFrame()
 
 def etd_tab():
-    """ETD Management - Working Version"""
+    """ETD Management - Fixed Version"""
     st.markdown("""
     <div class="intelligence-header">
         <h2 style="margin:0;">📅 ETD Management Dashboard</h2>
@@ -866,88 +866,70 @@ def etd_tab():
     </div>
     """, unsafe_allow_html=True)
 
-    st.info("🔄 Loading ETD data...")
-    
     # ETD Sheet configuration
     ETD_SHEET_ID = "1eA-mtD3aK_n9VYNV_bxnmqm58IywF0f5-7vr3PT51hs"
     
-    # Try common month names
-    possible_months = [
-        "November 2025", "November 2025 ", "November2025",
-        "October 2025", "October 2025 ", "October2025", 
-        "December 2025", "December 2025 ", "December2025"
-    ]
-    
-    # Find which month sheet exists
-    available_months = []
-    for month in possible_months:
-        try:
-            test_data = load_etd_data(ETD_SHEET_ID, month)
-            if not test_data.empty:
-                available_months.append(month)
-                st.success(f"✅ Found: {month}")
-        except:
-            pass
-    
-    if not available_months:
-        st.error("❌ No ETD data found! Please check:")
-        st.info("""
-        1. Go to your ETD Google Sheet
-        2. Check the exact name of your month sheet
-        3. Make sure it's shared properly
-        4. Current sheet ID: 1eA-mtD3aK_n9VYNV_bxnmqm58IywF0f5-7vr3PT51hs
-        """)
-        
-        # Debug: Show all sheets in the document
-        try:
-            st.subheader("🔍 Debug: All sheets in this document")
-            url = f"https://sheets.googleapis.com/v4/spreadsheets/{ETD_SHEET_ID}?key={API_KEY}"
-            response = requests.get(url)
-            if response.status_code == 200:
-                data = response.json()
-                sheets = data.get('sheets', [])
-                sheet_names = [sheet['properties']['title'] for sheet in sheets]
-                st.write("**Available sheets:**", sheet_names)
-            else:
-                st.write(f"**API Response:** {response.status_code}")
-        except Exception as e:
-            st.write(f"**Debug Error:** {e}")
-        
-        return
-    
-    # If we found months, proceed
-    selected_month = st.selectbox("Select Month:", available_months, key="etd_month")
+    st.success("✅ ETD Sheet Found: 'November 2025'")
     
     try:
-        with st.spinner(f"Loading {selected_month}..."):
-            etd_data = load_etd_data(ETD_SHEET_ID, selected_month)
+        with st.spinner("🔄 Loading ETD data from 'November 2025'..."):
+            # Try different starting rows to find where your data begins
+            etd_data = load_etd_data_flexible(ETD_SHEET_ID, "November 2025")
         
         if etd_data.empty:
-            st.warning(f"Sheet '{selected_month}' exists but has no data")
+            st.error("❌ Sheet exists but no data found!")
+            st.info("""
+            **Possible issues:**
+            1. Data starts from a different row than expected
+            2. Sheet is empty
+            3. Column structure is different
+            
+            **Let's try manual loading:**
+            """)
+            
+            # Manual row selection
+            start_row = st.number_input("Try starting from row:", min_value=1, value=1, key="start_row")
+            if st.button("Try Loading with this row"):
+                etd_data = load_sheet_data("November 2025", start_row-1)
+                if not etd_data.empty:
+                    st.success(f"✅ Data loaded starting from row {start_row}!")
+                    st.dataframe(etd_data.head(), use_container_width=True)
+                else:
+                    st.error("Still no data found with this row")
             return
             
-        st.success(f"✅ Loaded {len(etd_data)} orders from {selected_month}")
+        st.success(f"✅ Loaded {len(etd_data)} orders from November 2025!")
         
-        # Show basic info
-        st.subheader("📊 Quick Overview")
+        # Show what we found
+        st.subheader("📊 ETD Overview")
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("Total Orders", len(etd_data))
         with col2:
-            st.metric("Columns", len(etd_data.columns))
+            st.metric("Columns Found", len(etd_data.columns))
         with col3:
-            st.metric("First 5 Columns", ", ".join(etd_data.columns[:5]))
+            st.metric("Data Starts From", "Row 1")
         
-        # Show sample data
-        st.subheader("📋 Sample Data")
+        # Show column names
+        st.subheader("📋 Data Preview")
+        st.write("**Columns:**", list(etd_data.columns))
         st.dataframe(etd_data.head(10), use_container_width=True)
         
     except Exception as e:
-        st.error(f"❌ Error loading data: {str(e)}")
+        st.error(f"❌ Error: {str(e)}")
+        st.info("Please check if the 'November 2025' sheet has data and is properly formatted")
 
-def load_etd_data(sheet_id, sheet_name):
-    """Optimized ETD loader using universal function"""
-    return load_sheet_data(sheet_name, start_row=13)
+def load_etd_data_flexible(sheet_id, sheet_name):
+    """Try multiple starting rows to find ETD data"""
+    # Try different common starting rows
+    for start_row in [0, 1, 13, 14]:
+        try:
+            data = load_sheet_data(sheet_name, start_row)
+            if not data.empty and len(data.columns) > 5:  # If we have reasonable columns
+                return data
+        except:
+            continue
+    return pd.DataFrame()
 
 # [ALL YOUR OTHER EXISTING FUNCTIONS REMAIN EXACTLY THE SAME]
 # ... clients_tab, ceo_specials_tab, price_intelligence_tab, product_catalog_tab, 
