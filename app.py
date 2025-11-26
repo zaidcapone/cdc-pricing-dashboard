@@ -893,7 +893,7 @@ def etd_tab():
     ETD_SHEET_ID = "1eA-mtD3aK_n9VYNV_bxnmqm58IywF0f5-7vr3PT51hs"
     
     # Available months - EXACT NAMES with space after 2025
-    AVAILABLE_MONTHS = ["November 2025 "]
+    AVAILABLE_MONTHS = ["November 2025"]
 
     try:
         # Month Selection
