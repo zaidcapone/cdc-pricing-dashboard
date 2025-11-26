@@ -923,7 +923,58 @@ def detect_etd_months(sheet_id):
     except Exception as e:
         st.error(f"Error detecting ETD sheets: {str(e)}")
         return []  # Return empty on error
+def etd_tab():
+    """ETD Sheet - Live Google Sheets Integration with Auto Month Detection"""
+    # ... [THE COMPLETE NEW etd_tab CODE I JUST GAVE YOU] ...
 
+def detect_etd_months(sheet_id):
+    """Auto-detect all available ETD month sheets with flexible naming"""
+    try:
+        # Get all sheet names from the spreadsheet
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}?key={API_KEY}"
+        response = requests.get(url)
+        
+        if response.status_code == 200:
+            data = response.json()
+            sheets = data.get('sheets', [])
+            
+            # Extract all sheet names
+            all_sheets = []
+            for sheet in sheets:
+                sheet_name = sheet['properties']['title']
+                all_sheets.append(sheet_name)
+            
+            # Filter for likely month sheets (more flexible)
+            month_keywords = [
+                'january', 'february', 'march', 'april', 'may', 'june',
+                'july', 'august', 'september', 'october', 'november', 'december',
+                'jan', 'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'
+            ]
+            
+            month_sheets = []
+            for sheet_name in all_sheets:
+                sheet_lower = sheet_name.lower()
+                # Check if sheet contains month keywords or year (more flexible)
+                if (any(month in sheet_lower for month in month_keywords) or 
+                    any(year in sheet_lower for year in ['2024', '2025', '2026'])):
+                    month_sheets.append(sheet_name)
+            
+            # If no month sheets found, return all sheets (fallback)
+            if not month_sheets:
+                return all_sheets
+            
+            return sorted(month_sheets)
+        
+        return []  # Return empty if API call fails
+        
+    except Exception as e:
+        st.error(f"Error detecting ETD sheets: {str(e)}")
+        return []  # Return empty on error
+
+def display_etd_order_card(order, month):
+    """Display individual ETD order card with supplier tracking"""
+    # ... [YOUR EXISTING display_etd_order_card CODE STAYS HERE] ...
+        
 def display_etd_order_card(order, month):
     """Display individual ETD order card with supplier tracking"""
     
