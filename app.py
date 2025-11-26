@@ -880,196 +880,49 @@ def clients_tab():
     if client:
         cdc_dashboard(client)
 
-def etd_tab():
-    """ETD Sheet - Live Google Sheets Integration with Multi-Month Support"""
-    st.markdown("""
-    <div class="intelligence-header">
-        <h2 style="margin:0;">📅 ETD Management Dashboard</h2>
-        <p style="margin:0; opacity:0.9;">Live Order Tracking • Multi-Supplier ETD • Multi-Month View</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # ETD Sheet configuration
-    ETD_SHEET_ID = "1eA-mtD3aK_n9VYNV_bxnmqm58IywF0f5-7vr3PT51hs"
-    
-    # Available months - EXACT NAMES with space after 2025
-    AVAILABLE_MONTHS = ["November 2025"]
-
+def detect_etd_months(sheet_id):
+    """Auto-detect all available ETD month sheets with flexible naming"""
     try:
-        # Month Selection
-        st.subheader("📅 Select Month")
-        selected_month = st.radio(
-            "Choose month to view:",
-            AVAILABLE_MONTHS,
-            horizontal=True,
-            key="etd_month_selector"
-        )
+        # Get all sheet names from the spreadsheet
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}?key={API_KEY}"
+        response = requests.get(url)
         
-        # Load ETD data for selected month
-        with st.spinner(f"🔄 Loading {selected_month.strip()} ETD data..."):
-            etd_data = load_etd_data(ETD_SHEET_ID, selected_month)
-        
-        if etd_data.empty:
-            st.warning(f"No ETD data found in {selected_month}. Please check the sheet.")
-            return
-
-        st.success(f"✅ Connected to {selected_month.strip()}! Loaded {len(etd_data)} orders")
-
-        # Overview Metrics
-        st.subheader("📊 ETD Overview")
-        col1, col2, col3, col4, col5 = st.columns(5)
-        
-        with col1:
-            total_orders = len(etd_data)
-            st.metric("Total Orders", total_orders)
-        
-        with col2:
-            shipped_orders = len(etd_data[etd_data['Status'].str.lower() == 'shipped'])
-            st.metric("Shipped", shipped_orders)
-        
-        with col3:
-            production_orders = len(etd_data[etd_data['Status'].str.lower().str.contains('production', na=False)])
-            st.metric("In Production", production_orders)
-        
-        with col4:
-            pending_orders = len(etd_data[etd_data['Status'].str.lower().str.contains('pending', na=False)])
-            st.metric("Pending", pending_orders)
-        
-        with col5:
-            # Count orders needing ETD
-            need_etd = len(etd_data[
-                (etd_data['ETD _ Backaldrine'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
-                (etd_data['ETD_bateel'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
-                (etd_data['ETD _ Kasih'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
-                (etd_data['ETD_PMC'].astype(str).str.contains('NEED ETD', case=False, na=False))
-            ])
-            st.metric("Need ETD", need_etd)
-
-        # Cross-Month Summary (if multiple months available)
-        if len(AVAILABLE_MONTHS) > 1:
-            st.subheader("🌐 Cross-Month Summary")
-            month_cols = st.columns(len(AVAILABLE_MONTHS))
+        if response.status_code == 200:
+            data = response.json()
+            sheets = data.get('sheets', [])
             
-            for i, month in enumerate(AVAILABLE_MONTHS):
-                with month_cols[i]:
-                    if month == selected_month:
-                        st.info(f"**{month.strip()}**\n**{len(etd_data)} orders**")
-                    else:
-                        # Quick load other months for summary
-                        try:
-                            other_month_data = load_etd_data(ETD_SHEET_ID, month)
-                            if not other_month_data.empty:
-                                st.metric(month.strip(), len(other_month_data))
-                            else:
-                                st.write(f"**{month.strip()}**\n0 orders")
-                        except:
-                            st.write(f"**{month.strip()}**\n–")
-
-        # Search and Filter Section
-        st.subheader("🔍 Filter & Search Orders")
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            client_filter = st.selectbox(
-                "Client",
-                ["All"] + sorted(etd_data['Client Name'].dropna().unique()),
-                key="etd_client_filter"
-            )
-        
-        with col2:
-            employee_filter = st.selectbox(
-                "Employee", 
-                ["All"] + sorted(etd_data['Concerned Employee'].dropna().unique()),
-                key="etd_employee_filter"
-            )
-        
-        with col3:
-            status_filter = st.selectbox(
-                "Status",
-                ["All", "Shipped", "In Production", "Pending", "Need ETD"],
-                key="etd_status_filter"
-            )
-        
-        with col4:
-            search_term = st.text_input("Search Order No...", key="etd_search")
-
-        # Apply filters
-        filtered_data = etd_data.copy()
-        
-        if client_filter != "All":
-            filtered_data = filtered_data[filtered_data['Client Name'] == client_filter]
-        
-        if employee_filter != "All":
-            filtered_data = filtered_data[filtered_data['Concerned Employee'] == employee_filter]
-        
-        if status_filter != "All":
-            if status_filter == "Need ETD":
-                filtered_data = filtered_data[
-                    (filtered_data['ETD _ Backaldrine'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
-                    (filtered_data['ETD_bateel'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
-                    (filtered_data['ETD _ Kasih'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
-                    (filtered_data['ETD_PMC'].astype(str).str.contains('NEED ETD', case=False, na=False))
-                ]
-            else:
-                filtered_data = filtered_data[filtered_data['Status'] == status_filter]
-        
-        if search_term:
-            filtered_data = filtered_data[
-                filtered_data['Order No.'].astype(str).str.contains(search_term, case=False, na=False)
+            # Extract all sheet names
+            all_sheets = []
+            for sheet in sheets:
+                sheet_name = sheet['properties']['title']
+                all_sheets.append(sheet_name)
+            
+            # Filter for likely month sheets (more flexible)
+            month_keywords = [
+                'january', 'february', 'march', 'april', 'may', 'june',
+                'july', 'august', 'september', 'october', 'november', 'december',
+                'jan', 'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'
             ]
-
-        # Display filtered results
-        st.subheader(f"📋 {selected_month.strip()} Orders ({len(filtered_data)} found)")
+            
+            month_sheets = []
+            for sheet_name in all_sheets:
+                sheet_lower = sheet_name.lower()
+                # Check if sheet contains month keywords or year (more flexible)
+                if (any(month in sheet_lower for month in month_keywords) or 
+                    any(year in sheet_lower for year in ['2024', '2025', '2026'])):
+                    month_sheets.append(sheet_name)
+            
+            # If no month sheets found, return all sheets (fallback)
+            if not month_sheets:
+                return all_sheets
+            
+            return sorted(month_sheets)
         
-        if not filtered_data.empty:
-            for _, order in filtered_data.iterrows():
-                display_etd_order_card(order, selected_month.strip())
-        else:
-            st.info("No orders match your filter criteria.")
-
-        # Export Section
-        st.markdown('<div class="export-section">', unsafe_allow_html=True)
-        st.subheader("📤 Export ETD Data")
+        return []  # Return empty if API call fails
         
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            csv = filtered_data.to_csv(index=False)
-            st.download_button(
-                label="📥 Download CSV",
-                data=csv,
-                file_name=f"etd_data_{selected_month.strip().replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv",
-                mime="text/csv",
-                use_container_width=True,
-                key="etd_csv"
-            )
-        
-        with col2:
-            summary_text = f"""
-ETD Data Export - {selected_month.strip()}
-===============================
-
-Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
-Total Orders: {len(filtered_data)}
-Filters: Client={client_filter}, Employee={employee_filter}, Status={status_filter}
-
-Orders Summary:
-{chr(10).join([f"• {row['Order No.']} - {row['Client Name']} - {row['Status']}" for _, row in filtered_data.iterrows()])}
-            """
-            st.download_button(
-                label="📄 Download Summary",
-                data=summary_text,
-                file_name=f"etd_summary_{selected_month.strip().replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.txt",
-                mime="text/plain",
-                key="etd_summary"
-            )
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-
     except Exception as e:
-        st.error(f"❌ Error loading ETD data: {str(e)}")
-        st.info("Please check: 1) Google Sheet is shared, 2) Sheet name is correct, 3) Internet connection")
+        st.error(f"Error detecting ETD sheets: {str(e)}")
+        return []  # Return empty on error
 
 def display_etd_order_card(order, month):
     """Display individual ETD order card with supplier tracking"""
