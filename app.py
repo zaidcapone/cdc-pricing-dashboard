@@ -515,6 +515,7 @@ def prices_tab():
     # Search and Filter Section
     st.subheader("🔍 Advanced Search & Filter")
     
+    # Two rows for filters
     col1, col2, col3 = st.columns(3)
     
     with col1:
@@ -539,10 +540,39 @@ def prices_tab():
             key="price_range_filter"
         )
     
+    # NEW: Specific search options
+    st.subheader("🎯 Specific Search Options")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        # Article Number search
+        article_search = st.text_input(
+            "🔢 Search by Article Number:",
+            placeholder="Enter article number...",
+            key="price_article_search"
+        )
+    
+    with col2:
+        # Item Name search
+        item_name_search = st.text_input(
+            "📝 Search by Item Name:",
+            placeholder="Enter item name...",
+            key="price_item_name_search"
+        )
+    
+    with col3:
+        # Customer Article No search
+        customer_article_search = st.text_input(
+            "🏷️ Search by Customer Article No:",
+            placeholder="Enter customer article no...",
+            key="price_customer_article_search"
+        )
+    
     # Global search
-    search_term = st.text_input(
-        "🔎 Global Search (search across all columns):",
-        placeholder="Enter item code, item name, customer article no, etc...",
+    global_search = st.text_input(
+        "🌐 Global Search (search across all columns):",
+        placeholder="Enter any term to search across all columns...",
         key="price_global_search"
     )
     
@@ -561,12 +591,28 @@ def prices_tab():
         (filtered_data['Price'] <= price_range[1])
     ]
     
-    # Apply global search
-    if search_term:
+    # NEW: Apply specific searches
+    if article_search:
+        filtered_data = filtered_data[
+            filtered_data['Item Code'].astype(str).str.contains(article_search, case=False, na=False)
+        ]
+    
+    if item_name_search:
+        filtered_data = filtered_data[
+            filtered_data['Item Name'].astype(str).str.contains(item_name_search, case=False, na=False)
+        ]
+    
+    if customer_article_search:
+        filtered_data = filtered_data[
+            filtered_data['Customer Article No'].astype(str).str.contains(customer_article_search, case=False, na=False)
+        ]
+    
+    # Apply global search (only if no specific searches are active)
+    if global_search and not (article_search or item_name_search or customer_article_search):
         search_columns = ['Customer', 'Customer Name', 'Salesman', 'Item Code', 'Item Name', 
                          'Customer Article No', 'Customer Label', 'Packing/kg']
         mask = filtered_data[search_columns].astype(str).apply(
-            lambda x: x.str.contains(search_term, case=False, na=False)
+            lambda x: x.str.contains(global_search, case=False, na=False)
         ).any(axis=1)
         filtered_data = filtered_data[mask]
     
@@ -626,7 +672,10 @@ Filters Applied:
 - Customer: {selected_customer}
 - Salesman: {selected_salesman}
 - Price Range: ${price_range[0]:.2f} - ${price_range[1]:.2f}
-- Search Term: {search_term if search_term else 'None'}
+- Article Search: {article_search if article_search else 'None'}
+- Item Name Search: {item_name_search if item_name_search else 'None'}
+- Customer Article Search: {customer_article_search if customer_article_search else 'None'}
+- Global Search: {global_search if global_search and not (article_search or item_name_search or customer_article_search) else 'None'}
 
 Top Items by Price:
 {chr(10).join([f"• {row['Item Code']} - {row['Item Name']}: ${row['Price']:.2f} ({row['Customer']})" 
