@@ -407,54 +407,54 @@ def main_dashboard():
     </div>
     """, unsafe_allow_html=True)
     
-    # Create tabs - HIDING Advanced Analytics and Settings tabs
+    # Create tabs - PRICES TAB MOVED TO SECOND POSITION
     if st.session_state.username in ["ceo", "admin"]:
-        # For admin/ceo: Show all tabs except Advanced Analytics and Settings
+        # For admin/ceo: Prices tab as second position
         tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
-            "🏢 CLIENTS", "📋 NEW ORDERS", "📅 ETD SHEET", 
+            "🏢 CLIENTS", "💰 PRICES", "📋 NEW ORDERS", "📅 ETD SHEET", 
             "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG",
-            "📊 ORDERS MANAGEMENT", "📦 PALLETIZING", "💰 PRICES"
+            "📊 ORDERS MANAGEMENT", "📦 PALLETIZING"
         ])
     else:
-        # For regular users: Show all tabs except Advanced Analytics and Settings
+        # For regular users: Prices tab as second position
         tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-            "🏢 CLIENTS", "📋 NEW ORDERS", "📅 ETD SHEET", 
+            "🏢 CLIENTS", "💰 PRICES", "📋 NEW ORDERS", "📅 ETD SHEET", 
             "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG",
-            "📊 ORDERS MANAGEMENT", "📦 PALLETIZING", "💰 PRICES"
+            "📊 ORDERS MANAGEMENT", "📦 PALLETIZING"
         ])
     
     with tab1:
         clients_tab()
     
     with tab2:
-        new_orders_tab()
+        prices_tab()
         
     with tab3:
-        etd_tab()
+        new_orders_tab()
         
     with tab4:
+        etd_tab()
+        
+    with tab5:
         ceo_specials_tab()
     
-    with tab5:
+    with tab6:
         price_intelligence_tab()
 
-    with tab6:
+    with tab7:
         product_catalog_tab()
         
-    with tab7:
+    with tab8:
         orders_management_tab()
         
-    with tab8:
-        palletizing_tab()
-        
-    # For admin/ceo users, add the Prices tab
+    # For admin/ceo users, add the Palletizing tab
     if st.session_state.username in ["ceo", "admin"]:
         with tab9:
-            prices_tab()
+            palletizing_tab()
     else:
-        # For regular users, add Prices tab in the 8th position
+        # For regular users, add Palletizing tab in the 8th position
         with tab8:
-            prices_tab()
+            palletizing_tab()
 
 def prices_tab():
     """NEW: All Customers Prices Tab"""
