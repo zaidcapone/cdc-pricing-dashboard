@@ -407,18 +407,20 @@ def main_dashboard():
     </div>
     """, unsafe_allow_html=True)
     
-    # Create ALL tabs in one line - they will auto-scroll horizontally
+    # Create tabs - HIDING Advanced Analytics and Settings tabs
     if st.session_state.username in ["ceo", "admin"]:
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
+        # For admin/ceo: Show all tabs except Advanced Analytics and Settings
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
             "🏢 CLIENTS", "📋 NEW ORDERS", "📅 ETD SHEET", 
             "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG",
-            "📊 ORDERS MANAGEMENT", "🔍 ADVANCED ANALYTICS", "📦 PALLETIZING", "💰 PRICES", "⚙️ SETTINGS"
+            "📊 ORDERS MANAGEMENT", "📦 PALLETIZING", "💰 PRICES"
         ])
     else:
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
+        # For regular users: Show all tabs except Advanced Analytics and Settings
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
             "🏢 CLIENTS", "📋 NEW ORDERS", "📅 ETD SHEET", 
             "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG",
-            "📊 ORDERS MANAGEMENT", "🔍 ADVANCED ANALYTICS", "📦 PALLETIZING", "💰 PRICES"
+            "📊 ORDERS MANAGEMENT", "📦 PALLETIZING", "💰 PRICES"
         ])
     
     with tab1:
@@ -443,18 +445,16 @@ def main_dashboard():
         orders_management_tab()
         
     with tab8:
-        advanced_analytics_tab()
-        
-    with tab9:
         palletizing_tab()
         
-    with tab10:
-        prices_tab()
-        
-    # Additional tabs for admin/ceo
+    # For admin/ceo users, add the Prices tab
     if st.session_state.username in ["ceo", "admin"]:
-        with tab11:
-            settings_tab()
+        with tab9:
+            prices_tab()
+    else:
+        # For regular users, add Prices tab in the 8th position
+        with tab8:
+            prices_tab()
 
 def prices_tab():
     """NEW: All Customers Prices Tab"""
