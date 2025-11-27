@@ -857,23 +857,25 @@ def general_price_list_tab():
                 st.metric("Price Column", "Not Found")
 
         # Display items
-        for _, item in filtered_data.iterrows():
-            with st.expander(f"💰 {item['Item Code']} - {item['Item Name']} | Customer: {item['Customer Name']}", expanded=False):
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.write(f"**Customer:** {item['Customer Name']}")
-                    st.write(f"**Salesman:** {item['Salesman']}")
-                    st.write(f"**Item Code:** {item['Item Code']}")
-                    st.write(f"**Item Name:** {item['Item Name']}")
-                
-                with col2:
-                    st.write(f"**Customer Article No:** {item['Customer Article No']}")
-                    st.write(f"**Customer Label:** {item['Customer Label']}")
-                    if 'Price' in item and pd.notna(item['Price']):
-                        st.success(f"**Price:** ${item['Price']:.2f}")
-                    else:
-                        st.info("**Price:** Not specified")
+for _, item in filtered_data.iterrows():
+    with st.expander(f"💰 {item['Item Code']} - {item['Item Name']} | Customer: {item['Customer Name']}", expanded=False):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.write(f"**Customer:** {item['Customer Name']}")
+            st.write(f"**Salesman:** {item['Salesman']}")
+            st.write(f"**Item Code:** {item['Item Code']}")
+            st.write(f"**Item Name:** {item['Item Name']}")
+        
+        with col2:
+            st.write(f"**Customer Article No:** {item['Customer Article No']}")
+            st.write(f"**Customer Label:** {item['Customer Label']}")
+            if 'Packing/kg' in item and pd.notna(item['Packing/kg']):
+                st.write(f"**Packing:** {item['Packing/kg']}")
+            if 'Price' in item and pd.notna(item['Price']):
+                st.success(f"**Price:** ${item['Price']:.2f}")
+            else:
+                st.info("**Price:** Not specified")
 
         # Export functionality
         st.markdown('<div class="export-section">', unsafe_allow_html=True)
@@ -943,9 +945,9 @@ def load_price_list_data():
                 # Create DataFrame
                 df = pd.DataFrame(rows, columns=headers)
                 
-                # Required columns
+                # Required columns - UPDATED WITH Packing/kg and Price
                 required_cols = ['Customer', 'Customer Name', 'Salesman', 'Item Code', 'Item Name', 
-                               'Customer Article No', 'Customer Label']
+                               'Customer Article No', 'Customer Label', 'Packing/kg', 'Price']
                 
                 # Check if required columns exist
                 missing_cols = [col for col in required_cols if col not in df.columns]
@@ -955,6 +957,10 @@ def load_price_list_data():
                 
                 return df
                 
+        return pd.DataFrame()
+        
+    except Exception as e:
+        st.error(f"Error loading price list data: {str(e)}")
         return pd.DataFrame()
         
     except Exception as e:
