@@ -976,7 +976,48 @@ def clients_tab():
     if client:
         cdc_dashboard(client)
 
+def debug_sheet_names():
+    """Temporary function to debug sheet names"""
+    ETD_SHEET_ID = "1eA-mtD3aK_n9VYNV_bxnmqm58IywF0f5-7vr3PT51hs"
+    
+    try:
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{ETD_SHEET_ID}?key={API_KEY}"
+        response = requests.get(url)
+        
+        if response.status_code == 200:
+            data = response.json()
+            sheets = data.get('sheets', [])
+            
+            st.write("📋 **ALL SHEETS FOUND:**")
+            for sheet in sheets:
+                sheet_name = sheet['properties']['title']
+                st.write(f"- '{sheet_name}'")
+                
+            if sheets:
+                st.success("✅ Sheet connection successful!")
+            else:
+                st.error("❌ No sheets found in document")
+        else:
+            st.error(f"❌ API Error: {response.status_code}")
+            
+    except Exception as e:
+        st.error(f"❌ Error: {str(e)}")
+
+# THEN YOUR EXISTING etd_tab FUNCTION STARTS HERE:
 def etd_tab():
+    """ETD Sheet - Live Google Sheets Integration with Multi-Month Support"""
+    st.markdown("""
+    <div class="intelligence-header">
+    # ... rest of your existing etd_tab code
+        
+def etd_tab():
+    debug_sheet_names()  # TEMPORARY - REMOVE LATER
+    st.markdown("""
+    <div class="intelligence-header">
+        <h2 style="margin:0;">📅 ETD Management Dashboard</h2>
+        <p style="margin:0; opacity:0.9;">Live Order Tracking • Multi-Supplier ETD • Multi-Month View</p>
+    </div>
+    """, unsafe_allow_html=True)
     """ETD Sheet - Live Google Sheets Integration with Multi-Month Support"""
     st.markdown("""
     <div class="intelligence-header">
