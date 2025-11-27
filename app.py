@@ -215,6 +215,13 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 1rem;
     }
+    .prices-header {
+        background: linear-gradient(135deg, #0EA5E9, #0284C7);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
     /* Horizontal scrollable tabs */
     .stTabs [data-baseweb="tab-list"] {
         gap: 2px;
@@ -305,6 +312,8 @@ CLIENT_SHEETS = {
 
 # Product Catalog Sheet Name
 PRODUCT_CATALOG_SHEET = "FullProductList"
+# NEW: Prices Sheet Name
+PRICES_SHEET = "Prices"
 
 def check_login():
     """Check if user is logged in"""
@@ -368,7 +377,8 @@ def main_dashboard():
         "⭐ **SPECIAL OFFER**",
         "🔔 **REMINDER**:",
         "📊 **NEW FEATURE**: HS Code search now available across all clients",
-        "📦 **NEW**: Palletizing Calculator added!"
+        "📦 **NEW**: Palletizing Calculator added!",
+        "💰 **NEW**: All Customers Prices tab added!"
     ]
     
     # Display announcements with nice styling
@@ -399,16 +409,16 @@ def main_dashboard():
     
     # Create ALL tabs in one line - they will auto-scroll horizontally
     if st.session_state.username in ["ceo", "admin"]:
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
+            "🏢 CLIENTS", "📋 NEW ORDERS", "📅 ETD SHEET", 
+            "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG",
+            "📊 ORDERS MANAGEMENT", "🔍 ADVANCED ANALYTICS", "📦 PALLETIZING", "💰 PRICES", "⚙️ SETTINGS"
+        ])
+    else:
         tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
             "🏢 CLIENTS", "📋 NEW ORDERS", "📅 ETD SHEET", 
             "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG",
-            "📊 ORDERS MANAGEMENT", "🔍 ADVANCED ANALYTICS", "📦 PALLETIZING", "⚙️ SETTINGS"
-        ])
-    else:
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
-            "🏢 CLIENTS", "📋 NEW ORDERS", "📅 ETD SHEET", 
-            "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG",
-            "📊 ORDERS MANAGEMENT", "🔍 ADVANCED ANALYTICS", "📦 PALLETIZING"
+            "📊 ORDERS MANAGEMENT", "🔍 ADVANCED ANALYTICS", "📦 PALLETIZING", "💰 PRICES"
         ])
     
     with tab1:
@@ -438,10 +448,270 @@ def main_dashboard():
     with tab9:
         palletizing_tab()
         
+    with tab10:
+        prices_tab()
+        
     # Additional tabs for admin/ceo
     if st.session_state.username in ["ceo", "admin"]:
-        with tab10:
+        with tab11:
             settings_tab()
+
+def prices_tab():
+    """NEW: All Customers Prices Tab"""
+    st.markdown("""
+    <div class="prices-header">
+        <h2 style="margin:0;">💰 All Customers Prices</h2>
+        <p style="margin:0; opacity:0.9;">Complete Price Database • Cross-Customer Analysis • Flexible Search</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Load prices data
+    with st.spinner("📥 Loading prices data from Google Sheets..."):
+        prices_data = load_prices_data()
+    
+    if prices_data.empty:
+        st.warning("""
+        ⚠️ **Prices data not found or empty!**
+        
+        **To get started:**
+        1. Go to your Google Sheet
+        2. Add a new tab called **'Prices'**
+        3. Use these exact headers:
+           - Customer
+           - Customer Name
+           - Salesman
+           - Item Code
+           - Item Name
+           - Customer Article No
+           - Customer Label
+           - Packing/kg
+           - Price
+        """)
+        return
+    
+    st.success(f"✅ Loaded {len(prices_data)} price records")
+    
+    # Overview Statistics
+    st.subheader("📊 Price Database Overview")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        total_records = len(prices_data)
+        st.metric("Total Records", total_records)
+    
+    with col2:
+        unique_customers = prices_data['Customer'].nunique()
+        st.metric("Unique Customers", unique_customers)
+    
+    with col3:
+        unique_items = prices_data['Item Code'].nunique()
+        st.metric("Unique Items", unique_items)
+    
+    with col4:
+        avg_price = prices_data['Price'].mean()
+        st.metric("Average Price", f"${avg_price:.2f}")
+    
+    # Search and Filter Section
+    st.subheader("🔍 Advanced Search & Filter")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        # Customer filter
+        customers = ["All"] + sorted(prices_data['Customer'].dropna().unique().tolist())
+        selected_customer = st.selectbox("Filter by Customer:", customers, key="price_customer_filter")
+    
+    with col2:
+        # Salesman filter
+        salesmen = ["All"] + sorted(prices_data['Salesman'].dropna().unique().tolist())
+        selected_salesman = st.selectbox("Filter by Salesman:", salesmen, key="price_salesman_filter")
+    
+    with col3:
+        # Price range filter
+        min_price = float(prices_data['Price'].min())
+        max_price = float(prices_data['Price'].max())
+        price_range = st.slider(
+            "Price Range:",
+            min_value=min_price,
+            max_value=max_price,
+            value=(min_price, max_price),
+            key="price_range_filter"
+        )
+    
+    # Global search
+    search_term = st.text_input(
+        "🔎 Global Search (search across all columns):",
+        placeholder="Enter item code, item name, customer article no, etc...",
+        key="price_global_search"
+    )
+    
+    # Apply filters
+    filtered_data = prices_data.copy()
+    
+    if selected_customer != "All":
+        filtered_data = filtered_data[filtered_data['Customer'] == selected_customer]
+    
+    if selected_salesman != "All":
+        filtered_data = filtered_data[filtered_data['Salesman'] == selected_salesman]
+    
+    # Apply price range filter
+    filtered_data = filtered_data[
+        (filtered_data['Price'] >= price_range[0]) & 
+        (filtered_data['Price'] <= price_range[1])
+    ]
+    
+    # Apply global search
+    if search_term:
+        search_columns = ['Customer', 'Customer Name', 'Salesman', 'Item Code', 'Item Name', 
+                         'Customer Article No', 'Customer Label', 'Packing/kg']
+        mask = filtered_data[search_columns].astype(str).apply(
+            lambda x: x.str.contains(search_term, case=False, na=False)
+        ).any(axis=1)
+        filtered_data = filtered_data[mask]
+    
+    # Display Results
+    st.subheader(f"📋 Price Records ({len(filtered_data)} found)")
+    
+    if not filtered_data.empty:
+        # Display data in a nice card format
+        for _, record in filtered_data.iterrows():
+            with st.expander(f"💰 {record['Item Code']} - {record['Item Name']}", expanded=False):
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    st.write(f"**Customer:** {record['Customer']}")
+                    st.write(f"**Customer Name:** {record['Customer Name']}")
+                    st.write(f"**Salesman:** {record['Salesman']}")
+                    st.write(f"**Item Code:** {record['Item Code']}")
+                    st.write(f"**Item Name:** {record['Item Name']}")
+                    
+                with col2:
+                    st.write(f"**Customer Article No:** {record['Customer Article No']}")
+                    st.write(f"**Customer Label:** {record['Customer Label']}")
+                    st.write(f"**Packing/kg:** {record['Packing/kg']}")
+                    st.markdown(f"<h3 style='color: #059669;'>Price: ${record['Price']:.2f}</h3>", unsafe_allow_html=True)
+        
+        # Export Section
+        st.markdown('<div class="export-section">', unsafe_allow_html=True)
+        st.subheader("📤 Export Price Data")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            csv = filtered_data.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv,
+                file_name=f"all_prices_data_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="prices_csv"
+            )
+        
+        with col2:
+            # Create summary
+            summary_text = f"""
+All Customers Prices Report
+===========================
+
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Total Records: {len(filtered_data)}
+Unique Customers: {filtered_data['Customer'].nunique()}
+Unique Items: {filtered_data['Item Code'].nunique()}
+Average Price: ${filtered_data['Price'].mean():.2f}
+Price Range: ${filtered_data['Price'].min():.2f} - ${filtered_data['Price'].max():.2f}
+
+Filters Applied:
+- Customer: {selected_customer}
+- Salesman: {selected_salesman}
+- Price Range: ${price_range[0]:.2f} - ${price_range[1]:.2f}
+- Search Term: {search_term if search_term else 'None'}
+
+Top Items by Price:
+{chr(10).join([f"• {row['Item Code']} - {row['Item Name']}: ${row['Price']:.2f} ({row['Customer']})" 
+               for _, row in filtered_data.nlargest(10, 'Price').iterrows()])}
+            """
+            st.download_button(
+                label="📄 Download Summary",
+                data=summary_text,
+                file_name=f"prices_summary_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True,
+                key="prices_summary"
+            )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Quick Statistics for filtered data
+        st.subheader("📈 Filtered Data Statistics")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Filtered Records", len(filtered_data))
+        
+        with col2:
+            filtered_avg_price = filtered_data['Price'].mean()
+            st.metric("Average Price", f"${filtered_avg_price:.2f}")
+        
+        with col3:
+            min_filtered_price = filtered_data['Price'].min()
+            st.metric("Min Price", f"${min_filtered_price:.2f}")
+        
+        with col4:
+            max_filtered_price = filtered_data['Price'].max()
+            st.metric("Max Price", f"${max_filtered_price:.2f}")
+            
+    else:
+        st.info("No price records match your search criteria.")
+
+def load_prices_data():
+    """Load all prices data from Google Sheets"""
+    try:
+        prices_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{PRICES_SHEET}!A:Z?key={API_KEY}"
+        response = requests.get(prices_url)
+        
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if values and len(values) > 1:
+                headers = values[0]
+                rows = values[1:]
+                
+                # Create DataFrame
+                df = pd.DataFrame(rows, columns=headers)
+                
+                # Check for required columns
+                required_cols = ['Customer', 'Customer Name', 'Salesman', 'Item Code', 'Item Name', 
+                               'Customer Article No', 'Customer Label', 'Packing/kg', 'Price']
+                
+                # Fill missing columns with empty values
+                for col in required_cols:
+                    if col not in df.columns:
+                        df[col] = ''
+                
+                # Convert numeric columns
+                if 'Price' in df.columns:
+                    df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
+                if 'Packing/kg' in df.columns:
+                    df['Packing/kg'] = pd.to_numeric(df['Packing/kg'], errors='coerce')
+                
+                # Fill NaN values with empty strings for text columns
+                text_cols = ['Customer', 'Customer Name', 'Salesman', 'Item Code', 'Item Name', 
+                           'Customer Article No', 'Customer Label']
+                for col in text_cols:
+                    if col in df.columns:
+                        df[col] = df[col].fillna('')
+                
+                return df
+                
+        return pd.DataFrame()
+        
+    except Exception as e:
+        st.error(f"Error loading prices data: {str(e)}")
+        return pd.DataFrame()
 
 def palletizing_tab():
     """Palletizing Calculator & Optimization"""
@@ -709,9 +979,6 @@ def load_palletizing_data(client):
     except Exception as e:
         st.error(f"Error loading palletizing data for {client}: {str(e)}")
         return pd.DataFrame()
-
-# [ALL YOUR EXISTING FUNCTIONS REMAIN EXACTLY THE SAME]
-# ... (include all your existing functions like clients_tab, etd_tab, etc.)
 
 def clients_tab():
     """Clients management tab"""
