@@ -1166,7 +1166,6 @@ Orders Summary:
 def load_etd_data(sheet_id, sheet_name):
     """Load ETD data from Google Sheets - FIXED VERSION"""
     try:
-        # Use the universal loader but with correct row configuration
         import urllib.parse
         encoded_sheet = urllib.parse.quote(sheet_name)
         url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{encoded_sheet}!A:Z?key={API_KEY}"
@@ -1177,29 +1176,35 @@ def load_etd_data(sheet_id, sheet_name):
             values = data.get('values', [])
             
             # DEBUG: Show what we're getting
-            st.write(f"🔍 DEBUG: Found {len(values)} rows in sheet")
+            st.write(f"🔍 DEBUG: Found {len(values)} total rows in sheet")
+            
             if len(values) > 0:
-                st.write(f"🔍 DEBUG: First row sample: {values[0][:5]}...")  # Show first 5 columns of first row
+                st.write(f"🔍 DEBUG: First 5 rows preview:")
+                for i in range(min(5, len(values))):
+                    st.write(f"Row {i}: {values[i][:5]}...")  # First 5 columns of each row
             
             # Your headers are at row 14 (index 13), data starts from row 15 (index 14)
-            if len(values) > 13:  # We have at least up to row 14
+            if len(values) > 13:
                 headers = values[13]  # Row 14 contains headers (index 13)
-                rows = values[14:] if len(values) > 14 else []  # Data starts from row 15 (index 14)
+                rows = values[14:] if len(values) > 14 else []
                 
-                st.write(f"🔍 DEBUG: Headers found: {len(headers)} columns")
-                st.write(f"🔍 DEBUG: Data rows found: {len(rows)} rows")
+                st.write(f"🔍 DEBUG: Headers row (index 13): {headers}")
+                st.write(f"🔍 DEBUG: Data rows found: {len(rows)}")
                 
                 if headers and rows:
                     df = pd.DataFrame(rows, columns=headers)
                     df = df.replace('', pd.NA)
-                    
-                    # Clean up column names (remove extra spaces)
                     df.columns = df.columns.str.strip()
                     
-                    st.write(f"✅ DEBUG: Successfully created DataFrame with {len(df)} rows and {len(df.columns)} columns")
+                    st.write(f"✅ DEBUG: Successfully created DataFrame")
+                    st.write(f"✅ Columns: {list(df.columns)}")
+                    st.write(f"✅ First few rows of data:")
+                    st.dataframe(df.head(3))
+                    
                     return df
+            else:
+                st.error(f"❌ DEBUG: Not enough rows. Need at least 14 rows, got {len(values)}")
                 
-        st.error("❌ No data found or sheet structure doesn't match expected format")
         return pd.DataFrame()
         
     except Exception as e:
