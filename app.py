@@ -372,10 +372,7 @@ def main_dashboard():
     
     # Announcements that will be visible to all users
     announcements = [
-        "🚨 ETD is officially working!",
-        "📦 Working on palletizing",
-        "⭐ **SPECIAL OFFER**",
-        "🔔 **REMINDER**:",
+        "🚨 ETD is underconstruction!",
         "📊 **NEW FEATURE**: HS Code search now available across all clients",
         "📦 **NEW**: Palletizing Calculator added!",
         "💰 **NEW**: All Customers Prices tab added!"
