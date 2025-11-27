@@ -397,54 +397,306 @@ def main_dashboard():
     </div>
     """, unsafe_allow_html=True)
     
-# Create ALL tabs in one line - they will auto-scroll horizontally
-if st.session_state.username in ["ceo", "admin"]:
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
-        "🏢 CLIENTS", "📋 NEW ORDERS", "📅 ETD SHEET", 
-        "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG",
-        "📊 ORDERS MANAGEMENT", "🔍 ADVANCED ANALYTICS", "📦 PALLETIZING", "💰 GENERAL PRICE LIST", "⚙️ SETTINGS"
-    ])
-else:
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
-        "🏢 CLIENTS", "📋 NEW ORDERS", "📅 ETD SHEET", 
-        "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG",
-        "📊 ORDERS MANAGEMENT", "🔍 ADVANCED ANALYTICS", "📦 PALLETIZING", "💰 GENERAL PRICE LIST"
-    ])
+    # Create ALL tabs in one line - they will auto-scroll horizontally
+    # PRICE TAB IS NOW SECOND TAB
+    if st.session_state.username in ["ceo", "admin"]:
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
+            "🏢 CLIENTS", "💰 GENERAL PRICE LIST", "📋 NEW ORDERS", "📅 ETD SHEET", 
+            "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG",
+            "📊 ORDERS MANAGEMENT", "🔍 ADVANCED ANALYTICS", "📦 PALLETIZING", "⚙️ SETTINGS"
+        ])
+    else:
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
+            "🏢 CLIENTS", "💰 GENERAL PRICE LIST", "📋 NEW ORDERS", "📅 ETD SHEET", 
+            "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG",
+            "📊 ORDERS MANAGEMENT", "🔍 ADVANCED ANALYTICS", "📦 PALLETIZING"
+        ])
     
     with tab1:
         clients_tab()
     
     with tab2:
-        new_orders_tab()
+        general_price_list_tab()
         
     with tab3:
-        etd_tab()
+        new_orders_tab()
         
     with tab4:
+        etd_tab()
+        
+    with tab5:
         ceo_specials_tab()
     
-    with tab5:
+    with tab6:
         price_intelligence_tab()
 
-    with tab6:
+    with tab7:
         product_catalog_tab()
         
-    with tab7:
+    with tab8:
         orders_management_tab()
         
-    with tab8:
+    with tab9:
         advanced_analytics_tab()
         
-    with tab9:
+    with tab10:
         palletizing_tab()
 
-    with tab10:  # This will be tab10 for regular users, tab11 for admin/ceo
-    general_price_list_tab()
-        
     # Additional tabs for admin/ceo
     if st.session_state.username in ["ceo", "admin"]:
-        with tab10:
+        with tab11:
             settings_tab()
+
+def general_price_list_tab():
+    """General Price List - Search across all customers and items"""
+    st.markdown("""
+    <div class="intelligence-header">
+        <h2 style="margin:0;">💰 General Price List</h2>
+        <p style="margin:0; opacity:0.9;">Cross-Customer Pricing • Item Search • Salesman-Specific Views</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Load price list data
+    with st.spinner("📥 Loading price list data..."):
+        price_data = load_price_list_data()
+    
+    if price_data.empty:
+        st.warning("""
+        ⚠️ **No price list data found!**
+        
+        **To get started:**
+        1. Go to your Google Sheet
+        2. Add a new tab called **'prices'**
+        3. Use these exact headers:
+           - Customer
+           - Customer Name  
+           - Salesman
+           - Item Code
+           - Item Name
+           - Customer Article No
+           - Customer Label
+           - Packing/kg
+           - Price
+        """)
+        return
+
+    st.success(f"✅ Loaded {len(price_data)} price records")
+
+    # Get user-specific data
+    current_user = st.session_state.username
+    user_clients = st.session_state.user_clients
+
+    # Salesman-specific filtering
+    st.subheader("👤 Salesman & Customer Filter")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Show only salesmen that the current user has access to
+        available_salesmen = sorted(price_data['Salesman'].dropna().unique())
+        salesman_filter = st.selectbox(
+            "Filter by Salesman:",
+            ["All Salesmen"] + available_salesmen,
+            key="price_salesman_filter"
+        )
+    
+    with col2:
+        # Show only customers that the current user has access to
+        available_customers = sorted(price_data['Customer Name'].dropna().unique())
+        customer_filter = st.selectbox(
+            "Filter by Customer:",
+            ["All Customers"] + available_customers,
+            key="price_customer_filter"
+        )
+
+    # Search section
+    st.subheader("🔍 Search Items")
+    
+    col1, col2, col3 = st.columns([2, 1, 1])
+    
+    with col1:
+        search_term = st.text_input(
+            "Search by Item Name, Code, Article No, or Label:",
+            placeholder="e.g., Chocolate, 1-366, ART123, Premium...",
+            key="price_search"
+        )
+    
+    with col2:
+        search_type = st.selectbox(
+            "Search In:",
+            ["All Fields", "Item Name", "Item Code", "Customer Article No", "Customer Label"],
+            key="price_search_type"
+        )
+    
+    with col3:
+        # Quick search examples
+        if st.button("🎯 Quick Examples", use_container_width=True):
+            st.session_state.price_search = "Chocolate"
+            st.rerun()
+
+    # Apply filters
+    filtered_data = price_data.copy()
+    
+    # Filter by salesman
+    if salesman_filter != "All Salesmen":
+        filtered_data = filtered_data[filtered_data['Salesman'] == salesman_filter]
+    
+    # Filter by customer
+    if customer_filter != "All Customers":
+        filtered_data = filtered_data[filtered_data['Customer Name'] == customer_filter]
+    
+    # Apply search
+    if search_term:
+        if search_type == "All Fields":
+            mask = filtered_data.astype(str).apply(
+                lambda x: x.str.contains(search_term, case=False, na=False)
+            ).any(axis=1)
+            filtered_data = filtered_data[mask]
+        else:
+            column_map = {
+                "Item Name": "Item Name",
+                "Item Code": "Item Code", 
+                "Customer Article No": "Customer Article No",
+                "Customer Label": "Customer Label"
+            }
+            search_column = column_map[search_type]
+            filtered_data = filtered_data[
+                filtered_data[search_column].astype(str).str.contains(search_term, case=False, na=False)
+            ]
+
+    # Display results
+    st.subheader(f"📋 Price List Results ({len(filtered_data)} items found)")
+
+    if not filtered_data.empty:
+        # Overview metrics
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            unique_items = filtered_data['Item Code'].nunique()
+            st.metric("Unique Items", unique_items)
+        
+        with col2:
+            unique_customers = filtered_data['Customer Name'].nunique()
+            st.metric("Customers", unique_customers)
+        
+        with col3:
+            salesmen_count = filtered_data['Salesman'].nunique()
+            st.metric("Salesmen", salesmen_count)
+        
+        with col4:
+            # Check if Price column exists
+            if 'Price' in filtered_data.columns:
+                avg_price = filtered_data['Price'].mean()
+                st.metric("Avg Price", f"${avg_price:.2f}" if pd.notna(avg_price) else "N/A")
+            else:
+                st.metric("Price Column", "Not Found")
+
+        # Display items
+        for _, item in filtered_data.iterrows():
+            with st.expander(f"💰 {item['Item Code']} - {item['Item Name']} | Customer: {item['Customer Name']}", expanded=False):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.write(f"**Customer:** {item['Customer Name']}")
+                    st.write(f"**Salesman:** {item['Salesman']}")
+                    st.write(f"**Item Code:** {item['Item Code']}")
+                    st.write(f"**Item Name:** {item['Item Name']}")
+                
+                with col2:
+                    st.write(f"**Customer Article No:** {item['Customer Article No']}")
+                    st.write(f"**Customer Label:** {item['Customer Label']}")
+                    if 'Packing/kg' in item and pd.notna(item['Packing/kg']):
+                        st.write(f"**Packing:** {item['Packing/kg']}")
+                    if 'Price' in item and pd.notna(item['Price']):
+                        st.success(f"**Price:** ${item['Price']:.2f}")
+                    else:
+                        st.info("**Price:** Not specified")
+
+        # Export functionality
+        st.markdown('<div class="export-section">', unsafe_allow_html=True)
+        st.subheader("📤 Export Price List")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            csv = filtered_data.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv,
+                file_name=f"price_list_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="price_list_csv"
+            )
+        
+        with col2:
+            summary_text = f"""
+General Price List Export
+=========================
+
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Search Term: {search_term}
+Salesman Filter: {salesman_filter}
+Customer Filter: {customer_filter}
+
+Summary:
+- Total Items: {len(filtered_data)}
+- Unique Items: {unique_items}
+- Customers: {unique_customers}
+- Salesmen: {salesmen_count}
+
+Items Found:
+{chr(10).join([f"• {row['Item Code']} - {row['Item Name']} | {row['Customer Name']} | {row['Salesman']}" for _, row in filtered_data.iterrows()])}
+            """
+            st.download_button(
+                label="📄 Download Summary",
+                data=summary_text,
+                file_name=f"price_list_summary_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True,
+                key="price_list_summary"
+            )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    else:
+        st.info("No items match your search criteria. Try adjusting your filters or search term.")
+
+def load_price_list_data():
+    """Load general price list data from Google Sheets"""
+    try:
+        sheet_name = "prices"
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
+        response = requests.get(url)
+        
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if values and len(values) > 1:
+                headers = values[0]
+                rows = values[1:]
+                
+                # Create DataFrame
+                df = pd.DataFrame(rows, columns=headers)
+                
+                # Required columns - UPDATED WITH Packing/kg and Price
+                required_cols = ['Customer', 'Customer Name', 'Salesman', 'Item Code', 'Item Name', 
+                               'Customer Article No', 'Customer Label', 'Packing/kg', 'Price']
+                
+                # Check if required columns exist
+                missing_cols = [col for col in required_cols if col not in df.columns]
+                if missing_cols:
+                    st.error(f"Missing columns in price list: {', '.join(missing_cols)}")
+                    return pd.DataFrame()
+                
+                return df
+                
+        return pd.DataFrame()
+        
+    except Exception as e:
+        st.error(f"Error loading price list data: {str(e)}")
+        return pd.DataFrame()
 
 def palletizing_tab():
     """Palletizing Calculator & Optimization"""
@@ -713,263 +965,6 @@ def load_palletizing_data(client):
         st.error(f"Error loading palletizing data for {client}: {str(e)}")
         return pd.DataFrame()
 
-def general_price_list_tab():
-    """General Price List - Search across all customers and items"""
-    st.markdown("""
-    <div class="intelligence-header">
-        <h2 style="margin:0;">💰 General Price List</h2>
-        <p style="margin:0; opacity:0.9;">Cross-Customer Pricing • Item Search • Salesman-Specific Views</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Load price list data
-    with st.spinner("📥 Loading price list data..."):
-        price_data = load_price_list_data()
-    
-    if price_data.empty:
-        st.warning("""
-        ⚠️ **No price list data found!**
-        
-        **To get started:**
-        1. Go to your Google Sheet
-        2. Add a new tab called **'prices'**
-        3. Use these exact headers:
-           - Customer
-           - Customer Name  
-           - Salesman
-           - Item Code
-           - Item Name
-           - Customer Article No
-           - Customer Label
-           - Price (add this column for pricing)
-        """)
-        return
-
-    st.success(f"✅ Loaded {len(price_data)} price records")
-
-    # Get user-specific data
-    current_user = st.session_state.username
-    user_clients = st.session_state.user_clients
-
-    # Salesman-specific filtering
-    st.subheader("👤 Salesman & Customer Filter")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        # Show only salesmen that the current user has access to
-        available_salesmen = sorted(price_data['Salesman'].dropna().unique())
-        salesman_filter = st.selectbox(
-            "Filter by Salesman:",
-            ["All Salesmen"] + available_salesmen,
-            key="price_salesman_filter"
-        )
-    
-    with col2:
-        # Show only customers that the current user has access to
-        available_customers = sorted(price_data['Customer Name'].dropna().unique())
-        customer_filter = st.selectbox(
-            "Filter by Customer:",
-            ["All Customers"] + available_customers,
-            key="price_customer_filter"
-        )
-
-    # Search section
-    st.subheader("🔍 Search Items")
-    
-    col1, col2, col3 = st.columns([2, 1, 1])
-    
-    with col1:
-        search_term = st.text_input(
-            "Search by Item Name, Code, Article No, or Label:",
-            placeholder="e.g., Chocolate, 1-366, ART123, Premium...",
-            key="price_search"
-        )
-    
-    with col2:
-        search_type = st.selectbox(
-            "Search In:",
-            ["All Fields", "Item Name", "Item Code", "Customer Article No", "Customer Label"],
-            key="price_search_type"
-        )
-    
-    with col3:
-        # Quick search examples
-        if st.button("🎯 Quick Examples", use_container_width=True):
-            st.session_state.price_search = "Chocolate"
-            st.rerun()
-
-    # Apply filters
-    filtered_data = price_data.copy()
-    
-    # Filter by salesman
-    if salesman_filter != "All Salesmen":
-        filtered_data = filtered_data[filtered_data['Salesman'] == salesman_filter]
-    
-    # Filter by customer
-    if customer_filter != "All Customers":
-        filtered_data = filtered_data[filtered_data['Customer Name'] == customer_filter]
-    
-    # Apply search
-    if search_term:
-        if search_type == "All Fields":
-            mask = filtered_data.astype(str).apply(
-                lambda x: x.str.contains(search_term, case=False, na=False)
-            ).any(axis=1)
-            filtered_data = filtered_data[mask]
-        else:
-            column_map = {
-                "Item Name": "Item Name",
-                "Item Code": "Item Code", 
-                "Customer Article No": "Customer Article No",
-                "Customer Label": "Customer Label"
-            }
-            search_column = column_map[search_type]
-            filtered_data = filtered_data[
-                filtered_data[search_column].astype(str).str.contains(search_term, case=False, na=False)
-            ]
-
-    # Display results
-    st.subheader(f"📋 Price List Results ({len(filtered_data)} items found)")
-
-    if not filtered_data.empty:
-        # Overview metrics
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            unique_items = filtered_data['Item Code'].nunique()
-            st.metric("Unique Items", unique_items)
-        
-        with col2:
-            unique_customers = filtered_data['Customer Name'].nunique()
-            st.metric("Customers", unique_customers)
-        
-        with col3:
-            salesmen_count = filtered_data['Salesman'].nunique()
-            st.metric("Salesmen", salesmen_count)
-        
-        with col4:
-            # Check if Price column exists
-            if 'Price' in filtered_data.columns:
-                avg_price = filtered_data['Price'].mean()
-                st.metric("Avg Price", f"${avg_price:.2f}" if pd.notna(avg_price) else "N/A")
-            else:
-                st.metric("Price Column", "Not Found")
-
-        # Display items
-for _, item in filtered_data.iterrows():
-    with st.expander(f"💰 {item['Item Code']} - {item['Item Name']} | Customer: {item['Customer Name']}", expanded=False):
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.write(f"**Customer:** {item['Customer Name']}")
-            st.write(f"**Salesman:** {item['Salesman']}")
-            st.write(f"**Item Code:** {item['Item Code']}")
-            st.write(f"**Item Name:** {item['Item Name']}")
-        
-        with col2:
-            st.write(f"**Customer Article No:** {item['Customer Article No']}")
-            st.write(f"**Customer Label:** {item['Customer Label']}")
-            if 'Packing/kg' in item and pd.notna(item['Packing/kg']):
-                st.write(f"**Packing:** {item['Packing/kg']}")
-            if 'Price' in item and pd.notna(item['Price']):
-                st.success(f"**Price:** ${item['Price']:.2f}")
-            else:
-                st.info("**Price:** Not specified")
-
-        # Export functionality
-        st.markdown('<div class="export-section">', unsafe_allow_html=True)
-        st.subheader("📤 Export Price List")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            csv = filtered_data.to_csv(index=False)
-            st.download_button(
-                label="📥 Download CSV",
-                data=csv,
-                file_name=f"price_list_{datetime.now().strftime('%Y%m%d')}.csv",
-                mime="text/csv",
-                use_container_width=True,
-                key="price_list_csv"
-            )
-        
-        with col2:
-            summary_text = f"""
-General Price List Export
-=========================
-
-Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
-Search Term: {search_term}
-Salesman Filter: {salesman_filter}
-Customer Filter: {customer_filter}
-
-Summary:
-- Total Items: {len(filtered_data)}
-- Unique Items: {unique_items}
-- Customers: {unique_customers}
-- Salesmen: {salesmen_count}
-
-Items Found:
-{chr(10).join([f"• {row['Item Code']} - {row['Item Name']} | {row['Customer Name']} | {row['Salesman']}" for _, row in filtered_data.iterrows()])}
-            """
-            st.download_button(
-                label="📄 Download Summary",
-                data=summary_text,
-                file_name=f"price_list_summary_{datetime.now().strftime('%Y%m%d')}.txt",
-                mime="text/plain",
-                use_container_width=True,
-                key="price_list_summary"
-            )
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-    else:
-        st.info("No items match your search criteria. Try adjusting your filters or search term.")
-
-def load_price_list_data():
-    """Load general price list data from Google Sheets"""
-    try:
-        sheet_name = "prices"
-        url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
-        response = requests.get(url)
-        
-        if response.status_code == 200:
-            data = response.json()
-            values = data.get('values', [])
-            
-            if values and len(values) > 1:
-                headers = values[0]
-                rows = values[1:]
-                
-                # Create DataFrame
-                df = pd.DataFrame(rows, columns=headers)
-                
-                # Required columns - UPDATED WITH Packing/kg and Price
-                required_cols = ['Customer', 'Customer Name', 'Salesman', 'Item Code', 'Item Name', 
-                               'Customer Article No', 'Customer Label', 'Packing/kg', 'Price']
-                
-                # Check if required columns exist
-                missing_cols = [col for col in required_cols if col not in df.columns]
-                if missing_cols:
-                    st.error(f"Missing columns in price list: {', '.join(missing_cols)}")
-                    return pd.DataFrame()
-                
-                return df
-                
-        return pd.DataFrame()
-        
-    except Exception as e:
-        st.error(f"Error loading price list data: {str(e)}")
-        return pd.DataFrame()
-        
-    except Exception as e:
-        st.error(f"Error loading price list data: {str(e)}")
-        return pd.DataFrame()
-        
-# [ALL YOUR EXISTING FUNCTIONS REMAIN EXACTLY THE SAME]
-# ... (include all your existing functions like clients_tab, etd_tab, etc.)
-
 def clients_tab():
     """Clients management tab"""
     st.subheader("Client Selection")
@@ -1113,8 +1108,8 @@ def etd_tab():
                 filtered_data = filtered_data[
                     (filtered_data['ETD _ Backaldrine'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
                     (filtered_data['ETD_bateel'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
-                    (filtered_data['ETD _ Kasih'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
-                    (filtered_data['ETD_PMC'].astype(str).str.contains('NEED ETD', case=False, na=False))
+                    (etd_data['ETD _ Kasih'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
+                    (etd_data['ETD_PMC'].astype(str).str.contains('NEED ETD', case=False, na=False))
                 ]
             else:
                 filtered_data = filtered_data[filtered_data['Status'] == status_filter]
@@ -2403,14 +2398,6 @@ Orders Included: {', '.join(export_df['Order_Number'].tolist())}
         st.info("Search for an article to enable export options")
     
     st.markdown('</div>', unsafe_allow_html=True)
-
-def convert_df_to_excel(df):
-    """Convert DataFrame to Excel format"""
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Price_History')
-    processed_data = output.getvalue()
-    return processed_data
 
 def convert_df_to_excel(df):
     """Convert DataFrame to Excel format"""
