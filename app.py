@@ -262,12 +262,12 @@ CDC_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"
 # User authentication - UPDATED: cakeart_user changed to Khalid
 # User authentication - UPDATED: Added Cameron client
 USERS = {
-    "admin": {"password": "123456", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse", "Cameron"]},
-    "ceo": {"password": "123456", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse", "Cameron"]},
-    "zaid": {"password": "123456", "clients": ["CDC"]},
-    "mohammad": {"password": "123456", "clients": ["CoteDivoire"]},
-    "Khalid": {"password": "123456", "clients": ["CakeArt", "SweetHouse"]},
-    "Rotana": {"password": "123456", "clients": ["CDC"]}
+    "admin": {"password": "admin123", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse", "Cameron"]},
+    "ceo": {"password": "ceo123", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse", "Cameron"]},
+    "zaid": {"password": "zaid123", "clients": ["CDC"]},
+    "mohammad": {"password": "mohammad123", "clients": ["CoteDivoire"]},
+    "Khalid": {"password": "KHALID123", "clients": ["CakeArt", "SweetHouse"]},
+    "Rotana": {"password": "Rotana123", "clients": ["CDC"]}
 }
 
 # Client data sheets mapping - UPDATED: Added Cameron client
@@ -372,7 +372,10 @@ def main_dashboard():
     
     # Announcements that will be visible to all users
     announcements = [
-        "🚨 ETD is underconstruction!",
+        "🚨 ETD is officially working!",
+        "📦 Working on palletizing",
+        "⭐ **SPECIAL OFFER**",
+        "🔔 **REMINDER**:",
         "📊 **NEW FEATURE**: HS Code search now available across all clients",
         "📦 **NEW**: Palletizing Calculator added!",
         "💰 **NEW**: All Customers Prices tab added!"
@@ -404,54 +407,54 @@ def main_dashboard():
     </div>
     """, unsafe_allow_html=True)
     
-    # Create tabs - PRICES TAB MOVED TO SECOND POSITION
+    # Create ALL tabs in one line - they will auto-scroll horizontally
     if st.session_state.username in ["ceo", "admin"]:
-        # For admin/ceo: Prices tab as second position
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
-            "🏢 CLIENTS", "💰 PRICES", "📋 NEW ORDERS", "📅 ETD SHEET", 
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
+            "🏢 CLIENTS", "📋 NEW ORDERS", "📅 ETD SHEET", 
             "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG",
-            "📊 ORDERS MANAGEMENT", "📦 PALLETIZING"
+            "📊 ORDERS MANAGEMENT", "🔍 ADVANCED ANALYTICS", "📦 PALLETIZING", "💰 PRICES", "⚙️ SETTINGS"
         ])
     else:
-        # For regular users: Prices tab as second position
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-            "🏢 CLIENTS", "💰 PRICES", "📋 NEW ORDERS", "📅 ETD SHEET", 
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
+            "🏢 CLIENTS", "📋 NEW ORDERS", "📅 ETD SHEET", 
             "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG",
-            "📊 ORDERS MANAGEMENT", "📦 PALLETIZING"
+            "📊 ORDERS MANAGEMENT", "🔍 ADVANCED ANALYTICS", "📦 PALLETIZING", "💰 PRICES"
         ])
     
     with tab1:
         clients_tab()
     
     with tab2:
-        prices_tab()
-        
-    with tab3:
         new_orders_tab()
         
-    with tab4:
+    with tab3:
         etd_tab()
         
-    with tab5:
+    with tab4:
         ceo_specials_tab()
     
-    with tab6:
+    with tab5:
         price_intelligence_tab()
 
-    with tab7:
+    with tab6:
         product_catalog_tab()
         
-    with tab8:
+    with tab7:
         orders_management_tab()
         
-    # For admin/ceo users, add the Palletizing tab
+    with tab8:
+        advanced_analytics_tab()
+        
+    with tab9:
+        palletizing_tab()
+        
+    with tab10:
+        prices_tab()
+        
+    # Additional tabs for admin/ceo
     if st.session_state.username in ["ceo", "admin"]:
-        with tab9:
-            palletizing_tab()
-    else:
-        # For regular users, add Palletizing tab in the 8th position
-        with tab8:
-            palletizing_tab()
+        with tab11:
+            settings_tab()
 
 def prices_tab():
     """NEW: All Customers Prices Tab"""
@@ -760,162 +763,230 @@ def load_prices_data():
         return pd.DataFrame()
 
 def palletizing_tab():
-    """Quick Pallet Calculator for CDC Items"""
+    """Palletizing Calculator & Optimization"""
     st.markdown("""
     <div class="palletizing-header">
-        <h2 style="margin:0;">📦 Quick Pallet Calculator</h2>
-        <p style="margin:0; opacity:0.9;">Instant Pallet Calculations • CDC Standard Items • Real-time Results</p>
+        <h2 style="margin:0;">📦 Palletizing Calculator</h2>
+        <p style="margin:0; opacity:0.9;">Optimize Container Loading • Calculate Pallet Configurations • Maximize Space Utilization</p>
     </div>
     """, unsafe_allow_html=True)
     
-    quick_pallet_calculator()
-
-def quick_pallet_calculator():
-    """Quick Pallet Calculator for CDC Items"""
-    st.subheader("🧮 Quick Pallet Calculator")
+    # Client selection
+    available_clients = st.session_state.user_clients
+    client = st.selectbox(
+        "Select Client for Palletizing:",
+        available_clients,
+        key="palletizing_client"
+    )
     
-    # CDC Common Items Database
-    cdc_items = {
-        "Vermicelli Color": {"packing": "5kg", "cartons_per_pallet": 100, "weight_per_carton": 5},
-        "Vermicelli Dark": {"packing": "5kg", "cartons_per_pallet": 100, "weight_per_carton": 5},
-        "Vermicelli White": {"packing": "5kg", "cartons_per_pallet": 100, "weight_per_carton": 5},
-        "Chocolate Chips": {"packing": "25kg", "cartons_per_pallet": 40, "weight_per_carton": 25},
-        "Date Mix": {"packing": "30kg", "cartons_per_pallet": 36, "weight_per_carton": 30},
-        "Vanilla Powder": {"packing": "15kg", "cartons_per_pallet": 60, "weight_per_carton": 15},
-        "Custom Item": {"packing": "Custom", "cartons_per_pallet": 0, "weight_per_carton": 0}
-    }
+    if not client:
+        st.info("👆 Please select a client to start palletizing calculations")
+        return
+    
+    # Load palletizing data from Google Sheets
+    with st.spinner(f"📥 Loading palletizing data for {client}..."):
+        pallet_data = load_palletizing_data(client)
+    
+    if pallet_data.empty:
+        st.warning(f"📝 No palletizing data found for {client} yet!")
+        st.info(f"""
+        **To get started:**
+        1. Go to your Google Sheet for {client}
+        2. Add a new tab called **'Palletizing_Data'**
+        3. Use these exact headers:
+           - Client
+           - Item Code
+           - Item Name
+           - Unit/KG
+           - Unit/Carton
+           - Unit Pack/Pallet
+           - Total Unit
+           - Pallet Order
+           - Total Weight
+           - Factory
+        """)
+        return
+    
+    st.success(f"✅ Loaded {len(pallet_data)} items for {client}")
+    
+    # Filter data for selected client
+    client_data = pallet_data[pallet_data['Client'] == client]
+    
+    if client_data.empty:
+        st.warning(f"No palletizing data specifically for {client}")
+        return
+    
+    # Palletizing Overview
+    st.subheader("📊 Palletizing Overview")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        total_items = len(client_data)
+        st.metric("Total Items", total_items)
+    
+    with col2:
+        total_weight = client_data['Total Weight'].sum()
+        st.metric("Total Weight", f"{total_weight:,.0f} kg")
+    
+    with col3:
+        total_pallets = client_data['Pallet Order'].sum()
+        st.metric("Total Pallets", f"{total_pallets:,.0f}")
+    
+    with col4:
+        total_units = client_data['Total Unit'].sum()
+        st.metric("Total Units", f"{total_units:,.0f}")
+    
+    # Container Configuration
+    st.subheader("🚢 Container Configuration")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        container_type = st.selectbox(
+            "Container Type",
+            ["20ft Container", "40ft Container", "40ft HC Container", "Custom"],
+            key="container_type"
+        )
+    
+    with col2:
+        # Standard container capacities
+        container_capacities = {
+            "20ft Container": {"pallets": 11, "weight": 22000},
+            "40ft Container": {"pallets": 25, "weight": 27000},
+            "40ft HC Container": {"pallets": 30, "weight": 27000},
+            "Custom": {"pallets": 0, "weight": 0}
+        }
+        
+        if container_type == "Custom":
+            max_pallets = st.number_input("Max Pallets", min_value=1, value=25, key="custom_pallets")
+            max_weight = st.number_input("Max Weight (kg)", min_value=1000, value=27000, key="custom_weight")
+        else:
+            capacity = container_capacities[container_type]
+            max_pallets = capacity["pallets"]
+            max_weight = capacity["weight"]
+            st.info(f"📦 Capacity: {max_pallets} pallets, {max_weight:,} kg")
+    
+    with col3:
+        optimization_goal = st.selectbox(
+            "Optimize For",
+            ["Maximize Weight", "Maximize Volume", "Balance Both"],
+            key="optimization_goal"
+        )
+    
+    # Analysis and Calculations
+    st.subheader("🔍 Palletizing Analysis")
+    
+    # Calculate container requirements
+    required_containers_pallets = max(1, round(total_pallets / max_pallets))
+    required_containers_weight = max(1, round(total_weight / max_weight))
+    required_containers = max(required_containers_pallets, required_containers_weight)
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown(f"""
+        <div class="pallet-stat-card">
+            <div class="pallet-stat-number">{required_containers}</div>
+            <div class="stat-label">Containers Needed</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        utilization_pallets = min(100, (total_pallets / (required_containers * max_pallets)) * 100)
+        st.metric("Pallet Utilization", f"{utilization_pallets:.1f}%")
+    
+    with col3:
+        utilization_weight = min(100, (total_weight / (required_containers * max_weight)) * 100)
+        st.metric("Weight Utilization", f"{utilization_weight:.1f}%")
+    
+    with col4:
+        avg_weight_per_pallet = total_weight / total_pallets if total_pallets > 0 else 0
+        st.metric("Avg Weight/Pallet", f"{avg_weight_per_pallet:.1f} kg")
+    
+    # Detailed Item Breakdown
+    st.subheader("📋 Item Breakdown")
+    
+    # Display items in a nice format
+    for _, item in client_data.iterrows():
+        with st.expander(f"📦 {item['Item Code']} - {item['Item Name']}", expanded=False):
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("Units/Pallet", f"{item['Unit Pack/Pallet']:,.0f}")
+            with col2:
+                st.metric("Total Units", f"{item['Total Unit']:,.0f}")
+            with col3:
+                st.metric("Pallets", f"{item['Pallet Order']:,.0f}")
+            with col4:
+                st.metric("Weight", f"{item['Total Weight']:,.0f} kg")
+            
+            # Additional details
+            st.write(f"**Factory:** {item['Factory']}")
+            st.write(f"**Unit/Carton:** {item['Unit/Carton']}")
+            st.write(f"**Unit/KG:** {item['Unit/KG']}")
+    
+    # Optimization Recommendations
+    st.subheader("💡 Optimization Recommendations")
+    
+    if utilization_pallets < 80:
+        st.warning("**📦 Low Pallet Utilization:** Consider adding more items to fill containers efficiently")
+    
+    if utilization_weight < 80:
+        st.warning("**⚖️ Low Weight Utilization:** You have room for heavier items")
+    
+    if utilization_pallets > 95 and utilization_weight > 95:
+        st.success("**✅ Excellent Optimization:** Containers are well utilized!")
+    
+    # Export Section
+    st.markdown('<div class="palletizing-section">', unsafe_allow_html=True)
+    st.subheader("📤 Export Palletizing Report")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        # Item Selection
-        selected_item = st.selectbox(
-            "Select Item:",
-            list(cdc_items.keys()),
-            key="item_select"
-        )
-        
-        # Quantity Input
-        quantity = st.number_input(
-            "Quantity:",
-            min_value=1,
-            value=100,
-            step=1,
-            key="quantity"
-        )
-        
-        # Unit of Measure
-        uom = st.selectbox(
-            "Unit of Measure:",
-            ["Cartons", "KGs", "Pallets"],
-            key="uom"
+        csv = client_data.to_csv(index=False)
+        st.download_button(
+            label="📥 Download CSV",
+            data=csv,
+            file_name=f"{client}_palletizing_{datetime.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv",
+            use_container_width=True,
+            key="palletizing_csv"
         )
     
     with col2:
-        # For custom items, allow manual entry
-        if selected_item == "Custom Item":
-            st.info("🔧 Enter Custom Item Details:")
-            packing = st.text_input("Packing (e.g., 5kg, 25kg):", value="5kg", key="custom_packing")
-            cartons_per_pallet = st.number_input("Cartons per Pallet:", min_value=1, value=100, step=1, key="custom_cartons")
-            weight_per_carton = st.number_input("Weight per Carton (kg):", min_value=0.1, value=5.0, step=0.1, key="custom_weight")
-        else:
-            item_data = cdc_items[selected_item]
-            packing = item_data["packing"]
-            cartons_per_pallet = item_data["cartons_per_pallet"]
-            weight_per_carton = item_data["weight_per_carton"]
-            
-            st.info(f"📦 **Standard Packing:** {packing}")
-            st.info(f"📊 **Cartons per Pallet:** {cartons_per_pallet}")
-            st.info(f"⚖️ **Weight per Carton:** {weight_per_carton} kg")
-    
-    # REAL-TIME CALCULATIONS
-    if quantity > 0:
-        st.subheader("🎯 INSTANT PALCALC RESULTS")
-        
-        # Convert everything to cartons first
-        if uom == "Cartons":
-            total_cartons = quantity
-        elif uom == "KGs":
-            total_cartons = quantity / weight_per_carton
-        else:  # Pallets
-            total_cartons = quantity * cartons_per_pallet
-        
-        # Calculate pallets
-        full_pallets = total_cartons // cartons_per_pallet
-        partial_pallet_cartons = total_cartons % cartons_per_pallet
-        partial_pallet_percentage = (partial_pallet_cartons / cartons_per_pallet) * 100 if cartons_per_pallet > 0 else 0
-        
-        total_weight = total_cartons * weight_per_carton
-        
-        # Display Results - SIMPLE AND CLEAR
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            if full_pallets > 0:
-                st.success(f"### 📦 {full_pallets:,.0f} FULL PALLET{'S' if full_pallets > 1 else ''}")
-            else:
-                st.info("### 📦 0 FULL PALLETS")
-                
-        with col2:
-            if partial_pallet_cartons > 0:
-                st.warning(f"### 📦 1 PARTIAL PALLET")
-                st.write(f"({partial_pallet_cartons:,.0f} cartons - {partial_pallet_percentage:.1f}% full)")
-            else:
-                st.success("### ✅ NO PARTIAL PALLETS")
-                
-        with col3:
-            st.info(f"### ⚖️ {total_weight:,.0f} kg")
-            st.write(f"({total_cartons:,.0f} cartons total)")
-        
-        # Detailed Breakdown
-        with st.expander("📊 View Detailed Calculation", expanded=False):
-            st.write(f"**Item:** {selected_item} ({packing})")
-            
-            if uom == "Cartons":
-                st.write(f"**Input:** {quantity:,.0f} cartons")
-            elif uom == "KGs":
-                st.write(f"**Input:** {quantity:,.0f} kg = {total_cartons:,.0f} cartons")
-            else:
-                st.write(f"**Input:** {quantity:,.0f} pallets = {total_cartons:,.0f} cartons")
-            
-            st.write(f"**Calculation:** {total_cartons:,.0f} cartons ÷ {cartons_per_pallet} cartons/pallet")
-            st.write(f"**Result:** {full_pallets:,.0f} full pallets + {partial_pallet_cartons:,.0f} cartons partial")
-        
-        # Quick Examples
-        st.subheader("💡 Quick Examples")
-        
-        examples_col1, examples_col2 = st.columns(2)
-        
-        with examples_col1:
-            if st.button(f"Example: 100 cartons {selected_item}", key="example_100"):
-                st.session_state.quantity = 100
-                st.session_state.uom = "Cartons"
-                st.rerun()
-                
-        with examples_col2:
-            if st.button(f"Example: 1 pallet {selected_item}", key="example_1"):
-                st.session_state.quantity = 1
-                st.session_state.uom = "Pallets"
-                st.rerun()
-        
-        # Container Information (40ft always)
-        st.markdown("---")
-        st.subheader("🚢 Container Information")
-        st.info("""
-        **40ft Container Capacity:**
-        - **Max Pallets:** 30 pallets
-        - **Max Weight:** 23,000 kg (23 tons)
-        - **Your current order:** Will fill approximately **{:.1f}%** of container capacity
-        """.format((full_pallets / 30) * 100))
-    
-    # Bulk Sheet Analysis (Optional - keep it simple)
-    st.markdown("---")
-    with st.expander("📊 Bulk Analysis from Google Sheets (Optional)"):
-        st.info("For bulk analysis of your existing Palletizing_Data sheet, use the main data import features.")
-        st.write("The Quick Calculator above is designed for instant pallet calculations!")
+        summary_text = f"""
+{client} Palletizing Report
+==========================
 
-# Remove the old load_palletizing_data function since we're not using it anymore
-# Keep only the new quick_pallet_calculator function
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Container Type: {container_type}
+Required Containers: {required_containers}
+
+Summary:
+- Total Items: {total_items}
+- Total Weight: {total_weight:,.0f} kg
+- Total Pallets: {total_pallets:,.0f}
+- Total Units: {total_units:,.0f}
+
+Utilization:
+- Pallet Utilization: {utilization_pallets:.1f}%
+- Weight Utilization: {utilization_weight:.1f}%
+
+Items:
+{chr(10).join([f"• {row['Item Code']} - {row['Item Name']}: {row['Pallet Order']} pallets, {row['Total Weight']} kg" for _, row in client_data.iterrows()])}
+        """
+        st.download_button(
+            label="📄 Download Summary",
+            data=summary_text,
+            file_name=f"{client}_palletizing_summary_{datetime.now().strftime('%Y%m%d')}.txt",
+            mime="text/plain",
+            use_container_width=True,
+            key="palletizing_summary"
+        )
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 def load_palletizing_data(client):
     """Load palletizing data from Google Sheets"""
