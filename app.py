@@ -976,48 +976,7 @@ def clients_tab():
     if client:
         cdc_dashboard(client)
 
-def debug_sheet_names():
-    """Temporary function to debug sheet names"""
-    ETD_SHEET_ID = "1eA-mtD3aK_n9VYNV_bxnmqm58IywF0f5-7vr3PT51hs"
-    
-    try:
-        url = f"https://sheets.googleapis.com/v4/spreadsheets/{ETD_SHEET_ID}?key={API_KEY}"
-        response = requests.get(url)
-        
-        if response.status_code == 200:
-            data = response.json()
-            sheets = data.get('sheets', [])
-            
-            st.write("📋 **ALL SHEETS FOUND:**")
-            for sheet in sheets:
-                sheet_name = sheet['properties']['title']
-                st.write(f"- '{sheet_name}'")
-                
-            if sheets:
-                st.success("✅ Sheet connection successful!")
-            else:
-                st.error("❌ No sheets found in document")
-        else:
-            st.error(f"❌ API Error: {response.status_code}")
-            
-    except Exception as e:
-        st.error(f"❌ Error: {str(e)}")
-
-# THEN YOUR EXISTING etd_tab FUNCTION STARTS HERE:
 def etd_tab():
-    """ETD Sheet - Live Google Sheets Integration with Multi-Month Support"""
-    st.markdown("""
-    <div class="intelligence-header">
-    # ... rest of your existing etd_tab code
-        
-def etd_tab():
-    debug_sheet_names()  # TEMPORARY - REMOVE LATER
-    st.markdown("""
-    <div class="intelligence-header">
-        <h2 style="margin:0;">📅 ETD Management Dashboard</h2>
-        <p style="margin:0; opacity:0.9;">Live Order Tracking • Multi-Supplier ETD • Multi-Month View</p>
-    </div>
-    """, unsafe_allow_html=True)
     """ETD Sheet - Live Google Sheets Integration with Multi-Month Support"""
     st.markdown("""
     <div class="intelligence-header">
@@ -1029,8 +988,8 @@ def etd_tab():
     # ETD Sheet configuration
     ETD_SHEET_ID = "1eA-mtD3aK_n9VYNV_bxnmqm58IywF0f5-7vr3PT51hs"
     
-    # Available months - UPDATED based on your sheet
-    AVAILABLE_MONTHS = ["November 2025 "]
+    # Available months - EXACT NAMES with space after 2025
+    AVAILABLE_MONTHS = ["October 2025 ", "November 2025 "]
 
     try:
         # Month Selection
@@ -1042,22 +1001,12 @@ def etd_tab():
             key="etd_month_selector"
         )
         
-        # Load ETD data for selected month - FIXED: Start from row 14 (headers) and data from row 15
+        # Load ETD data for selected month
         with st.spinner(f"🔄 Loading {selected_month.strip()} ETD data..."):
             etd_data = load_etd_data(ETD_SHEET_ID, selected_month)
         
         if etd_data.empty:
-            st.error(f"❌ No ETD data found in {selected_month}. Please check:")
-            st.info("""
-            **Possible Issues:**
-            1. Sheet name must match exactly: 'November 2025'
-            2. Google Sheet must be shared with 'Anyone with link can view'
-            3. Data should start from row 14 with these headers:
-               - Serial, Confirmation Date, Concerned Employee, Client Name, Order No.
-               - ETD _ Backaldrine, bateel Order #, ETD_bateel
-               - Kasih Order #, ETD _ Kasih, PMC Order #, ETD_PMC
-               - Scheduled Date For Loading, Status, Stock Notes, transport Company
-            """)
+            st.warning(f"No ETD data found in {selected_month}. Please check the sheet.")
             return
 
         st.success(f"✅ Connected to {selected_month.strip()}! Loaded {len(etd_data)} orders")
@@ -1091,6 +1040,26 @@ def etd_tab():
                 (etd_data['ETD_PMC'].astype(str).str.contains('NEED ETD', case=False, na=False))
             ])
             st.metric("Need ETD", need_etd)
+
+        # Cross-Month Summary (if multiple months available)
+        if len(AVAILABLE_MONTHS) > 1:
+            st.subheader("🌐 Cross-Month Summary")
+            month_cols = st.columns(len(AVAILABLE_MONTHS))
+            
+            for i, month in enumerate(AVAILABLE_MONTHS):
+                with month_cols[i]:
+                    if month == selected_month:
+                        st.info(f"**{month.strip()}**\n**{len(etd_data)} orders**")
+                    else:
+                        # Quick load other months for summary
+                        try:
+                            other_month_data = load_etd_data(ETD_SHEET_ID, month)
+                            if not other_month_data.empty:
+                                st.metric(month.strip(), len(other_month_data))
+                            else:
+                                st.write(f"**{month.strip()}**\n0 orders")
+                        except:
+                            st.write(f"**{month.strip()}**\n–")
 
         # Search and Filter Section
         st.subheader("🔍 Filter & Search Orders")
@@ -1196,61 +1165,7 @@ Orders Summary:
 
     except Exception as e:
         st.error(f"❌ Error loading ETD data: {str(e)}")
-        st.info("""
-        **Troubleshooting Steps:**
-        1. Check if Google Sheet is shared with 'Anyone with link can view'
-        2. Verify sheet name matches exactly: 'November 2025'
-        3. Check if headers start from row 14 as specified
-        4. Ensure internet connection is stable
-        """)
-
-def load_etd_data(sheet_id, sheet_name):
-    """Load ETD data from Google Sheets - FIXED VERSION"""
-    try:
-        import urllib.parse
-        encoded_sheet = urllib.parse.quote(sheet_name)
-        url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{encoded_sheet}!A:Z?key={API_KEY}"
-        
-        response = requests.get(url)
-        if response.status_code == 200:
-            data = response.json()
-            values = data.get('values', [])
-            
-            # DEBUG: Show what we're getting
-            st.write(f"🔍 DEBUG: Found {len(values)} total rows in sheet")
-            
-            if len(values) > 0:
-                st.write(f"🔍 DEBUG: First 5 rows preview:")
-                for i in range(min(5, len(values))):
-                    st.write(f"Row {i}: {values[i][:5]}...")  # First 5 columns of each row
-            
-            # Your headers are at row 14 (index 13), data starts from row 15 (index 14)
-            if len(values) > 13:
-                headers = values[13]  # Row 14 contains headers (index 13)
-                rows = values[14:] if len(values) > 14 else []
-                
-                st.write(f"🔍 DEBUG: Headers row (index 13): {headers}")
-                st.write(f"🔍 DEBUG: Data rows found: {len(rows)}")
-                
-                if headers and rows:
-                    df = pd.DataFrame(rows, columns=headers)
-                    df = df.replace('', pd.NA)
-                    df.columns = df.columns.str.strip()
-                    
-                    st.write(f"✅ DEBUG: Successfully created DataFrame")
-                    st.write(f"✅ Columns: {list(df.columns)}")
-                    st.write(f"✅ First few rows of data:")
-                    st.dataframe(df.head(3))
-                    
-                    return df
-            else:
-                st.error(f"❌ DEBUG: Not enough rows. Need at least 14 rows, got {len(values)}")
-                
-        return pd.DataFrame()
-        
-    except Exception as e:
-        st.error(f"❌ Error loading ETD data: {str(e)}")
-        return pd.DataFrame()
+        st.info("Please check: 1) Google Sheet is shared, 2) Sheet name is correct, 3) Internet connection")
 
 def display_etd_order_card(order, month):
     """Display individual ETD order card with supplier tracking"""
