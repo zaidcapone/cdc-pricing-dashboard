@@ -376,7 +376,7 @@ def process_supplier_data(df, supplier_name):
     
     try:
         # Check if we have the required columns
-        required_cols = ['Article_Number', 'Product_Name', 'Price_per_kg', 'Order_Number', 'Date']
+        required_cols = ['article_number', 'product_name', 'price_per_', 'order_number', 'order_date']
         available_cols = [col for col in required_cols if col in df.columns]
         
         if not available_cols:
@@ -384,7 +384,7 @@ def process_supplier_data(df, supplier_name):
         
         # Group by article number
         for _, row in df.iterrows():
-            article_num = str(row.get('Article_Number', ''))
+            article_num = str(row.get('article_number', ''))
             if not article_num or article_num == 'nan':
                 continue
                 
@@ -396,12 +396,12 @@ def process_supplier_data(df, supplier_name):
                 }
             
             # Add product name if available
-            product_name = row.get('Product_Name', '')
+            product_name = row.get('product_name', '')
             if product_name and product_name not in result[article_num]['names']:
                 result[article_num]['names'].append(product_name)
             
             # Add price if available
-            price = row.get('Price_per_kg', '')
+            price = row.get('price_per_', '')
             if price and str(price) != 'nan':
                 try:
                     price_float = float(price)
@@ -410,8 +410,8 @@ def process_supplier_data(df, supplier_name):
                     pass
             
             # Add order details
-            order_no = row.get('Order_Number', '')
-            date = row.get('Date', '')
+            order_no = row.get('order_number', '')
+            date = row.get('order_date', '')
             if order_no and str(order_no) != 'nan':
                 order_details = {
                     'order_no': order_no,
