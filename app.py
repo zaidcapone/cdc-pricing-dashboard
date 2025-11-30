@@ -14,10 +14,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for main dashboard - USING YOUR PREVIOUS THEME
+# Custom CSS for main dashboard
 st.markdown("""
 <style>
-    /* Your existing CSS remains the same */
     .main-header {
         background: linear-gradient(135deg, #991B1B, #7F1D1D);
         color: white;
@@ -33,7 +32,21 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 1rem;
     }
-    /* ... (keep all your existing CSS styles) ... */
+    .card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border-left: 4px solid #991B1B;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin: 1rem 0;
+    }
+    .price-card {
+        background: linear-gradient(135deg, #F0F9FF, #E0F2FE);
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #0EA5E9;
+        margin: 0.5rem 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
