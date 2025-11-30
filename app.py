@@ -2058,17 +2058,72 @@ def load_ceo_special_prices(client="CDC"):
         return pd.DataFrame()
 
 def get_google_sheets_data(client="CDC"):
-    """Optimized version - loads both suppliers in one call"""
+    """Optimized version - loads both suppliers in one call and returns proper structure"""
     try:
         # Dynamic sheet names
         backaldrin_sheet = f"Backaldrin_{client}"
         bateel_sheet = f"Bateel_{client}"
         
         # Load both sheets
-        backaldrin_data = load_sheet_data(backaldrin_sheet)
-        bateel_data = load_sheet_data(bateel_sheet)
+        backaldrin_df = load_sheet_data(backaldrin_sheet)
+        bateel_df = load_sheet_data(bateel_sheet)
         
-        return {"Backaldrin": backaldrin_data, "Bateel": bateel_data}
+        # Convert DataFrames to the expected dictionary structure
+        def convert_df_to_dict(df):
+            result = {}
+            if df.empty:
+                return result
+                
+            # Assuming the DataFrame has columns like: Article, Product_Name, Price, etc.
+            for _, row in df.iterrows():
+                article = row.get('Article_Number', '') or row.get('Article', '')
+                if not article:
+                    continue
+                    
+                if article not in result:
+                    result[article] = {
+                        'names': [],
+                        'prices': [],
+                        'orders': []
+                    }
+                
+                # Add product name
+                product_name = row.get('Product_Name', '') or row.get('Product', '')
+                if product_name and product_name not in result[article]['names']:
+                    result[article]['names'].append(product_name)
+                
+                # Add price if available
+                price = row.get('Price', '') or row.get('Price_per_kg', '')
+                if price:
+                    try:
+                        price_float = float(price)
+                        result[article]['prices'].append(price_float)
+                    except (ValueError, TypeError):
+                        pass
+                
+                # Add order details
+                order_data = {
+                    'order_no': row.get('Order_Number', '') or row.get('Order', ''),
+                    'date': row.get('Date', ''),
+                    'year': row.get('Year', ''),
+                    'product_name': product_name,
+                    'article': article,
+                    'hs_code': row.get('HS_Code', ''),
+                    'packaging': row.get('Packaging', ''),
+                    'quantity': row.get('Quantity', ''),
+                    'total_weight': row.get('Total_Weight', ''),
+                    'price': price,
+                    'total_price': row.get('Total_Price', '')
+                }
+                result[article]['orders'].append(order_data)
+            
+            return result
+        
+        return {
+            "Backaldrin": convert_df_to_dict(backaldrin_df),
+            "Bateel": convert_df_to_dict(bateel_df)
+        }
+        
     except Exception as e:
         st.error(f"Error loading data for {client}: {str(e)}")
         return {"Backaldrin": {}, "Bateel": {}}
@@ -2163,35 +2218,41 @@ def cdc_dashboard(client):
 def get_suggestions(search_term, supplier, data):
     """Get search suggestions for article, product name, or HS code"""
     suggestions = []
-    supplier_data = data[supplier]
+    supplier_data = data.get(supplier, {})
     
     for article_num, article_data in supplier_data.items():
+        # Skip if article_data doesn't have the expected structure
+        if not isinstance(article_data, dict) or 'names' not in article_data:
+            continue
+            
         # Article number search
-        if search_term.lower() in article_num.lower():
+        if search_term.lower() in str(article_num).lower():
+            display_name = article_data['names'][0] if article_data['names'] else 'No Name'
             suggestions.append({
                 "type": "article",
                 "value": article_num,
-                "display": f"🔢 {article_num} - {article_data['names'][0] if article_data['names'] else 'No Name'}"
+                "display": f"🔢 {article_num} - {display_name}"
             })
         
         # Product name search
         for name in article_data['names']:
-            if search_term.lower() in name.lower():
+            if search_term.lower() in str(name).lower():
                 suggestions.append({
                     "type": "product", 
                     "value": article_num,
                     "display": f"📝 {article_num} - {name}"
                 })
         
-        # NEW: HS Code search
-        for order in article_data['orders']:
+        # HS Code search
+        for order in article_data.get('orders', []):
             if (order.get('hs_code') and 
                 search_term.lower() in str(order['hs_code']).lower() and
                 article_num not in [s['value'] for s in suggestions]):
+                display_name = article_data['names'][0] if article_data['names'] else 'No Name'
                 suggestions.append({
                     "type": "hs_code",
                     "value": article_num,
-                    "display": f"🏷️ {article_num} - HS: {order['hs_code']} - {article_data['names'][0] if article_data['names'] else 'No Name'}"
+                    "display": f"🏷️ {article_num} - HS: {order['hs_code']} - {display_name}"
                 })
     
     # Remove duplicates
