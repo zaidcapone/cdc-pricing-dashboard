@@ -1,5 +1,3 @@
-import time
-import functools
 import streamlit as st
 import pandas as pd
 import requests
@@ -8,39 +6,6 @@ from datetime import datetime
 from io import BytesIO
 import time
 import functools
-
-# Cache configuration
-CACHE_DURATION = 300  # 5 minutes cache
-
-def cache_data(ttl=CACHE_DURATION):
-    """Decorator to cache function results"""
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            # Create a unique key for this function call
-            key = f"{func.__name__}_{str(args)}_{str(kwargs)}"
-            
-            # Initialize cache if not exists
-            if 'app_cache' not in st.session_state:
-                st.session_state.app_cache = {}
-            
-            # Check if cached data exists and is not expired
-            if key in st.session_state.app_cache:
-                cached_data, timestamp = st.session_state.app_cache[key]
-                if time.time() - timestamp < ttl:
-                    return cached_data
-            
-            # If not cached or expired, call the function
-            result = func(*args, **kwargs)
-            st.session_state.app_cache[key] = (result, time.time())
-            return result
-        return wrapper
-    return decorator
-
-def clear_cache():
-    """Clear all cached data"""
-    if 'app_cache' in st.session_state:
-        st.session_state.app_cache = {}
 
 # Page config
 st.set_page_config(
@@ -376,7 +341,7 @@ def process_supplier_data(df, supplier_name):
     
     try:
         # Check if we have the required columns
-        required_cols = ['article_number', 'product_name', 'price_per_', 'order_number', 'order_date']
+        required_cols = ['Article_Number', 'Product_Name', 'Price_per_kg', 'Order_Number', 'Date']
         available_cols = [col for col in required_cols if col in df.columns]
         
         if not available_cols:
@@ -384,7 +349,7 @@ def process_supplier_data(df, supplier_name):
         
         # Group by article number
         for _, row in df.iterrows():
-            article_num = str(row.get('article_number', ''))
+            article_num = str(row.get('Article_Number', ''))
             if not article_num or article_num == 'nan':
                 continue
                 
@@ -396,12 +361,12 @@ def process_supplier_data(df, supplier_name):
                 }
             
             # Add product name if available
-            product_name = row.get('product_name', '')
+            product_name = row.get('Product_Name', '')
             if product_name and product_name not in result[article_num]['names']:
                 result[article_num]['names'].append(product_name)
             
             # Add price if available
-            price = row.get('price_per_', '')
+            price = row.get('Price_per_kg', '')
             if price and str(price) != 'nan':
                 try:
                     price_float = float(price)
@@ -410,8 +375,8 @@ def process_supplier_data(df, supplier_name):
                     pass
             
             # Add order details
-            order_no = row.get('order_number', '')
-            date = row.get('order_date', '')
+            order_no = row.get('Order_Number', '')
+            date = row.get('Date', '')
             if order_no and str(order_no) != 'nan':
                 order_details = {
                     'order_no': order_no,
@@ -502,13 +467,13 @@ def cdc_dashboard(client):
     with col3:
         hs_code = st.text_input("**HS CODE**", placeholder="e.g., 1901200000, 180690...", key=f"{client}_hscode")
 
-    # Auto-suggestions
+    # Auto-suggestions (only show if we have data)
     search_term = article or product or hs_code
-    if search_term:
+    if search_term and DATA[supplier]:
         suggestions = get_suggestions(search_term, supplier, DATA)
         if suggestions:
             st.markdown("**💡 Quick Suggestions:**")
-            for i, suggestion in enumerate(suggestions[:4]):
+            for i, suggestion in enumerate(suggestions[:3]):  # Limit to 3 suggestions
                 if st.button(suggestion["display"], use_container_width=True, key=f"{client}_sugg_{i}"):
                     st.session_state.search_results = {
                         "article": suggestion["value"],
@@ -525,7 +490,240 @@ def cdc_dashboard(client):
     # Display results from session state
     if st.session_state.search_results and st.session_state.search_results.get("client") == client:
         display_from_session_state(DATA, client)
+
+# Keep all your existing helper functions but add @cache_data decorator to heavy ones
+@cache_data(ttl=300)
+def load_prices_data():
+    """Load all prices data from Google Sheets with caching"""
+    try:
+        prices_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{PRICES_SHEET}!A:Z?key={API_KEY}"
+        response = requests.get(prices_url, timeout=30)
         
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if values and len(values) > 1:
+                headers = values[0]
+                rows = values[1:]
+                
+                df = pd.DataFrame(rows, columns=headers)
+                
+                # Check for required columns
+                required_cols = ['Customer', 'Customer Name', 'Salesman', 'Item Code', 'Item Name', 
+                               'Customer Article No', 'Customer Label', 'Packing/kg', 'Price']
+                
+                # Fill missing columns with empty values
+                for col in required_cols:
+                    if col not in df.columns:
+                        df[col] = ''
+                
+                # Convert numeric columns
+                if 'Price' in df.columns:
+                    df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
+                if 'Packing/kg' in df.columns:
+                    df['Packing/kg'] = pd.to_numeric(df['Packing/kg'], errors='coerce')
+                
+                # Fill NaN values with empty strings for text columns
+                text_cols = ['Customer', 'Customer Name', 'Salesman', 'Item Code', 'Item Name', 
+                           'Customer Article No', 'Customer Label']
+                for col in text_cols:
+                    if col in df.columns:
+                        df[col] = df[col].fillna('')
+                
+                return df
+                
+        return pd.DataFrame()
+        
+    except Exception as e:
+        st.error(f"Error loading prices data: {str(e)}")
+        return pd.DataFrame()
+
+# Add @cache_data to other heavy loading functions
+@cache_data(ttl=300)
+def load_product_catalog():
+    """Load product catalog from Google Sheets with caching"""
+    try:
+        sheet_name = PRODUCT_CATALOG_SHEET
+        catalog_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
+        response = requests.get(catalog_url, timeout=30)
+        
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if values and len(values) > 1:
+                headers = values[0]
+                rows = values[1:]
+                
+                df = pd.DataFrame(rows, columns=headers)
+                df = df.fillna('')
+                
+                if len(df) > 0 and 'Article_Number' in df.columns:
+                    return df
+                else:
+                    return pd.DataFrame()
+            else:
+                return pd.DataFrame()
+        else:
+            return pd.DataFrame()
+        
+    except Exception as e:
+        st.error(f"Error loading product catalog: {str(e)}")
+        return pd.DataFrame()
+
+# ==================== OTHER TAB FUNCTIONS (Keep your existing code but add loading states) ====================
+
+def prices_tab():
+    """All Customers Prices Tab with loading optimization"""
+    st.markdown("""
+    <div class="prices-header">
+        <h2 style="margin:0;">💰 All Customers Prices</h2>
+        <p style="margin:0; opacity:0.9;">Complete Price Database • Cross-Customer Analysis • Flexible Search</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Load prices data with progress
+    with st.spinner("📥 Loading prices data from Google Sheets..."):
+        prices_data = load_prices_data()
+    
+    if prices_data.empty:
+        st.warning("""
+        ⚠️ **Prices data not found or empty!**
+        """)
+        return
+    
+    st.success(f"✅ Loaded {len(prices_data)} price records")
+    
+    # Rest of your prices_tab function remains the same...
+    # [Keep all your existing prices_tab code here]
+
+def palletizing_tab():
+    """Quick Pallet Calculator - No external data needed"""
+    st.markdown("""
+    <div class="palletizing-header">
+        <h2 style="margin:0;">📦 Quick Pallet Calculator</h2>
+        <p style="margin:0; opacity:0.9;">Instant Pallet Calculations • CDC Standard Items • Real-time Results</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    quick_pallet_calculator()
+
+def quick_pallet_calculator():
+    """Quick Pallet Calculator for CDC Items - No API calls"""
+    # This function is already fast since it doesn't call external APIs
+    # [Keep your existing quick_pallet_calculator code here]
+
+# Continue with all your other tab functions...
+# [Keep all your existing tab functions but add @cache_data to heavy loading functions]
+
+# ==================== KEEP ALL YOUR EXISTING HELPER FUNCTIONS ====================
+
+def get_suggestions(search_term, supplier, data):
+    """Get search suggestions for article, product name, or HS code - SAFER VERSION"""
+    suggestions = []
+    
+    if not data or supplier not in data:
+        return suggestions
+        
+    supplier_data = data[supplier]
+    
+    for article_num, article_data in supplier_data.items():
+        # Skip if article_data is not a dictionary or doesn't have expected structure
+        if not isinstance(article_data, dict) or 'names' not in article_data:
+            continue
+            
+        # Article number search
+        if search_term.lower() in article_num.lower():
+            display_name = article_data['names'][0] if article_data['names'] else 'No Name'
+            suggestions.append({
+                "type": "article",
+                "value": article_num,
+                "display": f"🔢 {article_num} - {display_name}"
+            })
+        
+        # Product name search
+        for name in article_data['names']:
+            if search_term.lower() in name.lower():
+                suggestions.append({
+                    "type": "product", 
+                    "value": article_num,
+                    "display": f"📝 {article_num} - {name}"
+                })
+        
+        # HS Code search
+        if 'orders' in article_data:
+            for order in article_data['orders']:
+                if (order.get('hs_code') and 
+                    search_term.lower() in str(order['hs_code']).lower() and
+                    article_num not in [s['value'] for s in suggestions]):
+                    display_name = article_data['names'][0] if article_data['names'] else 'No Name'
+                    suggestions.append({
+                        "type": "hs_code",
+                        "value": article_num,
+                        "display": f"🏷️ {article_num} - HS: {order['hs_code']} - {display_name}"
+                    })
+    
+    # Remove duplicates
+    unique_suggestions = {}
+    for sugg in suggestions:
+        if sugg["value"] not in unique_suggestions:
+            unique_suggestions[sugg["value"]] = sugg
+    
+    return list(unique_suggestions.values())
+
+def handle_search(article, product, hs_code, supplier, data, client):
+    """Handle search across article, product name, and HS code - SAFER VERSION"""
+    search_term = article or product or hs_code
+    if not search_term:
+        st.error("❌ Please enter an article number, product name, or HS code")
+        return
+    
+    found = False
+    
+    if supplier not in data:
+        st.error(f"❌ No data available for {supplier}")
+        return
+        
+    for article_num, article_data in data[supplier].items():
+        # Skip if article_data is not properly structured
+        if not isinstance(article_data, dict):
+            continue
+            
+        article_match = article and article == article_num
+        product_match = product and 'names' in article_data and any(
+            product.lower() in name.lower() for name in article_data['names']
+        )
+        hs_code_match = hs_code and 'orders' in article_data and any(
+            hs_code.lower() in str(order.get('hs_code', '')).lower() 
+            for order in article_data['orders']
+        )
+        
+        if article_match or product_match or hs_code_match:
+            st.session_state.search_results = {
+                "article": article_num,
+                "supplier": supplier,
+                "client": client
+            }
+            # Prepare export data
+            st.session_state.export_data = create_export_data(article_data, article_num, supplier, client)
+            found = True
+            break
+    
+    if not found:
+        st.error(f"❌ No results found for '{search_term}' in {supplier}")
+
+def display_from_session_state(data, client):
+    """Display search results with NEW CARD DESIGN"""
+    # [Keep your existing display_from_session_state code]
+    pass
+
+def create_export_data(article_data, article, supplier, client):
+    """Create export data in different formats"""
+    # [Keep your existing create_export_data code]
+    pass
+
+# ... Continue with all your other existing functions
 
 # ==================== ADD THE MISSING FUNCTIONS ====================
 
