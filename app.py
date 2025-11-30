@@ -703,11 +703,16 @@ def create_export_data(article_data, article, supplier, client):
     # CSV format
     csv_data = df.to_csv(index=False)
     
-    # Excel format
-    excel_buffer = BytesIO()
-    with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Price_History')
-    excel_data = excel_buffer.getvalue()
+    # Excel format - with fallback if openpyxl is not available
+    try:
+        excel_buffer = BytesIO()
+        with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Price_History')
+        excel_data = excel_buffer.getvalue()
+    except ImportError:
+        # Fallback: create a simple Excel file without openpyxl
+        excel_data = None
+        st.warning("⚠️ Excel export requires 'openpyxl' package. Please install it for full functionality.")
     
     return {
         'csv': csv_data,
@@ -796,18 +801,22 @@ def prices_tab():
             )
         
         with col2:
-            excel_buffer = BytesIO()
-            with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-                filtered_data.to_excel(writer, index=False, sheet_name='Filtered_Prices')
-            excel_data = excel_buffer.getvalue()
-            
-            st.download_button(
-                label="📥 Download Excel",
-                data=excel_data,
-                file_name="filtered_prices.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
-            )
+            # Excel export with fallback
+            try:
+                excel_buffer = BytesIO()
+                with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+                    filtered_data.to_excel(writer, index=False, sheet_name='Filtered_Prices')
+                excel_data = excel_buffer.getvalue()
+                
+                st.download_button(
+                    label="📥 Download Excel",
+                    data=excel_data,
+                    file_name="filtered_prices.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+            except ImportError:
+                st.warning("📊 Excel export requires 'openpyxl'. Install: pip install openpyxl")
     else:
         st.info("ℹ️ No records found matching your filters")
 
