@@ -262,12 +262,12 @@ CDC_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"
 # User authentication - UPDATED: cakeart_user changed to Khalid
 # User authentication - UPDATED: Added Cameron client
 USERS = {
-    "admin": {"password": "123456", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse", "Cameron"]},
-    "ceo": {"password": "123456", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse", "Cameron"]},
-    "zaid": {"password": "123456", "clients": ["CDC"]},
-    "mohammad": {"password": "123456", "clients": ["CoteDivoire"]},
-    "Khalid": {"password": "123456", "clients": ["CakeArt", "SweetHouse"]},
-    "Rotana": {"password": "123456", "clients": ["CDC"]}
+    "admin": {"password": "123", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse", "Cameron"]},
+    "ceo": {"password": "123", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse", "Cameron"]},
+    "zaid": {"password": "123", "clients": ["CDC"]},
+    "mohammad": {"password": "123", "clients": ["CoteDivoire"]},
+    "Khalid": {"password": "123", "clients": ["CakeArt", "SweetHouse"]},
+    "Rotana": {"password": "123", "clients": ["CDC"]}
 }
 
 # Client data sheets mapping - UPDATED: Added Cameron client
