@@ -468,171 +468,43 @@ def cdc_dashboard(client):
         hs_code = st.text_input("**HS CODE**", placeholder="e.g., 1901200000, 180690...", key=f"{client}_hscode")
 
     # Auto-suggestions (only show if we have data)
-search_term = article or product or hs_code
-if search_term and DATA[supplier]:
-    suggestions = get_suggestions(search_term, supplier, DATA)
-    if suggestions:
-        st.markdown("**💡 Quick Suggestions:**")
-        for i, suggestion in enumerate(suggestions[:3]):  # Limit to 3 suggestions
-            if st.button(suggestion["display"], use_container_width=True, key=f"{client}_sugg_{i}"):
-                # Set the search term in the input field for better UX
-                if suggestion["type"] == "article":
-                    st.session_state[f"{client}_article"] = suggestion["value"]
-                elif suggestion["type"] == "product":
-                    st.session_state[f"{client}_product"] = suggestion["value"]
-                elif suggestion["type"] == "hs_code":
-                    st.session_state[f"{client}_hscode"] = suggestion["value"]
-                
-                # Find and display the result immediately
-                article_num = suggestion["value"]
-                if article_num in DATA[supplier]:
-                    article_data = DATA[supplier][article_num]
-                    st.session_state.search_results = {
-                        "article": article_num,
-                        "supplier": supplier,
-                        "client": client
-                    }
-                    st.session_state.export_data = create_export_data(article_data, article_num, supplier, client)
-                    st.rerun()
+    search_term = article or product or hs_code
+    if search_term and DATA[supplier]:
+        suggestions = get_suggestions(search_term, supplier, DATA)
+        if suggestions:
+            st.markdown("**💡 Quick Suggestions:**")
+            for i, suggestion in enumerate(suggestions[:3]):  # Limit to 3 suggestions
+                if st.button(suggestion["display"], use_container_width=True, key=f"{client}_sugg_{i}"):
+                    # Set the search term in the input field for better UX
+                    if suggestion["type"] == "article":
+                        st.session_state[f"{client}_article"] = suggestion["value"]
+                    elif suggestion["type"] == "product":
+                        st.session_state[f"{client}_product"] = suggestion["value"]
+                    elif suggestion["type"] == "hs_code":
+                        st.session_state[f"{client}_hscode"] = suggestion["value"]
+                    
+                    # Find and display the result immediately
+                    article_num = suggestion["value"]
+                    if article_num in DATA[supplier]:
+                        article_data = DATA[supplier][article_num]
+                        st.session_state.search_results = {
+                            "article": article_num,
+                            "supplier": supplier,
+                            "client": client
+                        }
+                        st.session_state.export_data = create_export_data(article_data, article_num, supplier, client)
+                        st.rerun()
     
     # Manual search
     if st.button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary", key=f"{client}_search"):
         with st.spinner("Searching..."):
             handle_search(article, product, hs_code, supplier, DATA, client)
 
-# Display results from session state - ADD A VISUAL SEPARATOR
-if st.session_state.search_results and st.session_state.search_results.get("client") == client:
-    st.markdown("---")
-    st.subheader("📊 Search Results")
-    display_from_session_state(DATA, client)
-
-# Keep all your existing helper functions but add @cache_data decorator to heavy ones
-@cache_data(ttl=300)
-def load_prices_data():
-    """Load all prices data from Google Sheets with caching"""
-    try:
-        prices_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{PRICES_SHEET}!A:Z?key={API_KEY}"
-        response = requests.get(prices_url, timeout=30)
-        
-        if response.status_code == 200:
-            data = response.json()
-            values = data.get('values', [])
-            
-            if values and len(values) > 1:
-                headers = values[0]
-                rows = values[1:]
-                
-                df = pd.DataFrame(rows, columns=headers)
-                
-                # Check for required columns
-                required_cols = ['Customer', 'Customer Name', 'Salesman', 'Item Code', 'Item Name', 
-                               'Customer Article No', 'Customer Label', 'Packing/kg', 'Price']
-                
-                # Fill missing columns with empty values
-                for col in required_cols:
-                    if col not in df.columns:
-                        df[col] = ''
-                
-                # Convert numeric columns
-                if 'Price' in df.columns:
-                    df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
-                if 'Packing/kg' in df.columns:
-                    df['Packing/kg'] = pd.to_numeric(df['Packing/kg'], errors='coerce')
-                
-                # Fill NaN values with empty strings for text columns
-                text_cols = ['Customer', 'Customer Name', 'Salesman', 'Item Code', 'Item Name', 
-                           'Customer Article No', 'Customer Label']
-                for col in text_cols:
-                    if col in df.columns:
-                        df[col] = df[col].fillna('')
-                
-                return df
-                
-        return pd.DataFrame()
-        
-    except Exception as e:
-        st.error(f"Error loading prices data: {str(e)}")
-        return pd.DataFrame()
-
-# Add @cache_data to other heavy loading functions
-@cache_data(ttl=300)
-def load_product_catalog():
-    """Load product catalog from Google Sheets with caching"""
-    try:
-        sheet_name = PRODUCT_CATALOG_SHEET
-        catalog_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
-        response = requests.get(catalog_url, timeout=30)
-        
-        if response.status_code == 200:
-            data = response.json()
-            values = data.get('values', [])
-            
-            if values and len(values) > 1:
-                headers = values[0]
-                rows = values[1:]
-                
-                df = pd.DataFrame(rows, columns=headers)
-                df = df.fillna('')
-                
-                if len(df) > 0 and 'Article_Number' in df.columns:
-                    return df
-                else:
-                    return pd.DataFrame()
-            else:
-                return pd.DataFrame()
-        else:
-            return pd.DataFrame()
-        
-    except Exception as e:
-        st.error(f"Error loading product catalog: {str(e)}")
-        return pd.DataFrame()
-
-# ==================== OTHER TAB FUNCTIONS (Keep your existing code but add loading states) ====================
-
-def prices_tab():
-    """All Customers Prices Tab with loading optimization"""
-    st.markdown("""
-    <div class="prices-header">
-        <h2 style="margin:0;">💰 All Customers Prices</h2>
-        <p style="margin:0; opacity:0.9;">Complete Price Database • Cross-Customer Analysis • Flexible Search</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Load prices data with progress
-    with st.spinner("📥 Loading prices data from Google Sheets..."):
-        prices_data = load_prices_data()
-    
-    if prices_data.empty:
-        st.warning("""
-        ⚠️ **Prices data not found or empty!**
-        """)
-        return
-    
-    st.success(f"✅ Loaded {len(prices_data)} price records")
-    
-    # Rest of your prices_tab function remains the same...
-    # [Keep all your existing prices_tab code here]
-
-def palletizing_tab():
-    """Quick Pallet Calculator - No external data needed"""
-    st.markdown("""
-    <div class="palletizing-header">
-        <h2 style="margin:0;">📦 Quick Pallet Calculator</h2>
-        <p style="margin:0; opacity:0.9;">Instant Pallet Calculations • CDC Standard Items • Real-time Results</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    quick_pallet_calculator()
-
-def quick_pallet_calculator():
-    """Quick Pallet Calculator for CDC Items - No API calls"""
-    # This function is already fast since it doesn't call external APIs
-    # [Keep your existing quick_pallet_calculator code here]
-
-# Continue with all your other tab functions...
-# [Keep all your existing tab functions but add @cache_data to heavy loading functions]
-
-# ==================== KEEP ALL YOUR EXISTING HELPER FUNCTIONS ====================
+    # Display results from session state - ADD A VISUAL SEPARATOR
+    if st.session_state.search_results and st.session_state.search_results.get("client") == client:
+        st.markdown("---")
+        st.subheader("📊 Search Results")
+        display_from_session_state(DATA, client)
 
 def get_suggestions(search_term, supplier, data):
     """Get search suggestions for article, product name, or HS code - SAFER VERSION"""
@@ -733,47 +605,410 @@ def handle_search(article, product, hs_code, supplier, data, client):
 
 def display_from_session_state(data, client):
     """Display search results with NEW CARD DESIGN"""
-    # [Keep your existing display_from_session_state code]
-    pass
+    if not st.session_state.search_results:
+        return
+        
+    result = st.session_state.search_results
+    article = result["article"]
+    supplier = result["supplier"]
+    
+    if supplier not in data or article not in data[supplier]:
+        st.error("❌ No data found for the selected article")
+        return
+        
+    article_data = data[supplier][article]
+    
+    # Display basic info
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric("📦 Article Number", article)
+    
+    with col2:
+        product_names = article_data.get('names', ['No name available'])
+        main_name = product_names[0] if product_names else 'No name available'
+        st.metric("📝 Product Name", main_name)
+    
+    with col3:
+        prices = article_data.get('prices', [])
+        if prices:
+            avg_price = sum(prices) / len(prices)
+            st.metric("💰 Average Price/kg", f"${avg_price:.2f}")
+        else:
+            st.metric("💰 Average Price/kg", "No data")
+    
+    # Display orders in a dataframe
+    orders = article_data.get('orders', [])
+    if orders:
+        st.subheader("📋 Order History")
+        orders_df = pd.DataFrame(orders)
+        st.dataframe(orders_df, use_container_width=True)
+        
+        # Export options
+        st.subheader("📤 Export Data")
+        export_data = st.session_state.export_data
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if export_data and 'csv' in export_data:
+                st.download_button(
+                    label="📥 Download CSV",
+                    data=export_data['csv'],
+                    file_name=f"{client}_{supplier}_{article}_prices.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+        
+        with col2:
+            if export_data and 'excel' in export_data:
+                st.download_button(
+                    label="📥 Download Excel",
+                    data=export_data['excel'],
+                    file_name=f"{client}_{supplier}_{article}_prices.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+        
+        with col3:
+            if st.button("🔄 New Search", use_container_width=True):
+                st.session_state.search_results = None
+                st.session_state.export_data = None
+                st.rerun()
+    else:
+        st.info("ℹ️ No order history found for this article")
 
 def create_export_data(article_data, article, supplier, client):
     """Create export data in different formats"""
-    # [Keep your existing create_export_data code]
-    pass
+    orders = article_data.get('orders', [])
+    if not orders:
+        return {}
+    
+    # Create DataFrame
+    df = pd.DataFrame(orders)
+    
+    # CSV format
+    csv_data = df.to_csv(index=False)
+    
+    # Excel format
+    excel_buffer = BytesIO()
+    with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Price_History')
+    excel_data = excel_buffer.getvalue()
+    
+    return {
+        'csv': csv_data,
+        'excel': excel_data
+    }
 
-# ... Continue with all your other existing functions
+# ==================== OTHER TAB FUNCTIONS ====================
 
-# ==================== ADD THE MISSING FUNCTIONS ====================
+def prices_tab():
+    """All Customers Prices Tab with loading optimization"""
+    st.markdown("""
+    <div class="cdc-header">
+        <h2 style="margin:0;">💰 All Customers Prices</h2>
+        <p style="margin:0; opacity:0.9;">Complete Price Database • Cross-Customer Analysis • Flexible Search</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Load prices data with progress
+    with st.spinner("📥 Loading prices data from Google Sheets..."):
+        prices_data = load_prices_data()
+    
+    if prices_data.empty:
+        st.warning("""
+        ⚠️ **Prices data not found or empty!**
+        Please check if the Google Sheets is accessible and contains data.
+        """)
+        return
+    
+    st.success(f"✅ Loaded {len(prices_data)} price records")
+    
+    # Search and filter options
+    st.subheader("🔍 Search & Filter Prices")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        customer_filter = st.text_input("🔍 Filter by Customer", placeholder="Enter customer name...")
+    with col2:
+        item_filter = st.text_input("🔍 Filter by Item", placeholder="Enter item name or code...")
+    with col3:
+        salesman_filter = st.text_input("🔍 Filter by Salesman", placeholder="Enter salesman name...")
+    
+    # Apply filters
+    filtered_data = prices_data.copy()
+    
+    if customer_filter:
+        filtered_data = filtered_data[
+            filtered_data['Customer Name'].str.contains(customer_filter, case=False, na=False) |
+            filtered_data['Customer'].str.contains(customer_filter, case=False, na=False)
+        ]
+    
+    if item_filter:
+        filtered_data = filtered_data[
+            filtered_data['Item Name'].str.contains(item_filter, case=False, na=False) |
+            filtered_data['Item Code'].str.contains(item_filter, case=False, na=False) |
+            filtered_data['Customer Article No'].str.contains(item_filter, case=False, na=False)
+        ]
+    
+    if salesman_filter:
+        filtered_data = filtered_data[
+            filtered_data['Salesman'].str.contains(salesman_filter, case=False, na=False)
+        ]
+    
+    # Display results
+    st.subheader(f"📊 Price Records ({len(filtered_data)} found)")
+    
+    if not filtered_data.empty:
+        st.dataframe(
+            filtered_data,
+            use_container_width=True,
+            hide_index=True
+        )
+        
+        # Export options
+        st.subheader("📤 Export Filtered Data")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            csv_data = filtered_data.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv_data,
+                file_name="filtered_prices.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+        
+        with col2:
+            excel_buffer = BytesIO()
+            with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+                filtered_data.to_excel(writer, index=False, sheet_name='Filtered_Prices')
+            excel_data = excel_buffer.getvalue()
+            
+            st.download_button(
+                label="📥 Download Excel",
+                data=excel_data,
+                file_name="filtered_prices.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
+    else:
+        st.info("ℹ️ No records found matching your filters")
+
+@cache_data(ttl=300)
+def load_prices_data():
+    """Load all prices data from Google Sheets with caching"""
+    try:
+        prices_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{PRICES_SHEET}!A:Z?key={API_KEY}"
+        response = requests.get(prices_url, timeout=30)
+        
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if values and len(values) > 1:
+                headers = values[0]
+                rows = values[1:]
+                
+                df = pd.DataFrame(rows, columns=headers)
+                
+                # Check for required columns
+                required_cols = ['Customer', 'Customer Name', 'Salesman', 'Item Code', 'Item Name', 
+                               'Customer Article No', 'Customer Label', 'Packing/kg', 'Price']
+                
+                # Fill missing columns with empty values
+                for col in required_cols:
+                    if col not in df.columns:
+                        df[col] = ''
+                
+                # Convert numeric columns
+                if 'Price' in df.columns:
+                    df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
+                if 'Packing/kg' in df.columns:
+                    df['Packing/kg'] = pd.to_numeric(df['Packing/kg'], errors='coerce')
+                
+                # Fill NaN values with empty strings for text columns
+                text_cols = ['Customer', 'Customer Name', 'Salesman', 'Item Code', 'Item Name', 
+                           'Customer Article No', 'Customer Label']
+                for col in text_cols:
+                    if col in df.columns:
+                        df[col] = df[col].fillna('')
+                
+                return df
+                
+        return pd.DataFrame()
+        
+    except Exception as e:
+        st.error(f"Error loading prices data: {str(e)}")
+        return pd.DataFrame()
+
+def palletizing_tab():
+    """Quick Pallet Calculator - No external data needed"""
+    st.markdown("""
+    <div class="cdc-header">
+        <h2 style="margin:0;">📦 Quick Pallet Calculator</h2>
+        <p style="margin:0; opacity:0.9;">Instant Pallet Calculations • CDC Standard Items • Real-time Results</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    quick_pallet_calculator()
+
+def quick_pallet_calculator():
+    """Quick Pallet Calculator for CDC Items - No API calls"""
+    st.subheader("🚀 Quick Pallet Calculator")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### 📦 Standard CDC Items")
+        standard_items = {
+            "Moist Muffin 1kg": {"weight": 1.0, "boxes_per_pallet": 720},
+            "Date Mix 500g": {"weight": 0.5, "boxes_per_pallet": 1440},
+            "Croissant Dough 2.5kg": {"weight": 2.5, "boxes_per_pallet": 288},
+            "Bread Mix 1kg": {"weight": 1.0, "boxes_per_pallet": 720},
+            "Cake Mix 500g": {"weight": 0.5, "boxes_per_pallet": 1440}
+        }
+        
+        selected_item = st.selectbox(
+            "Select Product:",
+            list(standard_items.keys())
+        )
+        
+        quantity = st.number_input(
+            "Quantity (boxes):",
+            min_value=1,
+            value=100,
+            step=1
+        )
+    
+    with col2:
+        st.markdown("### ⚙️ Custom Calculation")
+        custom_weight = st.number_input(
+            "Product Weight (kg per box):",
+            min_value=0.1,
+            value=1.0,
+            step=0.1
+        )
+        
+        boxes_per_pallet = st.number_input(
+            "Boxes per Pallet:",
+            min_value=1,
+            value=720,
+            step=1
+        )
+    
+    # Calculate results
+    if selected_item:
+        item_data = standard_items[selected_item]
+        weight_per_box = item_data["weight"]
+        boxes_per_pallet_std = item_data["boxes_per_pallet"]
+    else:
+        weight_per_box = custom_weight
+        boxes_per_pallet_std = boxes_per_pallet
+    
+    # Calculations
+    total_weight = quantity * weight_per_box
+    pallets_needed = quantity / boxes_per_pallet_std
+    full_pallets = int(pallets_needed)
+    remaining_boxes = quantity - (full_pallets * boxes_per_pallet_std)
+    
+    # Display results
+    st.markdown("---")
+    st.subheader("📊 Calculation Results")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("📦 Total Boxes", f"{quantity:,}")
+    
+    with col2:
+        st.metric("⚖️ Total Weight", f"{total_weight:,.1f} kg")
+    
+    with col3:
+        st.metric("🛒 Pallets Needed", f"{pallets_needed:.1f}")
+    
+    with col4:
+        st.metric("📦 Remaining Boxes", f"{remaining_boxes:,}")
+    
+    # Detailed breakdown
+    if full_pallets > 0:
+        st.info(f"""
+        **📋 Detailed Breakdown:**
+        - {full_pallets} full pallet(s) × {boxes_per_pallet_std} boxes = {full_pallets * boxes_per_pallet_std} boxes
+        - {remaining_boxes} individual boxes
+        - Total: {quantity} boxes ({total_weight:,.1f} kg)
+        """)
+
+# ==================== MISSING TAB FUNCTIONS ====================
+
+def new_orders_tab():
+    """New Orders tab"""
+    st.markdown("""
+    <div class="cdc-header">
+        <h2 style="margin:0;">📋 New Client Orders</h2>
+        <p style="margin:0; opacity:0.9;">Manage New Orders • Order Processing • Client Management</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.info("🔄 This section is under development. New orders management will be available soon!")
 
 def etd_tab():
     """ETD Sheet with caching"""
-    # [Add your existing etd_tab function here]
-    pass
+    st.markdown("""
+    <div class="cdc-header">
+        <h2 style="margin:0;">📅 ETD Sheet</h2>
+        <p style="margin:0; opacity:0.9;">Estimated Time of Departure • Shipping Schedule • Logistics</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.info("🔄 This section is under development. ETD tracking will be available soon!")
 
 def ceo_specials_tab():
     """CEO Special Prices tab with caching"""
-    # [Add your existing ceo_specials_tab function here]
-    pass
+    st.markdown("""
+    <div class="cdc-header">
+        <h2 style="margin:0;">⭐ CEO Special Prices</h2>
+        <p style="margin:0; opacity:0.9;">Special Pricing • VIP Customers • Exclusive Deals</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.info("🔄 This section is under development. CEO special prices will be available soon!")
 
 def price_intelligence_tab():
     """CEO Price Intelligence with caching"""
-    # [Add your existing price_intelligence_tab function here]
-    pass
+    st.markdown("""
+    <div class="cdc-header">
+        <h2 style="margin:0;">💰 Price Intelligence</h2>
+        <p style="margin:0; opacity:0.9;">Market Analysis • Competitive Pricing • Trends</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.info("🔄 This section is under development. Price intelligence features will be available soon!")
 
 def product_catalog_tab():
     """Product Catalog with caching"""
-    # [Add your existing product_catalog_tab function here]
-    pass
+    st.markdown("""
+    <div class="cdc-header">
+        <h2 style="margin:0;">📦 Product Catalog</h2>
+        <p style="margin:0; opacity:0.9;">Complete Product Database • Specifications • Inventory</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.info("🔄 This section is under development. Product catalog will be available soon!")
 
 def orders_management_tab():
     """Orders Management with caching"""
-    # [Add your existing orders_management_tab function here]
-    pass
-
-def new_orders_tab():
-    """New Orders with caching"""
-    # [Add your existing new_orders_tab function here]
-    pass
+    st.markdown("""
+    <div class="cdc-header">
+        <h2 style="margin:0;">📊 Orders Management</h2>
+        <p style="margin:0; opacity:0.9;">Order Tracking • Status Updates • Client Communications</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.info("🔄 This section is under development. Orders management will be available soon!")
 
 # Run the main dashboard
 if __name__ == "__main__":
