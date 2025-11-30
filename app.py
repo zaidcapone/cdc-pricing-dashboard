@@ -44,6 +44,13 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 1rem;
     }
+    .palletizing-header {
+        background: linear-gradient(135deg, #7C3AED, #6D28D9);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
     .price-card {
         background: linear-gradient(135deg, #FEE2E2, #FECACA);
         padding: 1.5rem;
@@ -81,6 +88,15 @@ st.markdown("""
         color: #1F2937;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
+    .pallet-stat-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 2px solid #7C3AED;
+        text-align: center;
+        color: #1F2937;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
     .stat-number {
         font-size: 2em;
         font-weight: bold;
@@ -91,6 +107,12 @@ st.markdown("""
         font-size: 2em;
         font-weight: bold;
         color: #059669;
+        margin: 0;
+    }
+    .pallet-stat-number {
+        font-size: 2em;
+        font-weight: bold;
+        color: #7C3AED;
         margin: 0;
     }
     .stat-label {
@@ -155,6 +177,13 @@ st.markdown("""
         border: 2px solid #059669;
         margin: 1rem 0;
     }
+    .palletizing-section {
+        background: #FAF5FF;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 2px solid #7C3AED;
+        margin: 1rem 0;
+    }
     .login-container {
         max-width: 400px;
         margin: 100px auto;
@@ -179,6 +208,50 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 1rem;
     }
+    .new-orders-header {
+        background: linear-gradient(135deg, #DC2626, #B91C1C);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+    .prices-header {
+        background: linear-gradient(135deg, #0EA5E9, #0284C7);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+    /* Horizontal scrollable tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 2px;
+        overflow-x: auto;
+        white-space: nowrap;
+        flex-wrap: nowrap;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        white-space: pre-wrap;
+        background-color: #F3F4F6;
+        border-radius: 4px 4px 0px 0px;
+        gap: 1px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        color: #000000 !important; /* Force black text */
+    }
+    .stTabs [data-baseweb="tab"] span {
+        color: #000000 !important; /* Force black text for tab labels */
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: #E5E7EB;
+    }
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        background-color: #991B1B !important; /* Active tab color */
+        color: white !important; /* White text for active tab */
+    }
+    .stTabs [data-baseweb="tab"][aria-selected="true"] span {
+        color: white !important; /* White text for active tab label */
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -186,44 +259,60 @@ st.markdown("""
 API_KEY = "AIzaSyA3P-ZpLjDdVtGB82_1kaWuO7lNbKDj9HU"
 CDC_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"
 
-# User authentication - UPDATED: cakeart_user changed to Khalid
+# User authentication
 USERS = {
-    "admin": {"password": "admin123", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse"]},
-    "ceo": {"password": "ceo123", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse"]},
-    "zaid": {"password": "zaid123", "clients": ["CDC"]},
-    "mohammad": {"password": "mohammad123", "clients": ["CoteDivoire"]},
-    "Khalid": {"password": "KHALID123", "clients": ["CakeArt", "SweetHouse"]},
-    "Rotana": {"password": "Rotana123", "clients": ["CDC"]}
+    "admin": {"password": "123456", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse", "Cameron"]},
+    "ceo": {"password": "123456", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse", "Cameron"]},
+    "zaid": {"password": "123456", "clients": ["CDC"]},
+    "mohammad": {"password": "123456", "clients": ["CoteDivoire"]},
+    "Khalid": {"password": "123456", "clients": ["CakeArt", "SweetHouse"]},
+    "Rotana": {"password": "123456", "clients": ["CDC"]}
 }
 
-# Client data sheets mapping - UPDATED WITH CakeArt
+# Client data sheets mapping
 CLIENT_SHEETS = {
     "CDC": {
         "backaldrin": "Backaldrin_CDC",
         "bateel": "Bateel_CDC", 
         "ceo_special": "CDC_CEO_Special_Prices",
-        "new_orders": "New_Orders",
-        "paid_orders": "Paid_Orders"
+        "new_orders": "New_client_orders",
+        "paid_orders": "Paid_Orders",
+        "palletizing": "Palletizing_Data"
     },
     "CoteDivoire": {
         "backaldrin": "Backaldrin_CoteDivoire",
         "bateel": "Bateel_CoteDivoire", 
-        "ceo_special": "CoteDivoire_CEO_Special_Prices"
+        "ceo_special": "CoteDivoire_CEO_Special_Prices",
+        "new_orders": "New_client_orders",
+        "palletizing": "Palletizing_Data"
     },
     "CakeArt": {
         "backaldrin": "Backaldrin_CakeArt",
         "bateel": "Bateel_CakeArt",
-        "ceo_special": "CakeArt_CEO_Special_Prices"
+        "ceo_special": "CakeArt_CEO_Special_Prices",
+        "new_orders": "New_client_orders",
+        "palletizing": "Palletizing_Data"
     },
     "SweetHouse": {
         "backaldrin": "Backaldrin_SweetHouse",
         "bateel": "Bateel_SweetHouse",
-        "ceo_special": "SweetHouse_CEO_Special_Prices"
+        "ceo_special": "SweetHouse_CEO_Special_Prices",
+        "new_orders": "New_client_orders",
+        "palletizing": "Palletizing_Data"
+    },
+    "Cameron": {
+        "backaldrin": "Backaldrin_Cameron",
+        "bateel": "Bateel_Cameron", 
+        "ceo_special": "Cameron_CEO_Special_Prices",
+        "new_orders": "New_client_orders",
+        "palletizing": "Palletizing_Data"
     }
 }
 
 # Product Catalog Sheet Name
 PRODUCT_CATALOG_SHEET = "FullProductList"
+# NEW: Prices Sheet Name
+PRICES_SHEET = "Prices"
 
 def check_login():
     """Check if user is logged in"""
@@ -282,11 +371,13 @@ def main_dashboard():
     
     # Announcements that will be visible to all users
     announcements = [
-        "🚨 **NEW PRICE UPDATE**: Effective immediately - Backaldrin prices adjusted for Q1 2024",
-        "📦 **SHIPPING NOTICE**: New ETD schedules available for all clients",
-        "⭐ **SPECIAL OFFER**: CEO Special Prices updated for CakeArt & SweetHouse",
-        "🔔 **REMINDER**: Please refresh data after making Google Sheets changes",
-        "📊 **NEW FEATURE**: HS Code search now available across all clients"
+        "🚨 ETD is officially working!",
+        "📦 Working on palletizing",
+        "⭐ **SPECIAL OFFER**",
+        "🔔 **REMINDER**:",
+        "📊 **NEW FEATURE**: HS Code search now available across all clients",
+        "📦 **NEW**: Palletizing Calculator added!",
+        "💰 **NEW**: All Customers Prices tab added!"
     ]
     
     # Display announcements with nice styling
@@ -305,45 +396,526 @@ def main_dashboard():
         </div>
         """, unsafe_allow_html=True)
     
-    # Theme selector removed - using fixed theme
-    
     logout_button()
     
     # Header
     st.markdown("""
     <div class="main-header">
-        <h1>🏢 Multi-Client Business Dashboard</h1>
+        <h1>🏢 Backaldrin Arab Jordan Dashboard</h1>
         <p>Centralized Management • Real-time Data • Professional Analytics</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Create tabs - ALL USERS GET PRICE INTELLIGENCE
+    # Create tabs - PRICES TAB MOVED TO SECOND POSITION
     if st.session_state.username in ["ceo", "admin"]:
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG", "📋 ORDERS MANAGEMENT"])
+        # For admin/ceo: Prices tab as second position
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+            "🏢 CLIENTS", "💰 PRICES", "📋 NEW ORDERS", "📅 ETD SHEET", 
+            "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG",
+            "📊 ORDERS MANAGEMENT", "📦 PALLETIZING"
+        ])
     else:
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🏢 CLIENTS", "📅 ETD SHEET", "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG", "📋 ORDERS MANAGEMENT"])
+        # For regular users: Prices tab as second position
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+            "🏢 CLIENTS", "💰 PRICES", "📋 NEW ORDERS", "📅 ETD SHEET", 
+            "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG",
+            "📊 ORDERS MANAGEMENT", "📦 PALLETIZING"
+        ])
     
     with tab1:
         clients_tab()
     
     with tab2:
-        etd_tab()
+        prices_tab()
         
     with tab3:
+        new_orders_tab()
+        
+    with tab4:
+        etd_tab()
+        
+    with tab5:
         ceo_specials_tab()
     
-    # Price Intelligence tab for ALL users (but limited to their clients)
-    with tab4:
+    with tab6:
         price_intelligence_tab()
 
-    # Product Catalog tab for all users
-    with tab5:
+    with tab7:
         product_catalog_tab()
         
-    # Orders Management tab
-    with tab6:
+    with tab8:
         orders_management_tab()
         
+    # For admin/ceo users, add the Palletizing tab
+    if st.session_state.username in ["ceo", "admin"]:
+        with tab9:
+            palletizing_tab()
+    else:
+        # For regular users, add Palletizing tab in the 8th position
+        with tab8:
+            palletizing_tab()
+
+def prices_tab():
+    """NEW: All Customers Prices Tab"""
+    st.markdown("""
+    <div class="prices-header">
+        <h2 style="margin:0;">💰 All Customers Prices</h2>
+        <p style="margin:0; opacity:0.9;">Complete Price Database • Cross-Customer Analysis • Flexible Search</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Load prices data
+    with st.spinner("📥 Loading prices data from Google Sheets..."):
+        prices_data = load_prices_data()
+    
+    if prices_data.empty:
+        st.warning("""
+        ⚠️ **Prices data not found or empty!**
+        
+        **To get started:**
+        1. Go to your Google Sheet
+        2. Add a new tab called **'Prices'**
+        3. Use these exact headers:
+           - Customer
+           - Customer Name
+           - Salesman
+           - Item Code
+           - Item Name
+           - Customer Article No
+           - Customer Label
+           - Packing/kg
+           - Price
+        """)
+        return
+    
+    st.success(f"✅ Loaded {len(prices_data)} price records")
+    
+    # Overview Statistics
+    st.subheader("📊 Price Database Overview")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        total_records = len(prices_data)
+        st.metric("Total Records", total_records)
+    
+    with col2:
+        unique_customers = prices_data['Customer'].nunique()
+        st.metric("Unique Customers", unique_customers)
+    
+    with col3:
+        unique_items = prices_data['Item Code'].nunique()
+        st.metric("Unique Items", unique_items)
+    
+    with col4:
+        avg_price = prices_data['Price'].mean()
+        st.metric("Average Price", f"${avg_price:.2f}")
+    
+    # Search and Filter Section
+    st.subheader("🔍 Advanced Search & Filter")
+    
+    # Two rows for filters
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        # Customer filter
+        customers = ["All"] + sorted(prices_data['Customer'].dropna().unique().tolist())
+        selected_customer = st.selectbox("Filter by Customer:", customers, key="price_customer_filter")
+    
+    with col2:
+        # Salesman filter
+        salesmen = ["All"] + sorted(prices_data['Salesman'].dropna().unique().tolist())
+        selected_salesman = st.selectbox("Filter by Salesman:", salesmen, key="price_salesman_filter")
+    
+    with col3:
+        # Price range filter
+        min_price = float(prices_data['Price'].min())
+        max_price = float(prices_data['Price'].max())
+        price_range = st.slider(
+            "Price Range:",
+            min_value=min_price,
+            max_value=max_price,
+            value=(min_price, max_price),
+            key="price_range_filter"
+        )
+    
+    # NEW: Specific search options
+    st.subheader("🎯 Specific Search Options")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        # Article Number search
+        article_search = st.text_input(
+            "🔢 Search by Article Number:",
+            placeholder="Enter article number...",
+            key="price_article_search"
+        )
+    
+    with col2:
+        # Item Name search
+        item_name_search = st.text_input(
+            "📝 Search by Item Name:",
+            placeholder="Enter item name...",
+            key="price_item_name_search"
+        )
+    
+    with col3:
+        # Customer Article No search
+        customer_article_search = st.text_input(
+            "🏷️ Search by Customer Article No:",
+            placeholder="Enter customer article no...",
+            key="price_customer_article_search"
+        )
+    
+    # Global search
+    global_search = st.text_input(
+        "🌐 Global Search (search across all columns):",
+        placeholder="Enter any term to search across all columns...",
+        key="price_global_search"
+    )
+    
+    # Apply filters
+    filtered_data = prices_data.copy()
+    
+    if selected_customer != "All":
+        filtered_data = filtered_data[filtered_data['Customer'] == selected_customer]
+    
+    if selected_salesman != "All":
+        filtered_data = filtered_data[filtered_data['Salesman'] == selected_salesman]
+    
+    # Apply price range filter
+    filtered_data = filtered_data[
+        (filtered_data['Price'] >= price_range[0]) & 
+        (filtered_data['Price'] <= price_range[1])
+    ]
+    
+    # NEW: Apply specific searches
+    if article_search:
+        filtered_data = filtered_data[
+            filtered_data['Item Code'].astype(str).str.contains(article_search, case=False, na=False)
+        ]
+    
+    if item_name_search:
+        filtered_data = filtered_data[
+            filtered_data['Item Name'].astype(str).str.contains(item_name_search, case=False, na=False)
+        ]
+    
+    if customer_article_search:
+        filtered_data = filtered_data[
+            filtered_data['Customer Article No'].astype(str).str.contains(customer_article_search, case=False, na=False)
+        ]
+    
+    # Apply global search (only if no specific searches are active)
+    if global_search and not (article_search or item_name_search or customer_article_search):
+        search_columns = ['Customer', 'Customer Name', 'Salesman', 'Item Code', 'Item Name', 
+                         'Customer Article No', 'Customer Label', 'Packing/kg']
+        mask = filtered_data[search_columns].astype(str).apply(
+            lambda x: x.str.contains(global_search, case=False, na=False)
+        ).any(axis=1)
+        filtered_data = filtered_data[mask]
+    
+    # Display Results
+    st.subheader(f"📋 Price Records ({len(filtered_data)} found)")
+    
+    if not filtered_data.empty:
+        # Display data in a nice card format
+        for _, record in filtered_data.iterrows():
+            with st.expander(f"💰 {record['Item Code']} - {record['Item Name']}", expanded=False):
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    st.write(f"**Customer:** {record['Customer']}")
+                    st.write(f"**Customer Name:** {record['Customer Name']}")
+                    st.write(f"**Salesman:** {record['Salesman']}")
+                    st.write(f"**Item Code:** {record['Item Code']}")
+                    st.write(f"**Item Name:** {record['Item Name']}")
+                    
+                with col2:
+                    st.write(f"**Customer Article No:** {record['Customer Article No']}")
+                    st.write(f"**Customer Label:** {record['Customer Label']}")
+                    st.write(f"**Packing/kg:** {record['Packing/kg']}")
+                    st.markdown(f"<h3 style='color: #059669;'>Price: ${record['Price']:.2f}</h3>", unsafe_allow_html=True)
+        
+        # Export Section
+        st.markdown('<div class="export-section">', unsafe_allow_html=True)
+        st.subheader("📤 Export Price Data")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            csv = filtered_data.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv,
+                file_name=f"all_prices_data_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="prices_csv"
+            )
+        
+        with col2:
+            # Create summary
+            summary_text = f"""
+All Customers Prices Report
+===========================
+
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Total Records: {len(filtered_data)}
+Unique Customers: {filtered_data['Customer'].nunique()}
+Unique Items: {filtered_data['Item Code'].nunique()}
+Average Price: ${filtered_data['Price'].mean():.2f}
+Price Range: ${filtered_data['Price'].min():.2f} - ${filtered_data['Price'].max():.2f}
+
+Filters Applied:
+- Customer: {selected_customer}
+- Salesman: {selected_salesman}
+- Price Range: ${price_range[0]:.2f} - ${price_range[1]:.2f}
+- Article Search: {article_search if article_search else 'None'}
+- Item Name Search: {item_name_search if item_name_search else 'None'}
+- Customer Article Search: {customer_article_search if customer_article_search else 'None'}
+- Global Search: {global_search if global_search and not (article_search or item_name_search or customer_article_search) else 'None'}
+
+Top Items by Price:
+{chr(10).join([f"• {row['Item Code']} - {row['Item Name']}: ${row['Price']:.2f} ({row['Customer']})" 
+               for _, row in filtered_data.nlargest(10, 'Price').iterrows()])}
+            """
+            st.download_button(
+                label="📄 Download Summary",
+                data=summary_text,
+                file_name=f"prices_summary_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True,
+                key="prices_summary"
+            )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Quick Statistics for filtered data
+        st.subheader("📈 Filtered Data Statistics")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Filtered Records", len(filtered_data))
+        
+        with col2:
+            filtered_avg_price = filtered_data['Price'].mean()
+            st.metric("Average Price", f"${filtered_avg_price:.2f}")
+        
+        with col3:
+            min_filtered_price = filtered_data['Price'].min()
+            st.metric("Min Price", f"${min_filtered_price:.2f}")
+        
+        with col4:
+            max_filtered_price = filtered_data['Price'].max()
+            st.metric("Max Price", f"${max_filtered_price:.2f}")
+            
+    else:
+        st.info("No price records match your search criteria.")
+
+def load_prices_data():
+    """Load all prices data from Google Sheets"""
+    try:
+        prices_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{PRICES_SHEET}!A:Z?key={API_KEY}"
+        response = requests.get(prices_url)
+        
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if values and len(values) > 1:
+                headers = values[0]
+                rows = values[1:]
+                
+                # Create DataFrame
+                df = pd.DataFrame(rows, columns=headers)
+                
+                # Check for required columns
+                required_cols = ['Customer', 'Customer Name', 'Salesman', 'Item Code', 'Item Name', 
+                               'Customer Article No', 'Customer Label', 'Packing/kg', 'Price']
+                
+                # Fill missing columns with empty values
+                for col in required_cols:
+                    if col not in df.columns:
+                        df[col] = ''
+                
+                # Convert numeric columns
+                if 'Price' in df.columns:
+                    df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
+                if 'Packing/kg' in df.columns:
+                    df['Packing/kg'] = pd.to_numeric(df['Packing/kg'], errors='coerce')
+                
+                # Fill NaN values with empty strings for text columns
+                text_cols = ['Customer', 'Customer Name', 'Salesman', 'Item Code', 'Item Name', 
+                           'Customer Article No', 'Customer Label']
+                for col in text_cols:
+                    if col in df.columns:
+                        df[col] = df[col].fillna('')
+                
+                return df
+                
+        return pd.DataFrame()
+        
+    except Exception as e:
+        st.error(f"Error loading prices data: {str(e)}")
+        return pd.DataFrame()
+
+def palletizing_tab():
+    """Quick Pallet Calculator for CDC Items"""
+    st.markdown("""
+    <div class="palletizing-header">
+        <h2 style="margin:0;">📦 Quick Pallet Calculator</h2>
+        <p style="margin:0; opacity:0.9;">Instant Pallet Calculations • CDC Standard Items • Real-time Results</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    quick_pallet_calculator()
+
+def quick_pallet_calculator():
+    """Quick Pallet Calculator for CDC Items"""
+    st.subheader("🧮 Quick Pallet Calculator")
+    
+    # CDC Common Items Database
+    cdc_items = {
+        "Vermicelli Color": {"packing": "5kg", "cartons_per_pallet": 100, "weight_per_carton": 5},
+        "Vermicelli Dark": {"packing": "5kg", "cartons_per_pallet": 100, "weight_per_carton": 5},
+        "Vermicelli White": {"packing": "5kg", "cartons_per_pallet": 100, "weight_per_carton": 5},
+        "Chocolate Chips": {"packing": "25kg", "cartons_per_pallet": 40, "weight_per_carton": 25},
+        "Date Mix": {"packing": "30kg", "cartons_per_pallet": 36, "weight_per_carton": 30},
+        "Vanilla Powder": {"packing": "15kg", "cartons_per_pallet": 60, "weight_per_carton": 15},
+        "Custom Item": {"packing": "Custom", "cartons_per_pallet": 0, "weight_per_carton": 0}
+    }
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Item Selection
+        selected_item = st.selectbox(
+            "Select Item:",
+            list(cdc_items.keys()),
+            key="item_select"
+        )
+        
+        # Quantity Input
+        quantity = st.number_input(
+            "Quantity:",
+            min_value=1,
+            value=100,
+            step=1,
+            key="quantity"
+        )
+        
+        # Unit of Measure
+        uom = st.selectbox(
+            "Unit of Measure:",
+            ["Cartons", "KGs", "Pallets"],
+            key="uom"
+        )
+    
+    with col2:
+        # For custom items, allow manual entry
+        if selected_item == "Custom Item":
+            st.info("🔧 Enter Custom Item Details:")
+            packing = st.text_input("Packing (e.g., 5kg, 25kg):", value="5kg", key="custom_packing")
+            cartons_per_pallet = st.number_input("Cartons per Pallet:", min_value=1, value=100, step=1, key="custom_cartons")
+            weight_per_carton = st.number_input("Weight per Carton (kg):", min_value=0.1, value=5.0, step=0.1, key="custom_weight")
+        else:
+            item_data = cdc_items[selected_item]
+            packing = item_data["packing"]
+            cartons_per_pallet = item_data["cartons_per_pallet"]
+            weight_per_carton = item_data["weight_per_carton"]
+            
+            st.info(f"📦 **Standard Packing:** {packing}")
+            st.info(f"📊 **Cartons per Pallet:** {cartons_per_pallet}")
+            st.info(f"⚖️ **Weight per Carton:** {weight_per_carton} kg")
+    
+    # REAL-TIME CALCULATIONS
+    if quantity > 0:
+        st.subheader("🎯 INSTANT PALCALC RESULTS")
+        
+        # Convert everything to cartons first
+        if uom == "Cartons":
+            total_cartons = quantity
+        elif uom == "KGs":
+            total_cartons = quantity / weight_per_carton
+        else:  # Pallets
+            total_cartons = quantity * cartons_per_pallet
+        
+        # Calculate pallets
+        full_pallets = total_cartons // cartons_per_pallet
+        partial_pallet_cartons = total_cartons % cartons_per_pallet
+        partial_pallet_percentage = (partial_pallet_cartons / cartons_per_pallet) * 100 if cartons_per_pallet > 0 else 0
+        
+        total_weight = total_cartons * weight_per_carton
+        
+        # Display Results - SIMPLE AND CLEAR
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if full_pallets > 0:
+                st.success(f"### 📦 {full_pallets:,.0f} FULL PALLET{'S' if full_pallets > 1 else ''}")
+            else:
+                st.info("### 📦 0 FULL PALLETS")
+                
+        with col2:
+            if partial_pallet_cartons > 0:
+                st.warning(f"### 📦 1 PARTIAL PALLET")
+                st.write(f"({partial_pallet_cartons:,.0f} cartons - {partial_pallet_percentage:.1f}% full)")
+            else:
+                st.success("### ✅ NO PARTIAL PALLETS")
+                
+        with col3:
+            st.info(f"### ⚖️ {total_weight:,.0f} kg")
+            st.write(f"({total_cartons:,.0f} cartons total)")
+        
+        # Detailed Breakdown
+        with st.expander("📊 View Detailed Calculation", expanded=False):
+            st.write(f"**Item:** {selected_item} ({packing})")
+            
+            if uom == "Cartons":
+                st.write(f"**Input:** {quantity:,.0f} cartons")
+            elif uom == "KGs":
+                st.write(f"**Input:** {quantity:,.0f} kg = {total_cartons:,.0f} cartons")
+            else:
+                st.write(f"**Input:** {quantity:,.0f} pallets = {total_cartons:,.0f} cartons")
+            
+            st.write(f"**Calculation:** {total_cartons:,.0f} cartons ÷ {cartons_per_pallet} cartons/pallet")
+            st.write(f"**Result:** {full_pallets:,.0f} full pallets + {partial_pallet_cartons:,.0f} cartons partial")
+        
+        # Quick Examples
+        st.subheader("💡 Quick Examples")
+        
+        examples_col1, examples_col2 = st.columns(2)
+        
+        with examples_col1:
+            if st.button(f"Example: 100 cartons {selected_item}", key="example_100"):
+                st.session_state.quantity = 100
+                st.session_state.uom = "Cartons"
+                st.rerun()
+                
+        with examples_col2:
+            if st.button(f"Example: 1 pallet {selected_item}", key="example_1"):
+                st.session_state.quantity = 1
+                st.session_state.uom = "Pallets"
+                st.rerun()
+        
+        # Container Information (40ft always)
+        st.markdown("---")
+        st.subheader("🚢 Container Information")
+        st.info("""
+        **40ft Container Capacity:**
+        - **Max Pallets:** 30 pallets
+        - **Max Weight:** 23,000 kg (23 tons)
+        - **Your current order:** Will fill approximately **{:.1f}%** of container capacity
+        """.format((full_pallets / 30) * 100))
+    
+    # Bulk Sheet Analysis (Optional - keep it simple)
+    st.markdown("---")
+    with st.expander("📊 Bulk Analysis from Google Sheets (Optional)"):
+        st.info("For bulk analysis of your existing Palletizing_Data sheet, use the main data import features.")
+        st.write("The Quick Calculator above is designed for instant pallet calculations!")
+
 def clients_tab():
     """Clients management tab"""
     st.subheader("Client Selection")
@@ -359,12 +931,733 @@ def clients_tab():
     if client:
         cdc_dashboard(client)
 
-def etd_tab():
-    """ETD Sheet tab"""
-    st.subheader("📅 ETD Sheet - Live View")
-    st.info("🔧 ETD Sheet integration will be added when ready")
-    st.write("This tab will display your live ETD data when available")
+def cdc_dashboard(client):
+    """Client pricing dashboard with THREE SEARCH OPTIONS"""
+    
+    # Initialize session state
+    if 'search_results' not in st.session_state:
+        st.session_state.search_results = None
+    if 'export_data' not in st.session_state:
+        st.session_state.export_data = None
+    
+    st.markdown(f"""
+    <div class="cdc-header">
+        <h2 style="margin:0;">📊 {client} Pricing Dashboard</h2>
+        <p style="margin:0; opacity:0.9;">Backaldrin & Bateel • Live Google Sheets Data • Export Ready</p>
+    </div>
+    """, unsafe_allow_html=True)
 
+    # Load data directly from Google Sheets
+    DATA = get_google_sheets_data(client)
+    st.success(f"✅ Connected to Google Sheets - Live Data for {client}!")
+
+    # Refresh button
+    if st.button("🔄 Refresh Data", use_container_width=True, type="secondary", key=f"{client}_refresh"):
+        st.rerun()
+
+    # Supplier selection - CLEAN VERSION (no white box)
+    st.subheader("🏢 Select Supplier")
+    supplier = st.radio("", ["Backaldrin", "Bateel"], horizontal=True, label_visibility="collapsed", key=f"{client}_supplier")
+
+    # Search section - THREE SEARCH OPTIONS
+    st.subheader("🔍 Search Historical Prices")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        article = st.text_input("**ARTICLE NUMBER**", placeholder="e.g., 1-366, 1-367...", key=f"{client}_article")
+    with col2:
+        product = st.text_input("**PRODUCT NAME**", placeholder="e.g., Moist Muffin, Date Mix...", key=f"{client}_product")
+    with col3:
+        hs_code = st.text_input("**HS CODE**", placeholder="e.g., 1901200000, 180690...", key=f"{client}_hscode")
+
+    # Auto-suggestions
+    search_term = article or product or hs_code
+    if search_term:
+        suggestions = get_suggestions(search_term, supplier, DATA)
+        if suggestions:
+            st.markdown("**💡 Quick Suggestions:**")
+            for i, suggestion in enumerate(suggestions[:4]):
+                with st.form(key=f"{client}_form_{i}"):
+                    if st.form_submit_button(suggestion["display"], use_container_width=True):
+                        st.session_state.search_results = {
+                            "article": suggestion["value"],
+                            "supplier": supplier,
+                            "client": client
+                        }
+                        st.rerun()
+    
+    # Manual search - UPDATED: Added hs_code parameter
+    if st.button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary", key=f"{client}_search"):
+        handle_search(article, product, hs_code, supplier, DATA, client)
+
+    # Display results from session state
+    if st.session_state.search_results and st.session_state.search_results.get("client") == client:
+        display_from_session_state(DATA, client)
+
+def get_google_sheets_data(client="CDC"):
+    """Optimized version - loads both suppliers in one call and returns proper dictionary structure"""
+    try:
+        # Dynamic sheet names
+        backaldrin_sheet = f"Backaldrin_{client}"
+        bateel_sheet = f"Bateel_{client}"
+        
+        # Load both sheets
+        backaldrin_df = load_sheet_data(backaldrin_sheet)
+        bateel_df = load_sheet_data(bateel_sheet)
+        
+        # Convert DataFrames to the expected dictionary structure
+        backaldrin_data = process_supplier_data(backaldrin_df, "Backaldrin")
+        bateel_data = process_supplier_data(bateel_df, "Bateel")
+        
+        return {"Backaldrin": backaldrin_data, "Bateel": bateel_data}
+    except Exception as e:
+        st.error(f"Error loading data for {client}: {str(e)}")
+        return {"Backaldrin": {}, "Bateel": {}}
+
+def process_supplier_data(df, supplier_name):
+    """Convert DataFrame to the expected dictionary structure for pricing data"""
+    if df.empty:
+        return {}
+    
+    # Initialize the result structure
+    result = {}
+    
+    try:
+        # Check if we have the required columns
+        required_cols = ['Article_Number', 'Product_Name', 'Price_per_kg', 'Order_Number', 'Date']
+        available_cols = [col for col in required_cols if col in df.columns]
+        
+        if not available_cols:
+            st.warning(f"No required columns found in {supplier_name} data")
+            return {}
+        
+        # Group by article number
+        for _, row in df.iterrows():
+            article_num = str(row.get('Article_Number', ''))
+            if not article_num or article_num == 'nan':
+                continue
+                
+            if article_num not in result:
+                result[article_num] = {
+                    'names': [],
+                    'prices': [],
+                    'orders': []
+                }
+            
+            # Add product name if available
+            product_name = row.get('Product_Name', '')
+            if product_name and product_name not in result[article_num]['names']:
+                result[article_num]['names'].append(product_name)
+            
+            # Add price if available
+            price = row.get('Price_per_kg', '')
+            if price and str(price) != 'nan':
+                try:
+                    price_float = float(price)
+                    result[article_num]['prices'].append(price_float)
+                except (ValueError, TypeError):
+                    pass
+            
+            # Add order details
+            order_no = row.get('Order_Number', '')
+            date = row.get('Date', '')
+            if order_no and str(order_no) != 'nan':
+                order_details = {
+                    'order_no': order_no,
+                    'date': date,
+                    'price': float(price) if price and str(price) != 'nan' else 0,
+                    'product_name': product_name,
+                    'article': article_num,
+                    'year': row.get('Year', ''),
+                    'hs_code': row.get('HS_Code', ''),
+                    'packaging': row.get('Packaging', ''),
+                    'quantity': row.get('Quantity', ''),
+                    'total_weight': row.get('Total_Weight', ''),
+                    'total_price': row.get('Total_Price', '')
+                }
+                result[article_num]['orders'].append(order_details)
+                
+    except Exception as e:
+        st.error(f"Error processing {supplier_name} data: {str(e)}")
+    
+    return result
+
+def get_suggestions(search_term, supplier, data):
+    """Get search suggestions for article, product name, or HS code - SAFER VERSION"""
+    suggestions = []
+    
+    if not data or supplier not in data:
+        return suggestions
+        
+    supplier_data = data[supplier]
+    
+    for article_num, article_data in supplier_data.items():
+        # Skip if article_data is not a dictionary or doesn't have expected structure
+        if not isinstance(article_data, dict) or 'names' not in article_data:
+            continue
+            
+        # Article number search
+        if search_term.lower() in article_num.lower():
+            display_name = article_data['names'][0] if article_data['names'] else 'No Name'
+            suggestions.append({
+                "type": "article",
+                "value": article_num,
+                "display": f"🔢 {article_num} - {display_name}"
+            })
+        
+        # Product name search
+        for name in article_data['names']:
+            if search_term.lower() in name.lower():
+                suggestions.append({
+                    "type": "product", 
+                    "value": article_num,
+                    "display": f"📝 {article_num} - {name}"
+                })
+        
+        # HS Code search
+        if 'orders' in article_data:
+            for order in article_data['orders']:
+                if (order.get('hs_code') and 
+                    search_term.lower() in str(order['hs_code']).lower() and
+                    article_num not in [s['value'] for s in suggestions]):
+                    display_name = article_data['names'][0] if article_data['names'] else 'No Name'
+                    suggestions.append({
+                        "type": "hs_code",
+                        "value": article_num,
+                        "display": f"🏷️ {article_num} - HS: {order['hs_code']} - {display_name}"
+                    })
+    
+    # Remove duplicates
+    unique_suggestions = {}
+    for sugg in suggestions:
+        if sugg["value"] not in unique_suggestions:
+            unique_suggestions[sugg["value"]] = sugg
+    
+    return list(unique_suggestions.values())
+
+def handle_search(article, product, hs_code, supplier, data, client):
+    """Handle search across article, product name, and HS code - SAFER VERSION"""
+    search_term = article or product or hs_code
+    if not search_term:
+        st.error("❌ Please enter an article number, product name, or HS code")
+        return
+    
+    found = False
+    
+    if supplier not in data:
+        st.error(f"❌ No data available for {supplier}")
+        return
+        
+    for article_num, article_data in data[supplier].items():
+        # Skip if article_data is not properly structured
+        if not isinstance(article_data, dict):
+            continue
+            
+        article_match = article and article == article_num
+        product_match = product and 'names' in article_data and any(
+            product.lower() in name.lower() for name in article_data['names']
+        )
+        hs_code_match = hs_code and 'orders' in article_data and any(
+            hs_code.lower() in str(order.get('hs_code', '')).lower() 
+            for order in article_data['orders']
+        )
+        
+        if article_match or product_match or hs_code_match:
+            st.session_state.search_results = {
+                "article": article_num,
+                "supplier": supplier,
+                "client": client
+            }
+            # Prepare export data
+            st.session_state.export_data = create_export_data(article_data, article_num, supplier, client)
+            found = True
+            break
+    
+    if not found:
+        st.error(f"❌ No results found for '{search_term}' in {supplier}")
+
+def display_from_session_state(data, client):
+    """Display search results with NEW CARD DESIGN"""
+    results = st.session_state.search_results
+    article = results["article"]
+    supplier = results["supplier"]
+    
+    if article not in data[supplier]:
+        st.error("❌ Article not found in current data")
+        return
+        
+    article_data = data[supplier][article]
+    
+    st.success(f"✅ **Article {article}** found in **{supplier}** for **{client}**")
+    
+    # Product names - SHOW ONLY UNIQUE NAMES
+    st.subheader("📝 Product Names")
+    unique_names = list(set(article_data['names']))  # Remove duplicates
+    for name in unique_names:
+        st.markdown(f'<div class="price-card">{name}</div>', unsafe_allow_html=True)
+    
+    # Statistics
+    prices = article_data['prices']
+    st.subheader("📊 Price Statistics")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown(f"""
+        <div class="stat-card">
+            <div class="stat-number">{len(prices)}</div>
+            <div class="stat-label">Total Records</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown(f"""
+        <div class="stat-card">
+            <div class="stat-number">${min(prices):.2f}</div>
+            <div class="stat-label">Min Price/kg</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown(f"""
+        <div class="stat-card">
+            <div class="stat-number">${max(prices):.2f}</div>
+            <div class="stat-label">Max Price/kg</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col4:
+        st.markdown(f"""
+        <div class="stat-card">
+            <div class="stat-number">${max(prices) - min(prices):.2f}</div>
+            <div class="stat-label">Price Range/kg</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # UPDATED: NEW CARD DESIGN
+    st.subheader("💵 Historical Prices with Order Details")
+    cols = st.columns(2)
+    for i, order in enumerate(article_data['orders']):
+        with cols[i % 2]:
+            # NEW CARD DESIGN: Order Number as header, then date, then price, then details
+            order_details = f"""
+            <div class="price-box">
+                <div style="font-size: 1.4em; font-weight: bold; border-bottom: 2px solid white; padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                    📦 {order['order_no']}
+                </div>
+                <div style="font-size: 1.1em; margin-bottom: 0.5rem;">
+                    <strong>📅 Date:</strong> {order['date']}
+                </div>
+                <div style="font-size: 1.3em; font-weight: bold; color: #FEF3C7; margin-bottom: 0.8rem;">
+                    ${order['price']:.2f}/kg
+                </div>
+                <div class="order-info">
+                    <strong>📦 Product:</strong> {order['product_name']}<br>
+                    <strong>🔢 Article:</strong> {order['article']}<br>
+                    {f"<strong>🏷️ Year:</strong> {order['year']}<br>" if order['year'] else ""}
+                    {f"<strong>📊 HS Code:</strong> {order['hs_code']}<br>" if order['hs_code'] else ""}
+                    {f"<strong>📦 Packaging:</strong> {order['packaging']}<br>" if order['packaging'] else ""}
+                    {f"<strong>🔢 Quantity:</strong> {order['quantity']}<br>" if order['quantity'] else ""}
+                    {f"<strong>⚖️ Total Weight:</strong> {order['total_weight']}<br>" if order['total_weight'] else ""}
+                    {f"<strong>💰 Total Price:</strong> {order['total_price']}<br>" if order['total_price'] else ""}
+                </div>
+            </div>
+            """
+            st.markdown(order_details, unsafe_allow_html=True)
+    
+    # EXPORT SECTION
+    st.markdown('<div class="export-section">', unsafe_allow_html=True)
+    st.subheader("📤 Export Data")
+    
+    if st.session_state.export_data is not None:
+        export_df = st.session_state.export_data
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            # CSV Export
+            csv = export_df.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv,
+                file_name=f"{client}_pricing_{article}_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                type="primary",
+                key=f"{client}_csv"
+            )
+        
+        with col2:
+            # Excel Export
+            try:
+                excel_data = convert_df_to_excel(export_df)
+                st.download_button(
+                    label="📊 Download Excel",
+                    data=excel_data,
+                    file_name=f"{client}_pricing_{article}_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                    mime="application/vnd.ms-excel",
+                    use_container_width=True,
+                    key=f"{client}_excel"
+                )
+            except:
+                st.info("📊 Excel export requires openpyxl package")
+        
+        with col3:
+            # Quick Stats Summary
+            st.download_button(
+                label="📄 Download Summary",
+                data=f"""
+{client} Pricing Summary Report
+===============================
+
+Article: {article}
+Supplier: {supplier}
+Client: {client}
+Product: {export_df['Product_Name'].iloc[0]}
+Report Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+Price Statistics:
+• Total Records: {len(export_df)}
+• Minimum Price: ${min(prices):.2f}/kg
+• Maximum Price: ${max(prices):.2f}/kg  
+• Price Range: ${max(prices) - min(prices):.2f}/kg
+
+Orders Included: {', '.join(export_df['Order_Number'].tolist())}
+                """,
+                file_name=f"{client}_summary_{article}_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True,
+                key=f"{client}_summary"
+            )
+        
+        # Show export preview
+        with st.expander("👀 Preview Export Data"):
+            st.dataframe(export_df, use_container_width=True)
+            
+    else:
+        st.info("Search for an article to enable export options")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+def create_export_data(article_data, article, supplier, client):
+    """Create export data in different formats - UPDATED WITH NEW COLUMNS"""
+    # Create DataFrame for export
+    export_data = []
+    for order in article_data['orders']:
+        export_data.append({
+            'Client': client,
+            'Order_Number': order['order_no'],
+            'Date': order['date'],
+            'Year': order['year'],
+            'Product_Name': order['product_name'],
+            'Article_Number': article,
+            'HS_Code': order['hs_code'],
+            'Packaging': order['packaging'],
+            'Quantity': order['quantity'],
+            'Total_Weight': order['total_weight'],
+            'Price_per_kg': order['price'],
+            'Total_Price': order['total_price'],
+            'Supplier': supplier,
+            'Export_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        })
+    
+    return pd.DataFrame(export_data)
+
+def convert_df_to_excel(df):
+    """Convert DataFrame to Excel format"""
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Price_History')
+    processed_data = output.getvalue()
+    return processed_data
+
+# === UNIVERSAL LOADER ===
+def load_sheet_data(sheet_name, start_row=0):
+    """Universal Google Sheets loader for all data types"""
+    try:
+        import urllib.parse
+        encoded_sheet = urllib.parse.quote(sheet_name)
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{encoded_sheet}!A:Z?key={API_KEY}"
+        
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if len(values) > start_row:
+                headers = values[start_row]
+                rows = values[start_row + 1:] if len(values) > start_row + 1 else []
+                
+                df = pd.DataFrame(rows, columns=headers)
+                df = df.replace('', pd.NA)
+                return df
+                
+        return pd.DataFrame()
+    except Exception as e:
+        st.error(f"Error loading {sheet_name}: {str(e)}")
+        return pd.DataFrame()
+
+# === ETD TAB FUNCTIONS ===
+def etd_tab():
+    """ETD Sheet - Live Google Sheets Integration with Multi-Month Support"""
+    st.markdown("""
+    <div class="intelligence-header">
+        <h2 style="margin:0;">📅 ETD Management Dashboard</h2>
+        <p style="margin:0; opacity:0.9;">Live Order Tracking • Multi-Supplier ETD • Multi-Month View</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ETD Sheet configuration
+    ETD_SHEET_ID = "1eA-mtD3aK_n9VYNV_bxnmqm58IywF0f5-7vr3PT51hs"
+    
+    # Available months - EXACT NAMES with space after 2025
+    AVAILABLE_MONTHS = ["October 2025 ", "November 2025 "]
+
+    try:
+        # Month Selection
+        st.subheader("📅 Select Month")
+        selected_month = st.radio(
+            "Choose month to view:",
+            AVAILABLE_MONTHS,
+            horizontal=True,
+            key="etd_month_selector"
+        )
+        
+        # Load ETD data for selected month
+        with st.spinner(f"🔄 Loading {selected_month.strip()} ETD data..."):
+            etd_data = load_etd_data(ETD_SHEET_ID, selected_month)
+        
+        if etd_data.empty:
+            st.warning(f"No ETD data found in {selected_month}. Please check the sheet.")
+            return
+
+        st.success(f"✅ Connected to {selected_month.strip()}! Loaded {len(etd_data)} orders")
+
+        # Overview Metrics
+        st.subheader("📊 ETD Overview")
+        col1, col2, col3, col4, col5 = st.columns(5)
+        
+        with col1:
+            total_orders = len(etd_data)
+            st.metric("Total Orders", total_orders)
+        
+        with col2:
+            shipped_orders = len(etd_data[etd_data['Status'].str.lower() == 'shipped'])
+            st.metric("Shipped", shipped_orders)
+        
+        with col3:
+            production_orders = len(etd_data[etd_data['Status'].str.lower().str.contains('production', na=False)])
+            st.metric("In Production", production_orders)
+        
+        with col4:
+            pending_orders = len(etd_data[etd_data['Status'].str.lower().str.contains('pending', na=False)])
+            st.metric("Pending", pending_orders)
+        
+        with col5:
+            # Count orders needing ETD
+            need_etd = len(etd_data[
+                (etd_data['ETD _ Backaldrine'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
+                (etd_data['ETD_bateel'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
+                (etd_data['ETD _ Kasih'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
+                (etd_data['ETD_PMC'].astype(str).str.contains('NEED ETD', case=False, na=False))
+            ])
+            st.metric("Need ETD", need_etd)
+
+        # Search and Filter Section
+        st.subheader("🔍 Filter & Search Orders")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            client_filter = st.selectbox(
+                "Client",
+                ["All"] + sorted(etd_data['Client Name'].dropna().unique()),
+                key="etd_client_filter"
+            )
+        
+        with col2:
+            employee_filter = st.selectbox(
+                "Employee", 
+                ["All"] + sorted(etd_data['Concerned Employee'].dropna().unique()),
+                key="etd_employee_filter"
+            )
+        
+        with col3:
+            status_filter = st.selectbox(
+                "Status",
+                ["All", "Shipped", "In Production", "Pending", "Need ETD"],
+                key="etd_status_filter"
+            )
+        
+        with col4:
+            search_term = st.text_input("Search Order No...", key="etd_search")
+
+        # Apply filters
+        filtered_data = etd_data.copy()
+        
+        if client_filter != "All":
+            filtered_data = filtered_data[filtered_data['Client Name'] == client_filter]
+        
+        if employee_filter != "All":
+            filtered_data = filtered_data[filtered_data['Concerned Employee'] == employee_filter]
+        
+        if status_filter != "All":
+            if status_filter == "Need ETD":
+                filtered_data = filtered_data[
+                    (filtered_data['ETD _ Backaldrine'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
+                    (filtered_data['ETD_bateel'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
+                    (filtered_data['ETD _ Kasih'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
+                    (filtered_data['ETD_PMC'].astype(str).str.contains('NEED ETD', case=False, na=False))
+                ]
+            else:
+                filtered_data = filtered_data[filtered_data['Status'] == status_filter]
+        
+        if search_term:
+            filtered_data = filtered_data[
+                filtered_data['Order No.'].astype(str).str.contains(search_term, case=False, na=False)
+            ]
+
+        # Display filtered results
+        st.subheader(f"📋 {selected_month.strip()} Orders ({len(filtered_data)} found)")
+        
+        if not filtered_data.empty:
+            for _, order in filtered_data.iterrows():
+                display_etd_order_card(order, selected_month.strip())
+        else:
+            st.info("No orders match your filter criteria.")
+
+        # Export Section
+        st.markdown('<div class="export-section">', unsafe_allow_html=True)
+        st.subheader("📤 Export ETD Data")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            csv = filtered_data.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv,
+                file_name=f"etd_data_{selected_month.strip().replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="etd_csv"
+            )
+        
+        with col2:
+            summary_text = f"""
+ETD Data Export - {selected_month.strip()}
+===============================
+
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Total Orders: {len(filtered_data)}
+Filters: Client={client_filter}, Employee={employee_filter}, Status={status_filter}
+
+Orders Summary:
+{chr(10).join([f"• {row['Order No.']} - {row['Client Name']} - {row['Status']}" for _, row in filtered_data.iterrows()])}
+            """
+            st.download_button(
+                label="📄 Download Summary",
+                data=summary_text,
+                file_name=f"etd_summary_{selected_month.strip().replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                key="etd_summary"
+            )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    except Exception as e:
+        st.error(f"❌ Error loading ETD data: {str(e)}")
+        st.info("Please check: 1) Google Sheet is shared, 2) Sheet name is correct, 3) Internet connection")
+
+def display_etd_order_card(order, month):
+    """Display individual ETD order card with supplier tracking"""
+    
+    # Determine status color
+    status = order.get('Status', 'Unknown')
+    status_color = {
+        'Shipped': '🟢',
+        'In Production': '🟡', 
+        'Pending': '🟠',
+        'Unknown': '⚫'
+    }.get(status, '⚫')
+    
+    # Check for ETD needs
+    needs_etd = []
+    for supplier in ['Backaldrine', 'bateel', 'Kasih', 'PMC']:
+        etd_col = f"ETD _{supplier}" if supplier != 'bateel' else 'ETD_bateel'
+        etd_value = order.get(etd_col, '')
+        if pd.notna(etd_value) and 'NEED ETD' in str(etd_value).upper():
+            needs_etd.append(supplier)
+    
+    with st.expander(f"{status_color} {order.get('Order No.', 'N/A')} - {order.get('Client Name', 'N/A')} | {month}", expanded=False):
+        
+        # Order Header
+        col1, col2, col3 = st.columns([2, 1, 1])
+        
+        with col1:
+            st.write(f"**Client:** {order.get('Client Name', 'N/A')}")
+            st.write(f"**Employee:** {order.get('Concerned Employee', 'N/A')}")
+            st.write(f"**Month:** {month}")
+            
+        with col2:
+            st.write(f"**Status:** {status}")
+            st.write(f"**Confirmation:** {order.get('Confirmation Date', 'N/A')}")
+            
+        with col3:
+            if needs_etd:
+                st.error(f"🚨 NEED ETD: {', '.join(needs_etd)}")
+            st.write(f"**Loading:** {order.get('Scheduled Date For Loading', 'N/A')}")
+        
+        # Supplier ETD Tracking
+        st.write("---")
+        st.write("**🚚 Supplier ETD Status**")
+        
+        suppliers = [
+            ('Backaldrine', 'ETD _ Backaldrine', 'bateel Order #'),
+            ('bateel', 'ETD_bateel', 'bateel Order #'),
+            ('Kasih', 'ETD _ Kasih', 'Kasih Order #'), 
+            ('PMC', 'ETD_PMC', 'PMC Order #')
+        ]
+        
+        cols = st.columns(4)
+        for idx, (supplier, etd_col, order_col) in enumerate(suppliers):
+            with cols[idx]:
+                etd_value = order.get(etd_col, '')
+                order_value = order.get(order_col, '')
+                
+                if pd.isna(etd_value) or str(etd_value).strip() == '':
+                    st.write(f"**{supplier}:** ❌ No ETD")
+                elif 'NEED ETD' in str(etd_value).upper():
+                    st.error(f"**{supplier}:** 🚨 NEED ETD")
+                elif 'READY' in str(etd_value).upper():
+                    st.success(f"**{supplier}:** ✅ Ready")
+                else:
+                    st.info(f"**{supplier}:** 📅 {etd_value}")
+                
+                if pd.notna(order_value) and str(order_value).strip() != '':
+                    st.caption(f"Order: {order_value}")
+        
+        # Additional Information
+        st.write("---")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            stock_notes = order.get('Stock Notes', '')
+            if pd.notna(stock_notes) and str(stock_notes).strip() != '':
+                st.write("**📦 Stock Notes:**")
+                st.info(stock_notes)
+                
+        with col2:
+            transport = order.get('transport Company', '')
+            if pd.notna(transport) and str(transport).strip() != '':
+                st.write("**🚛 Transport:**")
+                st.write(transport)
+
+def load_etd_data(sheet_id, sheet_name):
+    """Optimized ETD loader using universal function"""
+    return load_sheet_data(sheet_name, start_row=13)
+
+# === OTHER TABS (KEEP EXISTING) ===
 def ceo_specials_tab():
     """CEO Special Prices tab - NOW CLIENT SPECIFIC"""
     st.markdown("""
@@ -503,7 +1796,8 @@ def ceo_specials_tab():
                 data=csv,
                 file_name=f"{client}_ceo_special_prices_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
-                use_container_width=True
+                use_container_width=True,
+                key="ceo_csv"
             )
         
         with col2:
@@ -522,13 +1816,57 @@ Special Prices:
                 """,
                 file_name=f"{client}_ceo_specials_summary_{datetime.now().strftime('%Y%m%d')}.txt",
                 mime="text/plain",
-                use_container_width=True
+                use_container_width=True,
+                key="ceo_summary"
             )
         
         st.markdown('</div>', unsafe_allow_html=True)
         
     else:
         st.info("No CEO special prices match your search criteria.")
+
+def load_ceo_special_prices(client="CDC"):
+    """Load CEO special prices from Google Sheets for specific client"""
+    try:
+        sheet_name = CLIENT_SHEETS[client]["ceo_special"]
+        ceo_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
+        response = requests.get(ceo_url)
+        
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if values and len(values) > 1:
+                headers = values[0]
+                rows = values[1:]
+                
+                # Create DataFrame
+                df = pd.DataFrame(rows, columns=headers)
+                
+                # UPDATED: Ensure required columns exist (now 8 columns)
+                required_cols = ['Article_Number', 'Product_Name', 'Special_Price', 'Currency', 'Incoterm']
+                if all(col in df.columns for col in required_cols):
+                    # Clean up data - include all 8 columns
+                    df = df[required_cols + [col for col in df.columns if col not in required_cols]]
+                    
+                    # Add default values if missing
+                    if 'Notes' not in df.columns:
+                        df['Notes'] = ''
+                    if 'Effective_Date' not in df.columns:
+                        df['Effective_Date'] = datetime.now().strftime('%Y-%m-%d')
+                    if 'Expiry_Date' not in df.columns:
+                        df['Expiry_Date'] = (datetime.now() + pd.Timedelta(days=365)).strftime('%Y-%m-%d')
+                    
+                    return df
+                else:
+                    st.error(f"Missing required columns in {sheet_name}. Found: {list(df.columns)}")
+                    return pd.DataFrame()
+                
+        return pd.DataFrame()
+        
+    except Exception as e:
+        st.error(f"Error loading CEO special prices for {client}: {str(e)}")
+        return pd.DataFrame()
 
 def price_intelligence_tab():
     """CEO Price Intelligence - Cross-client price comparison"""
@@ -824,7 +2162,8 @@ def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="
                 data=csv,
                 file_name=f"price_intelligence_{search_term}_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
-                use_container_width=True
+                use_container_width=True,
+                key="intelligence_csv"
             )
         
         with col2:
@@ -846,7 +2185,8 @@ Detailed Findings:
                 """,
                 file_name=f"price_intelligence_summary_{search_term}_{datetime.now().strftime('%Y%m%d')}.txt",
                 mime="text/plain",
-                use_container_width=True
+                use_container_width=True,
+                key="intelligence_summary"
             )
             
     
@@ -963,7 +2303,8 @@ def product_catalog_tab():
                 data=csv,
                 file_name=f"product_catalog_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
-                use_container_width=True
+                use_container_width=True,
+                key="catalog_csv"
             )
         
         with col2:
@@ -980,7 +2321,8 @@ Products:
                 data=export_text,
                 file_name=f"product_catalog_summary_{datetime.now().strftime('%Y%m%d')}.txt",
                 mime="text/plain",
-                use_container_width=True
+                use_container_width=True,
+                key="catalog_summary"
             )
         
         st.markdown('</div>', unsafe_allow_html=True)
@@ -1118,492 +2460,6 @@ def load_product_catalog():
         st.error(f"Error loading product catalog: {str(e)}")
         return pd.DataFrame()
 
-def load_ceo_special_prices(client="CDC"):
-    """Load CEO special prices from Google Sheets for specific client"""
-    try:
-        sheet_name = CLIENT_SHEETS[client]["ceo_special"]
-        ceo_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
-        response = requests.get(ceo_url)
-        
-        if response.status_code == 200:
-            data = response.json()
-            values = data.get('values', [])
-            
-            if values and len(values) > 1:
-                headers = values[0]
-                rows = values[1:]
-                
-                # Create DataFrame
-                df = pd.DataFrame(rows, columns=headers)
-                
-                # UPDATED: Ensure required columns exist (now 8 columns)
-                required_cols = ['Article_Number', 'Product_Name', 'Special_Price', 'Currency', 'Incoterm']
-                if all(col in df.columns for col in required_cols):
-                    # Clean up data - include all 8 columns
-                    df = df[required_cols + [col for col in df.columns if col not in required_cols]]
-                    
-                    # Add default values if missing
-                    if 'Notes' not in df.columns:
-                        df['Notes'] = ''
-                    if 'Effective_Date' not in df.columns:
-                        df['Effective_Date'] = datetime.now().strftime('%Y-%m-%d')
-                    if 'Expiry_Date' not in df.columns:
-                        df['Expiry_Date'] = (datetime.now() + pd.Timedelta(days=365)).strftime('%Y-%m-%d')
-                    
-                    return df
-                else:
-                    st.error(f"Missing required columns in {sheet_name}. Found: {list(df.columns)}")
-                    return pd.DataFrame()
-                
-        return pd.DataFrame()
-        
-    except Exception as e:
-        st.error(f"Error loading CEO special prices for {client}: {str(e)}")
-        return pd.DataFrame()
-
-def get_google_sheets_data(client="CDC"):
-    """Load data from Google Sheets using API key - UPDATED WITH NEW COLUMNS"""
-    try:
-        # Get client-specific sheet names
-        client_sheets = CLIENT_SHEETS[client]
-        
-        # Load Backaldrin data for specific client
-        backaldrin_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{client_sheets['backaldrin']}!A:Z?key={API_KEY}"
-        backaldrin_response = requests.get(backaldrin_url)
-        
-        # Load Bateel data for specific client
-        bateel_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{client_sheets['bateel']}!A:Z?key={API_KEY}"
-        bateel_response = requests.get(bateel_url)
-        
-        data = {"Backaldrin": {}, "Bateel": {}}
-        
-        def process_sheet_data(values, supplier_name, sheet_name):
-            """Process sheet data with NEW COLUMNS"""
-            if not values or len(values) < 2:
-                return
-                
-            headers = [str(h).strip().lower() for h in values[0]]
-            rows = values[1:]
-            
-            # Find column indices by header name - UPDATED WITH NEW COLUMNS
-            try:
-                order_no_idx = headers.index("order_number")
-                order_date_idx = headers.index("order_date") 
-                year_idx = headers.index("year") if "year" in headers else -1
-                article_idx = headers.index("article_number")
-                product_idx = headers.index("product_name")
-                hs_code_idx = headers.index("hs_code") if "hs_code" in headers else -1
-                packaging_idx = headers.index("packaging") if "packaging" in headers else -1
-                quantity_idx = headers.index("quantity") if "quantity" in headers else -1
-                total_weight_idx = headers.index("total_weight") if "total_weight" in headers else -1
-                price_idx = headers.index("price_per_kg")
-                total_price_idx = headers.index("total_price") if "total_price" in headers else -1
-            except ValueError as e:
-                st.warning(f"Missing some columns in {sheet_name}: {e}")
-                # Use basic columns if some are missing
-                if "order_number" not in headers or "article_number" not in headers or "price_per_kg" not in headers:
-                    return
-            
-            for row in rows:
-                if len(row) > max(order_no_idx, order_date_idx, article_idx, product_idx, price_idx):
-                    article = str(row[article_idx]).strip() if article_idx < len(row) and row[article_idx] else ""
-                    product_name = row[product_idx] if product_idx < len(row) and row[product_idx] else ""
-                    price_str = row[price_idx] if price_idx < len(row) and row[price_idx] else ""
-                    order_no = row[order_no_idx] if order_no_idx < len(row) and row[order_no_idx] else ""
-                    order_date = row[order_date_idx] if order_date_idx < len(row) and row[order_date_idx] else ""
-                    
-                    # NEW: Extract additional fields
-                    year = row[year_idx] if year_idx != -1 and year_idx < len(row) and row[year_idx] else ""
-                    hs_code = row[hs_code_idx] if hs_code_idx != -1 and hs_code_idx < len(row) and row[hs_code_idx] else ""
-                    packaging = row[packaging_idx] if packaging_idx != -1 and packaging_idx < len(row) and row[packaging_idx] else ""
-                    quantity = row[quantity_idx] if quantity_idx != -1 and quantity_idx < len(row) and row[quantity_idx] else ""
-                    total_weight = row[total_weight_idx] if total_weight_idx != -1 and total_weight_idx < len(row) and row[total_weight_idx] else ""
-                    total_price = row[total_price_idx] if total_price_idx != -1 and total_price_idx < len(row) and row[total_price_idx] else ""
-                    
-                    if article and price_str and article != "":
-                        # CLEAN THE PRICE - remove currency and other text
-                        try:
-                            # Remove currency symbols and text, keep only numbers and decimals
-                            cleaned_price = ''.join(c for c in price_str if c.isdigit() or c == '.' or c == '-')
-                            if cleaned_price and cleaned_price != '.':
-                                price_float = float(cleaned_price)
-                            else:
-                                continue
-                        except ValueError:
-                            continue
-                        
-                        if article not in data[supplier_name]:
-                            data[supplier_name][article] = {
-                                "prices": [],
-                                "names": [],
-                                "orders": []
-                            }
-                        
-                        data[supplier_name][article]["prices"].append(price_float)
-                        data[supplier_name][article]["orders"].append({
-                            "order_no": order_no,
-                            "date": order_date,
-                            "year": year,
-                            "product_name": product_name,
-                            "article": article,
-                            "hs_code": hs_code,
-                            "packaging": packaging,
-                            "quantity": quantity,
-                            "total_weight": total_weight,
-                            "price": price_float,
-                            "total_price": total_price
-                        })
-                        
-                        if product_name and product_name.strip() != "":
-                            data[supplier_name][article]["names"].append(product_name)
-                        else:
-                            # If no product name, add a placeholder
-                            data[supplier_name][article]["names"].append("No Name")
-        
-        # Process Backaldrin data
-        if backaldrin_response.status_code == 200:
-            backaldrin_values = backaldrin_response.json().get('values', [])
-            process_sheet_data(backaldrin_values, "Backaldrin", client_sheets['backaldrin'])
-        
-        # Process Bateel data
-        if bateel_response.status_code == 200:
-            bateel_values = bateel_response.json().get('values', [])
-            process_sheet_data(bateel_values, "Bateel", client_sheets['bateel'])
-        
-        return data
-        
-    except Exception as e:
-        st.error(f"Error loading data for {client}: {str(e)}")
-        return {"Backaldrin": {}, "Bateel": {}}
-
-def create_export_data(article_data, article, supplier, client):
-    """Create export data in different formats - UPDATED WITH NEW COLUMNS"""
-    # Create DataFrame for export
-    export_data = []
-    for order in article_data['orders']:
-        export_data.append({
-            'Client': client,
-            'Order_Number': order['order_no'],
-            'Date': order['date'],
-            'Year': order['year'],
-            'Product_Name': order['product_name'],
-            'Article_Number': article,
-            'HS_Code': order['hs_code'],
-            'Packaging': order['packaging'],
-            'Quantity': order['quantity'],
-            'Total_Weight': order['total_weight'],
-            'Price_per_kg': order['price'],
-            'Total_Price': order['total_price'],
-            'Supplier': supplier,
-            'Export_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        })
-    
-    return pd.DataFrame(export_data)
-
-def cdc_dashboard(client):
-    """Client pricing dashboard with THREE SEARCH OPTIONS"""
-    
-    # Initialize session state
-    if 'search_results' not in st.session_state:
-        st.session_state.search_results = None
-    if 'export_data' not in st.session_state:
-        st.session_state.export_data = None
-    
-    st.markdown(f"""
-    <div class="cdc-header">
-        <h2 style="margin:0;">📊 {client} Pricing Dashboard</h2>
-        <p style="margin:0; opacity:0.9;">Backaldrin & Bateel • Live Google Sheets Data • Export Ready</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Load data directly from Google Sheets
-    DATA = get_google_sheets_data(client)
-    st.success(f"✅ Connected to Google Sheets - Live Data for {client}!")
-
-    # Refresh button
-    if st.button("🔄 Refresh Data", use_container_width=True, type="secondary", key=f"{client}_refresh"):
-        st.rerun()
-
-    # Supplier selection - CLEAN VERSION (no white box)
-    st.subheader("🏢 Select Supplier")
-    supplier = st.radio("", ["Backaldrin", "Bateel"], horizontal=True, label_visibility="collapsed", key=f"{client}_supplier")
-
-    # Search section - THREE SEARCH OPTIONS
-    st.subheader("🔍 Search Historical Prices")
-    
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        article = st.text_input("**ARTICLE NUMBER**", placeholder="e.g., 1-366, 1-367...", key=f"{client}_article")
-    with col2:
-        product = st.text_input("**PRODUCT NAME**", placeholder="e.g., Moist Muffin, Date Mix...", key=f"{client}_product")
-    with col3:
-        hs_code = st.text_input("**HS CODE**", placeholder="e.g., 1901200000, 180690...", key=f"{client}_hscode")
-
-    # Auto-suggestions
-    search_term = article or product or hs_code
-    if search_term:
-        suggestions = get_suggestions(search_term, supplier, DATA)
-        if suggestions:
-            st.markdown("**💡 Quick Suggestions:**")
-            for i, suggestion in enumerate(suggestions[:4]):
-                with st.form(key=f"{client}_form_{i}"):
-                    if st.form_submit_button(suggestion["display"], use_container_width=True):
-                        st.session_state.search_results = {
-                            "article": suggestion["value"],
-                            "supplier": supplier,
-                            "client": client
-                        }
-                        st.rerun()
-    
-    # Manual search - UPDATED: Added hs_code parameter
-    if st.button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary", key=f"{client}_search"):
-        handle_search(article, product, hs_code, supplier, DATA, client)
-
-    # Display results from session state
-    if st.session_state.search_results and st.session_state.search_results.get("client") == client:
-        display_from_session_state(DATA, client)
-
-def get_suggestions(search_term, supplier, data):
-    """Get search suggestions for article, product name, or HS code"""
-    suggestions = []
-    supplier_data = data[supplier]
-    
-    for article_num, article_data in supplier_data.items():
-        # Article number search
-        if search_term.lower() in article_num.lower():
-            suggestions.append({
-                "type": "article",
-                "value": article_num,
-                "display": f"🔢 {article_num} - {article_data['names'][0] if article_data['names'] else 'No Name'}"
-            })
-        
-        # Product name search
-        for name in article_data['names']:
-            if search_term.lower() in name.lower():
-                suggestions.append({
-                    "type": "product", 
-                    "value": article_num,
-                    "display": f"📝 {article_num} - {name}"
-                })
-        
-        # NEW: HS Code search
-        for order in article_data['orders']:
-            if (order.get('hs_code') and 
-                search_term.lower() in str(order['hs_code']).lower() and
-                article_num not in [s['value'] for s in suggestions]):
-                suggestions.append({
-                    "type": "hs_code",
-                    "value": article_num,
-                    "display": f"🏷️ {article_num} - HS: {order['hs_code']} - {article_data['names'][0] if article_data['names'] else 'No Name'}"
-                })
-    
-    # Remove duplicates
-    unique_suggestions = {}
-    for sugg in suggestions:
-        if sugg["value"] not in unique_suggestions:
-            unique_suggestions[sugg["value"]] = sugg
-    
-    return list(unique_suggestions.values())
-
-def handle_search(article, product, hs_code, supplier, data, client):
-    """Handle search across article, product name, and HS code"""
-    search_term = article or product or hs_code
-    if not search_term:
-        st.error("❌ Please enter an article number, product name, or HS code")
-        return
-    
-    found = False
-    for article_num, article_data in data[supplier].items():
-        article_match = article and article == article_num
-        product_match = product and any(product.lower() in name.lower() for name in article_data['names'])
-        hs_code_match = hs_code and any(
-            hs_code.lower() in str(order.get('hs_code', '')).lower() 
-            for order in article_data['orders']
-        )
-        
-        if article_match or product_match or hs_code_match:
-            st.session_state.search_results = {
-                "article": article_num,
-                "supplier": supplier,
-                "client": client
-            }
-            # Prepare export data
-            st.session_state.export_data = create_export_data(article_data, article_num, supplier, client)
-            found = True
-            break
-    
-    if not found:
-        st.error(f"❌ No results found for '{search_term}' in {supplier}")
-
-def display_from_session_state(data, client):
-    """Display search results with NEW CARD DESIGN"""
-    results = st.session_state.search_results
-    article = results["article"]
-    supplier = results["supplier"]
-    
-    if article not in data[supplier]:
-        st.error("❌ Article not found in current data")
-        return
-        
-    article_data = data[supplier][article]
-    
-    st.success(f"✅ **Article {article}** found in **{supplier}** for **{client}**")
-    
-    # Product names - SHOW ONLY UNIQUE NAMES
-    st.subheader("📝 Product Names")
-    unique_names = list(set(article_data['names']))  # Remove duplicates
-    for name in unique_names:
-        st.markdown(f'<div class="price-card">{name}</div>', unsafe_allow_html=True)
-    
-    # Statistics
-    prices = article_data['prices']
-    st.subheader("📊 Price Statistics")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-number">{len(prices)}</div>
-            <div class="stat-label">Total Records</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-number">${min(prices):.2f}</div>
-            <div class="stat-label">Min Price/kg</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-number">${max(prices):.2f}</div>
-            <div class="stat-label">Max Price/kg</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with col4:
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-number">${max(prices) - min(prices):.2f}</div>
-            <div class="stat-label">Price Range/kg</div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # UPDATED: NEW CARD DESIGN
-    st.subheader("💵 Historical Prices with Order Details")
-    cols = st.columns(2)
-    for i, order in enumerate(article_data['orders']):
-        with cols[i % 2]:
-            # NEW CARD DESIGN: Order Number as header, then date, then price, then details
-            order_details = f"""
-            <div class="price-box">
-                <div style="font-size: 1.4em; font-weight: bold; border-bottom: 2px solid white; padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
-                    📦 {order['order_no']}
-                </div>
-                <div style="font-size: 1.1em; margin-bottom: 0.5rem;">
-                    <strong>📅 Date:</strong> {order['date']}
-                </div>
-                <div style="font-size: 1.3em; font-weight: bold; color: #FEF3C7; margin-bottom: 0.8rem;">
-                    ${order['price']:.2f}/kg
-                </div>
-                <div class="order-info">
-                    <strong>📦 Product:</strong> {order['product_name']}<br>
-                    <strong>🔢 Article:</strong> {order['article']}<br>
-                    {f"<strong>🏷️ Year:</strong> {order['year']}<br>" if order['year'] else ""}
-                    {f"<strong>📊 HS Code:</strong> {order['hs_code']}<br>" if order['hs_code'] else ""}
-                    {f"<strong>📦 Packaging:</strong> {order['packaging']}<br>" if order['packaging'] else ""}
-                    {f"<strong>🔢 Quantity:</strong> {order['quantity']}<br>" if order['quantity'] else ""}
-                    {f"<strong>⚖️ Total Weight:</strong> {order['total_weight']}<br>" if order['total_weight'] else ""}
-                    {f"<strong>💰 Total Price:</strong> {order['total_price']}<br>" if order['total_price'] else ""}
-                </div>
-            </div>
-            """
-            st.markdown(order_details, unsafe_allow_html=True)
-    
-    # EXPORT SECTION
-    st.markdown('<div class="export-section">', unsafe_allow_html=True)
-    st.subheader("📤 Export Data")
-    
-    if st.session_state.export_data is not None:
-        export_df = st.session_state.export_data
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            # CSV Export
-            csv = export_df.to_csv(index=False)
-            st.download_button(
-                label="📥 Download CSV",
-                data=csv,
-                file_name=f"{client}_pricing_{article}_{datetime.now().strftime('%Y%m%d')}.csv",
-                mime="text/csv",
-                use_container_width=True,
-                type="primary"
-            )
-        
-        with col2:
-            # Excel Export
-            try:
-                excel_data = convert_df_to_excel(export_df)
-                st.download_button(
-                    label="📊 Download Excel",
-                    data=excel_data,
-                    file_name=f"{client}_pricing_{article}_{datetime.now().strftime('%Y%m%d')}.xlsx",
-                    mime="application/vnd.ms-excel",
-                    use_container_width=True
-                )
-            except:
-                st.info("📊 Excel export requires openpyxl package")
-        
-        with col3:
-            # Quick Stats Summary
-            st.download_button(
-                label="📄 Download Summary",
-                data=f"""
-{client} Pricing Summary Report
-===============================
-
-Article: {article}
-Supplier: {supplier}
-Client: {client}
-Product: {export_df['Product_Name'].iloc[0]}
-Report Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}
-
-Price Statistics:
-• Total Records: {len(export_df)}
-• Minimum Price: ${min(prices):.2f}/kg
-• Maximum Price: ${max(prices):.2f}/kg  
-• Price Range: ${max(prices) - min(prices):.2f}/kg
-
-Orders Included: {', '.join(export_df['Order_Number'].tolist())}
-                """,
-                file_name=f"{client}_summary_{article}_{datetime.now().strftime('%Y%m%d')}.txt",
-                mime="text/plain",
-                use_container_width=True
-            )
-        
-        # Show export preview
-        with st.expander("👀 Preview Export Data"):
-            st.dataframe(export_df, use_container_width=True)
-            
-    else:
-        st.info("Search for an article to enable export options")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-
-def convert_df_to_excel(df):
-    """Convert DataFrame to Excel format"""
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Price_History')
-    processed_data = output.getvalue()
-    return processed_data
-
-# ORDERS MANAGEMENT FUNCTIONS
 def orders_management_tab():
     """Orders Management Dashboard"""
     st.markdown("""
@@ -1711,7 +2567,8 @@ def orders_management_tab():
             data=csv,
             file_name=f"{client}_orders_{datetime.now().strftime('%Y%m%d')}.csv",
             mime="text/csv",
-            use_container_width=True
+            use_container_width=True,
+            key="orders_csv"
         )
     
     with col2:
@@ -1732,7 +2589,8 @@ Orders List:
             """,
             file_name=f"{client}_orders_summary_{datetime.now().strftime('%Y%m%d')}.txt",
             mime="text/plain",
-            use_container_width=True
+            use_container_width=True,
+            key="orders_summary"
         )
     
     st.markdown('</div>', unsafe_allow_html=True)
@@ -1744,159 +2602,4 @@ def display_order_card(order):
     payment_status = order.get('Payment Update', 'Pending')
     order_number = order.get('Order Number', 'N/A')
     
-    # Create expander
-    with st.expander(f"📦 {order_number} - {status}", expanded=False):
-        
-        # Header row
-        col1, col2 = st.columns([3, 1])
-        
-        with col1:
-            st.subheader(order_number)
-            st.write(f"**Status:** {status}")
-            
-        with col2:
-            # Payment status with color coding
-            if payment_status == 'Paid':
-                st.success(f"💳 {payment_status}")
-            elif payment_status == 'Due':
-                st.error(f"⚠️ {payment_status}")
-            else:
-                st.warning(f"⏳ {payment_status}")
-            
-            st.write(f"**ERP:** {order.get('ERP', 'N/A')}")
-        
-        # Order details in columns
-        st.write("---")
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.write("**📋 Order Details**")
-            st.write(f"Manufacturer: {order.get('Manufacturer', 'N/A')}")
-            st.write(f"ETD: {order.get('ETD', 'N/A')}")
-            st.write(f"PI Issue: {order.get('Date of PI issue', 'N/A')}")
-            
-        with col2:
-            st.write("**💰 Financial Details**")
-            st.write(f"Payment Due: {order.get('Payment due date', 'N/A')}")
-            st.write(f"Invoice: {order.get('Payment', 'N/A')}")
-            st.write(f"Client Signed: {order.get('Date of Client signing', 'N/A')}")
-        
-        # Notes section
-        notes = order.get('Notes', '')
-        if pd.notna(notes) and notes != '':
-            st.write("---")
-            st.write("**📝 Notes**")
-            st.info(notes)
-
-def load_orders_data(client):
-    """Load ALL orders data - SIMPLE VERSION"""
-    try:
-        # Use the exact same structure as your screenshot data
-        sample_orders = [
-            {
-                'Order Number': 'SA C.D 125/2025', 'ERP': 'Yes', 'Date of request': 'N/A',
-                'Date of PI issue': '08-Sep-25', 'Date of Client signing': 'N/A',
-                'Invoice': 0, 'Payment': 'Credit Note 45550', 'Manufacturer': 'BAJ',
-                'ETD': '28-Dec-25', 'Payment due date': '16-Sep-25', 
-                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': 'Credit Note 45550'
-            },
-            {
-                'Order Number': 'SA C.D 127/2025', 'ERP': 'Yes', 'Date of request': '08-Oct-25',
-                'Date of PI issue': '09-Oct-25', 'Date of Client signing': '12-Oct-25',
-                'Invoice': 80500.00, 'Payment': '$80,500.00', 'Manufacturer': 'BAJ',
-                'ETD': '30-Oct-25', 'Payment due date': '17-Nov-25',
-                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': ''
-            },
-            {
-                'Order Number': 'SA C.D 140/2025', 'ERP': 'Yes', 'Date of request': '08-Oct-25',
-                'Date of PI issue': '09-Oct-25', 'Date of Client signing': '09-Oct-25',
-                'Invoice': 49092.59, 'Payment': '$49,092.59', 'Manufacturer': 'BAJ',
-                'ETD': '17-Nov-25', 'Payment due date': '30-Oct-25',
-                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': 'New ETD 30 Oct'
-            },
-            {
-                'Order Number': 'SA C.D 135/2025', 'ERP': 'Yes', 'Date of request': '08-Oct-25',
-                'Date of PI issue': '09-Oct-25', 'Date of Client signing': '09-Oct-25',
-                'Invoice': 58770.00, 'Payment': '$58,770.00', 'Manufacturer': 'BAJ',
-                'ETD': '13-Nov-25', 'Payment due date': '26-Oct-25',
-                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': ''
-            },
-            {
-                'Order Number': 'SA C.D 138/2025', 'ERP': 'Yes', 'Date of request': '08-Oct-25',
-                'Date of PI issue': '09-Oct-25', 'Date of Client signing': '09-Oct-25',
-                'Invoice': 42900.00, 'Payment': '$42,900.00', 'Manufacturer': 'BAJ',
-                'ETD': '8-Nov-25', 'Payment due date': '21-Oct-25',
-                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': ''
-            },
-            {
-                'Order Number': 'SA C.D 128/2025', 'ERP': 'Bated', 'Date of request': '08-Sep-25',
-                'Date of PI issue': '08-Sep-25', 'Date of Client signing': '10-Sep-25',
-                'Invoice': 46711.00, 'Payment': '$46,711.00', 'Manufacturer': 'BT',
-                'ETD': '7-Nov-25', 'Payment due date': '20-Oct-25',
-                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': 'ETD was shared by CEO with Ammar'
-            },
-            {
-                'Order Number': 'SA C.D 115/2025', 'ERP': 'Yes', 'Date of request': '22-Jul-25',
-                'Date of PI issue': '05-Aug-25', 'Date of Client signing': '07-Aug-25',
-                'Invoice': 36228.00, 'Payment': '$36,228.00', 'Manufacturer': 'BAJ',
-                'ETD': '6-Nov-25', 'Payment due date': '19-Oct-25',
-                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': 'Will follow'
-            },
-            {
-                'Order Number': 'SA C.D 130/2025', 'ERP': 'Yes', 'Date of request': '08-Sep-25',
-                'Date of PI issue': '08-Sep-25', 'Date of Client signing': '10-Sep-25',
-                'Invoice': 38550.30, 'Payment': '$38,550.30', 'Manufacturer': 'BAJ',
-                'ETD': '6-Nov-25', 'Payment due date': '19-Oct-25',
-                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': ''
-            },
-            {
-                'Order Number': 'SA C.D 136/2025', 'ERP': 'Yes', 'Date of request': '08-Oct-25',
-                'Date of PI issue': '09-Oct-25', 'Date of Client signing': '09-Oct-25',
-                'Invoice': 27140.00, 'Payment': '$27,140.00', 'Manufacturer': 'BAJ',
-                'ETD': '3-Nov-25', 'Payment due date': '16-Oct-25',
-                'Payment Update': 'Pending', 'Status': 'In Production', 'Notes': ''
-            },
-            {
-                'Order Number': 'SA C.D 137/2025', 'ERP': 'Yes', 'Date of request': '08-Oct-25',
-                'Date of PI issue': '09-Oct-25', 'Date of Client signing': '09-Oct-25',
-                'Invoice': 32190.00, 'Payment': '$32,190.00', 'Manufacturer': 'BAJ',
-                'ETD': '3-Nov-25', 'Payment due date': '16-Oct-25',
-                'Payment Update': 'Pending', 'Status': 'In Production', 'Notes': ''
-            },
-            {
-                'Order Number': 'SA C.D 133/2025', 'ERP': 'Yes', 'Date of request': '08-Sep-25',
-                'Date of PI issue': '14-Sep-25', 'Date of Client signing': '15-Sep-25',
-                'Invoice': 48966.10, 'Payment': '$48,966.10', 'Manufacturer': 'BAJ',
-                'ETD': '20-Oct-25', 'Payment due date': '2-Oct-25',
-                'Payment Update': 'Due', 'Status': 'Shipped', 'Notes': ''
-            },
-            {
-                'Order Number': 'SA C.D 129/2025', 'ERP': 'Yes', 'Date of request': '08-Sep-25',
-                'Date of PI issue': '08-Sep-25', 'Date of Client signing': '10-Sep-25',
-                'Invoice': 55668.20, 'Payment': '$55,668.20', 'Manufacturer': 'BAJ',
-                'ETD': '19-Oct-25', 'Payment due date': '1-Oct-25',
-                'Payment Update': 'Due', 'Status': 'Shipped', 'Notes': ''
-            },
-            {
-                'Order Number': 'SA C.D 144/2025', 'ERP': 'Yes', 'Date of request': '08-Oct-25',
-                'Date of PI issue': '09-Oct-25', 'Date of Client signing': '12-Oct-25',
-                'Invoice': 69494.00, 'Payment': '$69,494.00', 'Manufacturer': 'BAJ',
-                'ETD': '19-Nov-25', 'Payment due date': '18-Jan-00',
-                'Payment Update': 'Pending', 'Status': 'Pending', 'Notes': 'add chocolate'
-            }
-        ]
-        
-        df = pd.DataFrame(sample_orders)
-        st.success(f"✅ Showing {len(df)} orders from your data")
-        return df
-        
-    except Exception as e:
-        st.error(f"Error loading orders data: {str(e)}")
-        return pd.DataFrame()
-
-# Run the main dashboard
-if __name__ == "__main__":
-    if not check_login():
-        login_page()
-    else:
-        main_dashboard()
+   
