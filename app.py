@@ -502,20 +502,20 @@ def cdc_dashboard(client):
     with col3:
         hs_code = st.text_input("**HS CODE**", placeholder="e.g., 1901200000, 180690...", key=f"{client}_hscode")
 
-    # Auto-suggestions (only show if we have data)
-    search_term = article or product or hs_code
-    if search_term and DATA[supplier]:
-        suggestions = get_suggestions(search_term, supplier, DATA)
-        if suggestions:
-            st.markdown("**💡 Quick Suggestions:**")
-            for i, suggestion in enumerate(suggestions[:3]):  # Limit to 3 suggestions
-                if st.button(suggestion["display"], use_container_width=True, key=f"{client}_sugg_{i}"):
-                    st.session_state.search_results = {
-                        "article": suggestion["value"],
-                        "supplier": supplier,
-                        "client": client
-                    }
-                    st.rerun()
+# Auto-suggestions
+search_term = article or product or hs_code
+if search_term:
+    suggestions = get_suggestions(search_term, supplier, DATA)
+    if suggestions:
+        st.markdown("**💡 Quick Suggestions:**")
+        for i, suggestion in enumerate(suggestions[:4]):
+            if st.button(suggestion["display"], use_container_width=True, key=f"{client}_sugg_{i}"):
+                st.session_state.search_results = {
+                    "article": suggestion["value"],
+                    "supplier": supplier,
+                    "client": client
+                }
+                st.rerun()
     
     # Manual search
     if st.button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary", key=f"{client}_search"):
