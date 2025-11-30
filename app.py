@@ -46,58 +46,58 @@ def get_google_sheets_data(client="CDC"):
         
         # Convert DataFrames to the expected dictionary structure
         def convert_df_to_dict(df):
-    result = {}
-    if df.empty:
-        return result
-        
-    # Use your actual column names from the sheet
-    for _, row in df.iterrows():
-        # Get article number - try multiple possible column names
-        article = (row.get('article_number') or row.get('Article_Number') or 
-                  row.get('Article') or row.get('article') or '')
-        if not article:
-            continue
+            result = {}
+            if df.empty:
+                return result
+                
+            # Use your actual column names from the sheet
+            for _, row in df.iterrows():
+                # Get article number - try multiple possible column names
+                article = (row.get('article_number') or row.get('Article_Number') or 
+                          row.get('Article') or row.get('article') or '')
+                if not article:
+                    continue
+                    
+                if article not in result:
+                    result[article] = {
+                        'names': [],
+                        'prices': [],
+                        'orders': []
+                    }
+                
+                # Add product name - try multiple possible column names
+                product_name = (row.get('product_name') or row.get('Product_Name') or 
+                               row.get('Product') or row.get('product') or '')
+                if product_name and product_name not in result[article]['names']:
+                    result[article]['names'].append(product_name)
+                
+                # Add price if available - try multiple possible column names
+                price = (row.get('price_per_') or row.get('price_per_kg') or 
+                        row.get('Price') or row.get('price') or '')
+                if price:
+                    try:
+                        price_float = float(price)
+                        result[article]['prices'].append(price_float)
+                    except (ValueError, TypeError):
+                        pass
+                
+                # Add order details with your actual column names
+                order_data = {
+                    'order_no': row.get('order_number') or row.get('Order_Number') or row.get('Order') or '',
+                    'date': row.get('order_date') or row.get('Date') or '',
+                    'year': row.get('year') or row.get('Year') or '',
+                    'product_name': product_name,
+                    'article': article,
+                    'hs_code': row.get('hs_code') or row.get('HS_Code') or '',
+                    'packaging': row.get('packaging') or row.get('Packaging') or '',
+                    'quantity': row.get('quantity') or row.get('Quantity') or '',
+                    'total_weight': row.get('total_weight') or row.get('Total_Weight') or '',
+                    'price': price,
+                    'total_price': row.get('total_price') or row.get('Total_Price') or ''
+                }
+                result[article]['orders'].append(order_data)
             
-        if article not in result:
-            result[article] = {
-                'names': [],
-                'prices': [],
-                'orders': []
-            }
-        
-        # Add product name - try multiple possible column names
-        product_name = (row.get('product_name') or row.get('Product_Name') or 
-                       row.get('Product') or row.get('product') or '')
-        if product_name and product_name not in result[article]['names']:
-            result[article]['names'].append(product_name)
-        
-        # Add price if available - try multiple possible column names
-        price = (row.get('price_per_') or row.get('price_per_kg') or 
-                row.get('Price') or row.get('price') or '')
-        if price:
-            try:
-                price_float = float(price)
-                result[article]['prices'].append(price_float)
-            except (ValueError, TypeError):
-                pass
-        
-        # Add order details with your actual column names
-        order_data = {
-            'order_no': row.get('order_number') or row.get('Order_Number') or row.get('Order') or '',
-            'date': row.get('order_date') or row.get('Date') or '',
-            'year': row.get('year') or row.get('Year') or '',
-            'product_name': product_name,
-            'article': article,
-            'hs_code': row.get('hs_code') or row.get('HS_Code') or '',
-            'packaging': row.get('packaging') or row.get('Packaging') or '',
-            'quantity': row.get('quantity') or row.get('Quantity') or '',
-            'total_weight': row.get('total_weight') or row.get('Total_Weight') or '',
-            'price': price,
-            'total_price': row.get('total_price') or row.get('Total_Price') or ''
-        }
-        result[article]['orders'].append(order_data)
-    
-    return result
+            return result
         
         return {
             "Backaldrin": convert_df_to_dict(backaldrin_df),
