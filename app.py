@@ -468,18 +468,31 @@ def cdc_dashboard(client):
         hs_code = st.text_input("**HS CODE**", placeholder="e.g., 1901200000, 180690...", key=f"{client}_hscode")
 
     # Auto-suggestions (only show if we have data)
-    search_term = article or product or hs_code
-    if search_term and DATA[supplier]:
-        suggestions = get_suggestions(search_term, supplier, DATA)
-        if suggestions:
-            st.markdown("**💡 Quick Suggestions:**")
-            for i, suggestion in enumerate(suggestions[:3]):  # Limit to 3 suggestions
-                if st.button(suggestion["display"], use_container_width=True, key=f"{client}_sugg_{i}"):
+search_term = article or product or hs_code
+if search_term and DATA[supplier]:
+    suggestions = get_suggestions(search_term, supplier, DATA)
+    if suggestions:
+        st.markdown("**💡 Quick Suggestions:**")
+        for i, suggestion in enumerate(suggestions[:3]):  # Limit to 3 suggestions
+            if st.button(suggestion["display"], use_container_width=True, key=f"{client}_sugg_{i}"):
+                # Set the search term in the input field for better UX
+                if suggestion["type"] == "article":
+                    st.session_state[f"{client}_article"] = suggestion["value"]
+                elif suggestion["type"] == "product":
+                    st.session_state[f"{client}_product"] = suggestion["value"]
+                elif suggestion["type"] == "hs_code":
+                    st.session_state[f"{client}_hscode"] = suggestion["value"]
+                
+                # Find and display the result immediately
+                article_num = suggestion["value"]
+                if article_num in DATA[supplier]:
+                    article_data = DATA[supplier][article_num]
                     st.session_state.search_results = {
-                        "article": suggestion["value"],
+                        "article": article_num,
                         "supplier": supplier,
                         "client": client
                     }
+                    st.session_state.export_data = create_export_data(article_data, article_num, supplier, client)
                     st.rerun()
     
     # Manual search
@@ -487,9 +500,11 @@ def cdc_dashboard(client):
         with st.spinner("Searching..."):
             handle_search(article, product, hs_code, supplier, DATA, client)
 
-    # Display results from session state
-    if st.session_state.search_results and st.session_state.search_results.get("client") == client:
-        display_from_session_state(DATA, client)
+# Display results from session state - ADD A VISUAL SEPARATOR
+if st.session_state.search_results and st.session_state.search_results.get("client") == client:
+    st.markdown("---")
+    st.subheader("📊 Search Results")
+    display_from_session_state(DATA, client)
 
 # Keep all your existing helper functions but add @cache_data decorator to heavy ones
 @cache_data(ttl=300)
@@ -712,6 +727,9 @@ def handle_search(article, product, hs_code, supplier, data, client):
     
     if not found:
         st.error(f"❌ No results found for '{search_term}' in {supplier}")
+    
+    # Force immediate display by using a unique key
+    st.rerun()
 
 def display_from_session_state(data, client):
     """Display search results with NEW CARD DESIGN"""
