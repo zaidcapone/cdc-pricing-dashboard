@@ -363,14 +363,32 @@ def get_google_sheets_data(client="CDC"):
             if df.empty:
                 return result
             
-            # Group by article_number
-            if 'article_number' not in df.columns:
-                st.error(f"❌ Missing 'article_number' column! Available columns: {list(df.columns)}")
+            # Group by article_number - check for different possible column names
+            article_column = None
+            for possible_name in ['Article_Number', 'article_number', 'Article', 'article']:
+                if possible_name in df.columns:
+                    article_column = possible_name
+                    break
+
+            if not article_column:
+                st.error(f"❌ Missing article number column! Available columns: {list(df.columns)}")
                 return result
+
+            # Also check for other required columns with multiple possible names
+            def get_column(df, possible_names):
+                for name in possible_names:
+                    if name in df.columns:
+                        return name
+                return None
+            
+            product_column = get_column(df, ['product_name', 'Product_Name', 'Product', 'product'])
+            price_column = get_column(df, ['price_per_', 'Price_per_', 'Price_per_kg', 'price_per_kg', 'Price', 'price'])
+            order_column = get_column(df, ['order_number', 'Order_Number', 'Order', 'order'])
+            date_column = get_column(df, ['order_date', 'Order_Date', 'Date', 'date'])
             
             # Convert each row to the expected format
             for _, row in df.iterrows():
-                article = str(row.get('article_number', '')).strip()
+                article = str(row.get(article_column, '')).strip()
                 if not article:
                     continue
                     
@@ -383,12 +401,12 @@ def get_google_sheets_data(client="CDC"):
                     }
                 
                 # Add product name
-                product_name = str(row.get('product_name', '')).strip()
+                product_name = str(row.get(product_column, '')).strip() if product_column else ''
                 if product_name and product_name not in result[article]['names']:
                     result[article]['names'].append(product_name)
                 
                 # Add price
-                price_str = str(row.get('price_per_', '')).strip()
+                price_str = str(row.get(price_column, '')).strip() if price_column else ''
                 if price_str:
                     try:
                         price_float = float(price_str)
@@ -398,17 +416,17 @@ def get_google_sheets_data(client="CDC"):
                 
                 # Add order details
                 order_details = {
-                    'order_no': str(row.get('order_number', '')).strip(),
-                    'date': str(row.get('order_date', '')).strip(),
-                    'year': str(row.get('year', '')).strip(),
+                    'order_no': str(row.get(order_column, '')).strip() if order_column else '',
+                    'date': str(row.get(date_column, '')).strip() if date_column else '',
+                    'year': str(row.get('year', '')).strip() if 'year' in df.columns else '',
                     'product_name': product_name,
                     'article': article,
-                    'hs_code': str(row.get('hs_code', '')).strip(),
-                    'packaging': str(row.get('packaging', '')).strip(),
-                    'quantity': str(row.get('quantity', '')).strip(),
-                    'total_weight': str(row.get('total_weight', '')).strip(),
+                    'hs_code': str(row.get('hs_code', '')).strip() if 'hs_code' in df.columns else '',
+                    'packaging': str(row.get('packaging', '')).strip() if 'packaging' in df.columns else '',
+                    'quantity': str(row.get('quantity', '')).strip() if 'quantity' in df.columns else '',
+                    'total_weight': str(row.get('total_weight', '')).strip() if 'total_weight' in df.columns else '',
                     'price': price_str,
-                    'total_price': str(row.get('total_price', '')).strip()
+                    'total_price': str(row.get('total_price', '')).strip() if 'total_price' in df.columns else ''
                 }
                 result[article]['orders'].append(order_details)
             
