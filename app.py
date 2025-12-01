@@ -44,19 +44,29 @@ def get_google_sheets_data(client="CDC"):
         backaldrin_df = load_sheet_data(backaldrin_sheet)
         bateel_df = load_sheet_data(bateel_sheet)
         
+        # Debug: Show what's loaded
+        st.sidebar.info(f"📥 {client}: Backaldrin={len(backaldrin_df)} rows, Bateel={len(bateel_df)} rows")
+        
         # Convert DataFrames to the expected dictionary structure
         def convert_df_to_dict(df):
+            """Simple converter that builds the expected structure"""
             result = {}
+            
             if df.empty:
                 return result
-                
-            # Use your exact column names from the sheet
+            
+            # Group by article_number
+            if 'article_number' not in df.columns:
+                st.error(f"❌ Missing 'article_number' column! Available columns: {list(df.columns)}")
+                return result
+            
+            # Convert each row to the expected format
             for _, row in df.iterrows():
-                # Get article number - using your exact column name
                 article = str(row.get('article_number', '')).strip()
                 if not article:
                     continue
                     
+                # Initialize if not exists
                 if article not in result:
                     result[article] = {
                         'names': [],
@@ -64,22 +74,22 @@ def get_google_sheets_data(client="CDC"):
                         'orders': []
                     }
                 
-                # Add product name - using your exact column name
+                # Add product name
                 product_name = str(row.get('product_name', '')).strip()
                 if product_name and product_name not in result[article]['names']:
                     result[article]['names'].append(product_name)
                 
-                # Add price if available - using your exact column name
-                price = str(row.get('price_per_', '')).strip()
-                if price:
+                # Add price
+                price_str = str(row.get('price_per_', '')).strip()
+                if price_str:
                     try:
-                        price_float = float(price)
+                        price_float = float(price_str)
                         result[article]['prices'].append(price_float)
-                    except (ValueError, TypeError):
+                    except:
                         pass
                 
-                # Add order details with your exact column names
-                order_data = {
+                # Add order details
+                order_details = {
                     'order_no': str(row.get('order_number', '')).strip(),
                     'date': str(row.get('order_date', '')).strip(),
                     'year': str(row.get('year', '')).strip(),
@@ -89,10 +99,10 @@ def get_google_sheets_data(client="CDC"):
                     'packaging': str(row.get('packaging', '')).strip(),
                     'quantity': str(row.get('quantity', '')).strip(),
                     'total_weight': str(row.get('total_weight', '')).strip(),
-                    'price': price,
+                    'price': price_str,
                     'total_price': str(row.get('total_price', '')).strip()
                 }
-                result[article]['orders'].append(order_data)
+                result[article]['orders'].append(order_details)
             
             return result
         
@@ -2493,6 +2503,31 @@ def cdc_dashboard(client):
     # Load data directly from Google Sheets
     DATA = get_google_sheets_data(client)
     st.success(f"✅ Connected to Google Sheets - Live Data for {client}!")
+    # Load data directly from Google Sheets
+    DATA = get_google_sheets_data(client)
+    st.success(f"✅ Connected to Google Sheets - Live Data for {client}!")
+    
+    # ============ ADD DEBUG CODE HERE ============
+    st.write("🔍 **Debug: Checking data structure...**")
+    st.write(f"Type of DATA: {type(DATA)}")
+    st.write(f"Keys in DATA: {list(DATA.keys())}")
+    
+    if 'Backaldrin' in DATA:
+        st.write(f"Backaldrin type: {type(DATA['Backaldrin'])}")
+        if DATA['Backaldrin']:
+            articles = list(DATA['Backaldrin'].keys())
+            st.write(f"Number of articles in Backaldrin: {len(articles)}")
+            if articles:
+                first_article = articles[0]
+                st.write(f"First article: {first_article}")
+                st.write(f"First article data type: {type(DATA['Backaldrin'][first_article])}")
+                if isinstance(DATA['Backaldrin'][first_article], dict):
+                    st.write(f"Keys in article data: {list(DATA['Backaldrin'][first_article].keys())}")
+    # ============ END DEBUG CODE ============
+
+    # Refresh button
+    if st.button("🔄 Refresh Data", use_container_width=True, type="secondary", key=f"{client}_refresh"):
+        st.rerun()
 
     # Load data directly from Google Sheets
 DATA = get_google_sheets_data(client)
