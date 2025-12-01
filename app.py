@@ -2390,59 +2390,62 @@ def get_google_sheets_data(client="CDC"):
         
         # Convert DataFrames to the expected dictionary structure
         def convert_df_to_dict(df):
-            result = {}
-            if df.empty:
-                return result
-                
-            # Assuming the DataFrame has columns like: Article, Product_Name, Price, etc.
-            for _, row in df.iterrows():
-                article = row.get('Article_Number', '') or row.get('Article', '')
-                if not article:
-                    continue
-                    
-                if article not in result:
-                    result[article] = {
-                        'names': [],
-                        'prices': [],
-                        'orders': []
-                    }
-                
-                # Add product name
-                product_name = row.get('Product_Name', '') or row.get('Product', '')
-                if product_name and product_name not in result[article]['names']:
-                    result[article]['names'].append(product_name)
-                
-                # Add price if available
-                price = row.get('Price', '') or row.get('Price_per_kg', '')
-                if price:
-                    try:
-                        price_float = float(price)
-                        result[article]['prices'].append(price_float)
-                    except (ValueError, TypeError):
-                        pass
-                
-                # Add order details
-                order_data = {
-                    'order_no': row.get('Order_Number', '') or row.get('Order', ''),
-                    'date': row.get('Date', ''),
-                    'year': row.get('Year', ''),
-                    'product_name': product_name,
-                    'article': article,
-                    'hs_code': row.get('HS_Code', ''),
-                    'packaging': row.get('Packaging', ''),
-                    'quantity': row.get('Quantity', ''),
-                    'total_weight': row.get('Total_Weight', ''),
-                    'price': price,
-                    'total_price': row.get('Total_Price', '')
-                }
-                result[article]['orders'].append(order_data)
+    """Simple converter that builds the expected structure"""
+    result = {}
+    
+    if df.empty:
+        return result
+    
+    # Group by article_number
+    if 'article_number' not in df.columns:
+        st.error(f"❌ Missing 'article_number' column! Available columns: {list(df.columns)}")
+        return result
+    
+    # Convert each row to the expected format
+    for _, row in df.iterrows():
+        article = str(row.get('article_number', '')).strip()
+        if not article:
+            continue
             
-            return result
+        # Initialize if not exists
+        if article not in result:
+            result[article] = {
+                'names': [],
+                'prices': [],
+                'orders': []
+            }
         
-        return {
-            "Backaldrin": convert_df_to_dict(backaldrin_df),
-            "Bateel": convert_df_to_dict(bateel_df)
+        # Add product name
+        product_name = str(row.get('product_name', '')).strip()
+        if product_name and product_name not in result[article]['names']:
+            result[article]['names'].append(product_name)
+        
+        # Add price
+        price_str = str(row.get('price_per_', '')).strip()
+        if price_str:
+            try:
+                price_float = float(price_str)
+                result[article]['prices'].append(price_float)
+            except:
+                pass
+        
+        # Add order details
+        order_details = {
+            'order_no': str(row.get('order_number', '')).strip(),
+            'date': str(row.get('order_date', '')).strip(),
+            'year': str(row.get('year', '')).strip(),
+            'product_name': product_name,
+            'article': article,
+            'hs_code': str(row.get('hs_code', '')).strip(),
+            'packaging': str(row.get('packaging', '')).strip(),
+            'quantity': str(row.get('quantity', '')).strip(),
+            'total_weight': str(row.get('total_weight', '')).strip(),
+            'price': price_str,
+            'total_price': str(row.get('total_price', '')).strip()
         }
+        result[article]['orders'].append(order_details)
+    
+    return result
         
     except Exception as e:
         st.error(f"Error loading data for {client}: {str(e)}")
