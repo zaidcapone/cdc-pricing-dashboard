@@ -4,6 +4,7 @@ import requests
 import json
 from datetime import datetime
 from io import BytesIO
+import re
 
 # Page config
 st.set_page_config(
@@ -252,6 +253,42 @@ st.markdown("""
     .stTabs [data-baseweb="tab"][aria-selected="true"] span {
         color: white !important; /* White text for active tab label */
     }
+    /* NEW: Search Features Styles */
+    .search-suggestion {
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        border-bottom: 1px solid #E5E7EB;
+    }
+    .search-suggestion:hover {
+        background-color: #F3F4F6;
+    }
+    .history-item {
+        padding: 0.5rem;
+        margin: 0.25rem 0;
+        background: #F9FAFB;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+    .history-item:hover {
+        background: #F3F4F6;
+    }
+    .favorite-badge {
+        background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+        color: #92400E;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border: 1px solid #FBBF24;
+    }
+    .time-ago {
+        font-size: 0.75rem;
+        color: #6B7280;
+        margin-left: 0.5rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -315,7 +352,348 @@ PRODUCT_CATALOG_SHEET = "FullProductList"
 # NEW: Prices Sheet Name
 PRICES_SHEET = "Prices"
 
-# ============ CACHED FUNCTIONS ============
+# ============================================
+# FEATURE 1: SMART SEARCH WITH AI SUGGESTIONS
+# ============================================
+
+def get_smart_suggestions(search_term, supplier_data, search_type="all"):
+    """
+    Get smart suggestions with scoring system for better match quality
+    Returns suggestions with relevance scores
+    """
+    if not search_term or len(search_term) < 2:
+        return []
+    
+    suggestions = []
+    search_lower = search_term.lower()
+    
+    for article_num, article_data in supplier_data.items():
+        score = 0
+        match_type = ""
+        
+        # Article number exact match (highest priority)
+        if search_lower == article_num.lower():
+            score = 100
+            match_type = "exact_article"
+        # Article number partial match
+        elif search_lower in article_num.lower():
+            score = 80
+            match_type = "partial_article"
+        
+        # Product name matching
+        for name in article_data.get('names', []):
+            name_lower = str(name).lower()
+            if search_lower == name_lower:
+                score = max(score, 90)
+                match_type = "exact_product"
+            elif search_lower in name_lower:
+                score = max(score, 70)
+                match_type = "partial_product"
+        
+        # HS Code matching
+        for order in article_data.get('orders', []):
+            hs_code = str(order.get('hs_code', '')).lower()
+            if search_lower in hs_code:
+                score = max(score, 60)
+                match_type = "hs_code"
+        
+        # Add suggestion if score is above threshold
+        if score >= 50:
+            best_name = ""
+            if article_data.get('names'):
+                # Find the best matching name
+                for name in article_data['names']:
+                    if search_lower in str(name).lower():
+                        best_name = str(name)
+                        break
+                if not best_name and article_data['names']:
+                    best_name = str(article_data['names'][0])
+            
+            suggestions.append({
+                "article": article_num,
+                "name": best_name,
+                "score": score,
+                "match_type": match_type,
+                "display": f"{article_num} - {best_name}",
+                "has_orders": len(article_data.get('orders', [])) > 0,
+                "has_prices": len(article_data.get('prices', [])) > 0
+            })
+    
+    # Sort by score (highest first) and remove duplicates
+    suggestions.sort(key=lambda x: x["score"], reverse=True)
+    
+    # Remove duplicates based on article number
+    unique_suggestions = []
+    seen_articles = set()
+    for sugg in suggestions:
+        if sugg["article"] not in seen_articles:
+            unique_suggestions.append(sugg)
+            seen_articles.add(sugg["article"])
+    
+    return unique_suggestions[:10]  # Return top 10 suggestions
+
+def display_smart_suggestions(suggestions, client, supplier, DATA):
+    """Display smart suggestions in a dropdown"""
+    if not suggestions:
+        return None
+    
+    st.markdown("**🤖 Smart Suggestions:**")
+    
+    for i, sugg in enumerate(suggestions):
+        col1, col2, col3 = st.columns([3, 1, 1])
+        with col1:
+            display_text = f"{sugg['article']}"
+            if sugg['name']:
+                display_text += f" - {sugg['name']}"
+            
+            # Add match quality indicator
+            if sugg['score'] >= 90:
+                display_text = f"🎯 {display_text}"
+            elif sugg['score'] >= 70:
+                display_text = f"🔍 {display_text}"
+            else:
+                display_text = f"📝 {display_text}"
+            
+        with col2:
+            # Data availability indicators
+            indicators = []
+            if sugg['has_orders']:
+                indicators.append("📦")
+            if sugg['has_prices']:
+                indicators.append("💰")
+            st.write(" ".join(indicators))
+        
+        with col3:
+            if st.button(f"Select", key=f"sugg_{i}", use_container_width=True):
+                st.session_state.search_results = {
+                    "article": sugg["article"],
+                    "supplier": supplier,
+                    "client": client
+                }
+                # Prepare export data
+                article_data = DATA[supplier].get(sugg["article"], {})
+                st.session_state.export_data = create_export_data(article_data, sugg["article"], supplier, client)
+                st.rerun()
+
+# ============================================
+# FEATURE 2: SEARCH HISTORY
+# ============================================
+
+def initialize_search_history():
+    """Initialize search history in session state"""
+    if 'search_history' not in st.session_state:
+        st.session_state.search_history = []
+    if 'max_history_items' not in st.session_state:
+        st.session_state.max_history_items = 20
+
+def add_to_search_history(search_term, client, supplier, article_num=None):
+    """Add a search to the history"""
+    initialize_search_history()
+    
+    # Remove duplicates (keep only latest)
+    st.session_state.search_history = [
+        h for h in st.session_state.search_history 
+        if not (h.get('search_term') == search_term and 
+                h.get('client') == client and 
+                h.get('supplier') == supplier)
+    ]
+    
+    # Add new entry
+    history_entry = {
+        'timestamp': datetime.now(),
+        'search_term': search_term,
+        'client': client,
+        'supplier': supplier,
+        'article_num': article_num,
+        'display_time': datetime.now().strftime("%H:%M")
+    }
+    
+    st.session_state.search_history.insert(0, history_entry)
+    
+    # Keep only last N items
+    if len(st.session_state.search_history) > st.session_state.max_history_items:
+        st.session_state.search_history = st.session_state.search_history[:st.session_state.max_history_items]
+
+def format_time_ago(timestamp):
+    """Format timestamp as 'time ago'"""
+    now = datetime.now()
+    diff = now - timestamp
+    
+    if diff.days > 0:
+        if diff.days == 1:
+            return "1 day ago"
+        elif diff.days < 7:
+            return f"{diff.days} days ago"
+        else:
+            return timestamp.strftime("%b %d")
+    elif diff.seconds >= 3600:
+        hours = diff.seconds // 3600
+        return f"{hours}h ago"
+    elif diff.seconds >= 60:
+        minutes = diff.seconds // 60
+        return f"{minutes}m ago"
+    else:
+        return "Just now"
+
+def display_search_history_sidebar():
+    """Display search history in sidebar"""
+    if not st.session_state.get('search_history'):
+        return
+    
+    st.sidebar.markdown("### 🔍 Recent Searches")
+    
+    for i, history_item in enumerate(st.session_state.search_history[:5]):  # Show last 5 in sidebar
+        time_ago = format_time_ago(history_item['timestamp'])
+        
+        # Create a compact display
+        display_text = f"{history_item['search_term']}"
+        if history_item.get('article_num'):
+            display_text += f" → {history_item['article_num']}"
+        
+        # Check if this search is saved as favorite
+        is_favorite = False
+        if 'favorite_searches' in st.session_state:
+            for fav in st.session_state.favorite_searches:
+                if (fav.get('search_term') == history_item['search_term'] and 
+                    fav.get('client') == history_item['client'] and 
+                    fav.get('supplier') == history_item['supplier']):
+                    is_favorite = True
+                    break
+        
+        col1, col2 = st.sidebar.columns([4, 1])
+        with col1:
+            if st.sidebar.button(
+                display_text, 
+                key=f"hist_sidebar_{i}",
+                use_container_width=True,
+                help=f"{history_item['client']} • {history_item['supplier']} • {time_ago}"
+            ):
+                # Set up the search
+                st.session_state[f"{history_item['client']}_article"] = history_item['search_term']
+                st.session_state[f"{history_item['client']}_supplier"] = history_item['supplier']
+                st.session_state.search_results = {
+                    "article": history_item.get('article_num', history_item['search_term']),
+                    "supplier": history_item['supplier'],
+                    "client": history_item['client']
+                }
+                st.rerun()
+        with col2:
+            if is_favorite:
+                st.sidebar.markdown("⭐")
+    
+    # Show "View All" button if there are more items
+    if len(st.session_state.search_history) > 5:
+        if st.sidebar.button("View All History", use_container_width=True):
+            st.session_state.show_full_history = True
+
+# ============================================
+# FEATURE 3: SAVED SEARCHES/FAVORITES
+# ============================================
+
+def initialize_favorites():
+    """Initialize favorites in session state"""
+    if 'favorite_searches' not in st.session_state:
+        st.session_state.favorite_searches = []
+    if 'show_favorites' not in st.session_state:
+        st.session_state.show_favorites = False
+
+def save_search_to_favorites(search_term, client, supplier, article_num=None):
+    """Save a search to favorites"""
+    initialize_favorites()
+    
+    # Check if already favorited
+    for fav in st.session_state.favorite_searches:
+        if (fav.get('search_term') == search_term and 
+            fav.get('client') == client and 
+            fav.get('supplier') == supplier):
+            return False  # Already favorited
+    
+    # Add to favorites
+    favorite_entry = {
+        'timestamp': datetime.now(),
+        'search_term': search_term,
+        'client': client,
+        'supplier': supplier,
+        'article_num': article_num,
+        'notes': ''
+    }
+    
+    st.session_state.favorite_searches.append(favorite_entry)
+    return True
+
+def remove_search_from_favorites(search_term, client, supplier):
+    """Remove a search from favorites"""
+    st.session_state.favorite_searches = [
+        fav for fav in st.session_state.favorite_searches 
+        if not (fav.get('search_term') == search_term and 
+                fav.get('client') == client and 
+                fav.get('supplier') == supplier)
+    ]
+
+def is_search_favorited(search_term, client, supplier):
+    """Check if a search is favorited"""
+    if 'favorite_searches' not in st.session_state:
+        return False
+    
+    for fav in st.session_state.favorite_searches:
+        if (fav.get('search_term') == search_term and 
+            fav.get('client') == client and 
+            fav.get('supplier') == supplier):
+            return True
+    return False
+
+def display_favorites_sidebar():
+    """Display favorites in sidebar"""
+    if not st.session_state.get('favorite_searches'):
+        st.sidebar.markdown("### ⭐ Favorites")
+        st.sidebar.info("No favorites yet. Star a search to save it!")
+        return
+    
+    st.sidebar.markdown("### ⭐ Favorites")
+    
+    for i, fav in enumerate(st.session_state.favorite_searches[:5]):  # Show last 5 in sidebar
+        display_text = f"{fav['search_term']}"
+        if fav.get('article_num'):
+            display_text += f" → {fav['article_num']}"
+        
+        col1, col2, col3 = st.sidebar.columns([3, 1, 1])
+        with col1:
+            if st.sidebar.button(
+                display_text, 
+                key=f"fav_sidebar_{i}",
+                use_container_width=True,
+                help=f"{fav['client']} • {fav['supplier']}"
+            ):
+                # Set up the search
+                st.session_state[f"{fav['client']}_article"] = fav['search_term']
+                st.session_state[f"{fav['client']}_supplier"] = fav['supplier']
+                st.session_state.search_results = {
+                    "article": fav.get('article_num', fav['search_term']),
+                    "supplier": fav['supplier'],
+                    "client": fav['client']
+                }
+                st.rerun()
+        
+        with col2:
+            # Edit notes button
+            if st.sidebar.button("📝", key=f"fav_note_{i}", help="Edit notes"):
+                st.session_state.editing_favorite = i
+                st.session_state.editing_favorite_notes = fav.get('notes', '')
+        
+        with col3:
+            # Remove favorite button
+            if st.sidebar.button("🗑️", key=f"fav_remove_{i}", help="Remove favorite"):
+                remove_search_from_favorites(fav['search_term'], fav['client'], fav['supplier'])
+                st.rerun()
+    
+    # Show "View All" button if there are more favorites
+    if len(st.session_state.favorite_searches) > 5:
+        if st.sidebar.button("View All Favorites", use_container_width=True):
+            st.session_state.show_favorites = True
+
+# ============================================
+# CACHED FUNCTIONS (ORIGINAL)
+# ============================================
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes
 def load_sheet_data(sheet_name, start_row=0):
@@ -780,6 +1158,10 @@ def main_dashboard():
     st.sidebar.markdown(f"**👤 Welcome, {st.session_state.username}**")
     st.sidebar.markdown(f"**🏢 Access to:** {', '.join(st.session_state.user_clients)}")
     
+    # Initialize features
+    initialize_search_history()
+    initialize_favorites()
+    
     # Cache Management Section
     st.sidebar.markdown("---")
     st.sidebar.markdown("### ⚡ Performance")
@@ -796,6 +1178,12 @@ def main_dashboard():
             st.cache_data.clear()
             st.rerun()
     
+    # NEW: Search History Sidebar
+    display_search_history_sidebar()
+    
+    # NEW: Favorites Sidebar
+    display_favorites_sidebar()
+    
     # NEW: General Announcements Section
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 📢 General Announcements")
@@ -808,7 +1196,10 @@ def main_dashboard():
         "🔔 **REMINDER**:",
         "📊 **NEW FEATURE**: HS Code search now available across all clients",
         "📦 **NEW**: Palletizing Calculator added!",
-        "💰 **NEW**: All Customers Prices tab added!"
+        "💰 **NEW**: All Customers Prices tab added!",
+        "🤖 **NEW**: Smart Search with AI suggestions!",
+        "⭐ **NEW**: Save favorite searches!",
+        "📁 **NEW**: Bulk article search available!"
     ]
     
     # Display announcements with nice styling
@@ -885,7 +1276,9 @@ def main_dashboard():
         with tab8:
             palletizing_tab()
 
-# ============ TAB FUNCTIONS ============
+# ============================================
+# TAB FUNCTIONS
+# ============================================
 
 def clients_tab():
     """Clients management tab"""
@@ -903,7 +1296,7 @@ def clients_tab():
         cdc_dashboard(client)
 
 def cdc_dashboard(client):
-    """Client pricing dashboard with THREE SEARCH OPTIONS"""
+    """Client pricing dashboard with FOUR NEW FEATURES"""
     
     # Initialize session state
     if 'search_results' not in st.session_state:
@@ -914,6 +1307,7 @@ def cdc_dashboard(client):
     st.markdown(f"""
     <div class="cdc-header">
         <h2 style="margin:0;"> {client} Pricing Dashboard</h2>
+        <p style="margin:0; opacity:0.9;">Smart Search • History • Favorites • Bulk Upload</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -925,12 +1319,196 @@ def cdc_dashboard(client):
     if st.button("🔄 Refresh Data", use_container_width=True, type="secondary", key=f"{client}_refresh"):
         st.rerun()
 
-    # Supplier selection - CLEAN VERSION (no white box)
+    # Supplier selection
     st.subheader("Select Supplier")
     supplier = st.radio("", ["Backaldrin", "Bateel"], horizontal=True, label_visibility="collapsed", key=f"{client}_supplier")
 
-    # Search section - THREE SEARCH OPTIONS WITH ENTER KEY SUPPORT
-    st.subheader("🔍 Search Historical Prices")
+    # ============================================
+    # FEATURE 1: SMART SEARCH WITH AI SUGGESTIONS
+    # ============================================
+    st.subheader("🔍 Smart Search")
+    
+    # Search input with real-time suggestions
+    search_container = st.container()
+    
+    with search_container:
+        col1, col2, col3 = st.columns([3, 1, 1])
+        with col1:
+            search_input = st.text_input(
+                "**Search by Article, Product, or HS Code:**",
+                placeholder="Start typing for smart suggestions...",
+                key=f"{client}_smart_search"
+            )
+        
+        with col2:
+            search_type = st.selectbox(
+                "Search Type",
+                ["All", "Article", "Product", "HS Code"],
+                key=f"{client}_search_type"
+            )
+        
+        with col3:
+            if st.button("🔍 Smart Search", use_container_width=True, type="primary", key=f"{client}_smart_search_btn"):
+                if search_input:
+                    # Add to search history
+                    add_to_search_history(search_input, client, supplier)
+                    
+                    # Perform search
+                    handle_search(search_input, "", "", supplier, DATA, client)
+    
+    # Show smart suggestions as user types
+    if search_input and len(search_input) >= 2:
+        supplier_data = DATA.get(supplier, {})
+        suggestions = get_smart_suggestions(search_input, supplier_data, search_type)
+        
+        if suggestions:
+            st.markdown("**🤖 Smart Suggestions (click to select):**")
+            for i, sugg in enumerate(suggestions[:5]):  # Show top 5
+                score_color = "#059669" if sugg["score"] >= 90 else "#D97706" if sugg["score"] >= 70 else "#6B7280"
+                
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    if st.button(
+                        f"{sugg['article']} - {sugg['name']}",
+                        key=f"smart_{i}",
+                        use_container_width=True,
+                        help=f"Match score: {sugg['score']}/100"
+                    ):
+                        st.session_state.search_results = {
+                            "article": sugg["article"],
+                            "supplier": supplier,
+                            "client": client
+                        }
+                        # Prepare export data
+                        article_data = DATA[supplier].get(sugg["article"], {})
+                        st.session_state.export_data = create_export_data(article_data, sugg["article"], supplier, client)
+                        # Add to search history with article number
+                        add_to_search_history(search_input, client, supplier, sugg["article"])
+                        st.rerun()
+                
+                with col2:
+                    st.markdown(f"<span style='color:{score_color}; font-weight:bold;'>{sugg['score']}</span>", unsafe_allow_html=True)
+    
+    # ============================================
+    # FEATURE 4: BULK ARTICLE SEARCH
+    # ============================================
+    st.subheader("📁 Bulk Article Search")
+    
+    with st.expander("📤 Upload CSV/Excel with multiple articles", expanded=False):
+        st.info("Upload a file containing article numbers to search multiple articles at once")
+        
+        uploaded_file = st.file_uploader(
+            "Choose a file (CSV or Excel)",
+            type=['csv', 'xlsx', 'xls'],
+            key=f"{client}_bulk_upload"
+        )
+        
+        if uploaded_file is not None:
+            try:
+                # Read the file
+                if uploaded_file.name.endswith('.csv'):
+                    bulk_df = pd.read_csv(uploaded_file)
+                else:
+                    bulk_df = pd.read_excel(uploaded_file)
+                
+                st.success(f"✅ File loaded successfully! Found {len(bulk_df)} rows")
+                
+                # Show file preview
+                with st.expander("📊 File Preview"):
+                    st.dataframe(bulk_df.head(), use_container_width=True)
+                
+                # Find article column
+                article_columns = []
+                for col in bulk_df.columns:
+                    col_lower = str(col).lower()
+                    if any(keyword in col_lower for keyword in ['article', 'item', 'code', 'sku', 'product']):
+                        article_columns.append(col)
+                
+                if article_columns:
+                    selected_column = st.selectbox(
+                        "Select column containing article numbers:",
+                        article_columns,
+                        key=f"{client}_article_column"
+                    )
+                    
+                    # Get unique articles
+                    articles = bulk_df[selected_column].dropna().unique()
+                    st.info(f"Found {len(articles)} unique article numbers")
+                    
+                    if st.button("🔍 Search All Articles", type="primary", key=f"{client}_bulk_search"):
+                        bulk_results = []
+                        not_found = []
+                        
+                        with st.spinner(f"Searching {len(articles)} articles..."):
+                            for article in articles:
+                                article_str = str(article).strip()
+                                if article_str in DATA[supplier]:
+                                    article_data = DATA[supplier][article_str]
+                                    if article_data.get('prices'):
+                                        avg_price = sum(article_data['prices']) / len(article_data['prices'])
+                                        min_price = min(article_data['prices'])
+                                        max_price = max(article_data['prices'])
+                                    else:
+                                        avg_price = min_price = max_price = None
+                                    
+                                    bulk_results.append({
+                                        'Article': article_str,
+                                        'Product_Name': article_data['names'][0] if article_data['names'] else 'N/A',
+                                        'Records': len(article_data.get('orders', [])),
+                                        'Min_Price': min_price,
+                                        'Max_Price': max_price,
+                                        'Avg_Price': avg_price,
+                                        'Status': '✅ Found'
+                                    })
+                                else:
+                                    not_found.append(article_str)
+                                    bulk_results.append({
+                                        'Article': article_str,
+                                        'Product_Name': 'N/A',
+                                        'Records': 0,
+                                        'Min_Price': None,
+                                        'Max_Price': None,
+                                        'Avg_Price': None,
+                                        'Status': '❌ Not Found'
+                                    })
+                        
+                        # Display results
+                        results_df = pd.DataFrame(bulk_results)
+                        
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            found_count = len([r for r in bulk_results if r['Status'] == '✅ Found'])
+                            st.metric("Articles Found", found_count)
+                        with col2:
+                            st.metric("Articles Not Found", len(not_found))
+                        
+                        st.subheader("📊 Bulk Search Results")
+                        st.dataframe(results_df, use_container_width=True)
+                        
+                        # Export results
+                        st.subheader("📤 Export Results")
+                        csv = results_df.to_csv(index=False)
+                        st.download_button(
+                            label="📥 Download Results CSV",
+                            data=csv,
+                            file_name=f"{client}_bulk_search_{datetime.now().strftime('%Y%m%d')}.csv",
+                            mime="text/csv",
+                            use_container_width=True
+                        )
+                        
+                        if not_found:
+                            with st.expander("❌ Articles Not Found"):
+                                st.write(", ".join(not_found))
+                else:
+                    st.error("Could not find article number column in the file. Please ensure your file has a column with article numbers.")
+                    
+            except Exception as e:
+                st.error(f"Error processing file: {str(e)}")
+    
+    # ============================================
+    # ORIGINAL SEARCH FORM (KEPT FOR BACKWARD COMPATIBILITY)
+    # ============================================
+    st.subheader("🔍 Advanced Search (Original)")
     
     # Use a form for Enter key support
     with st.form(key=f"{client}_search_form"):
@@ -946,23 +1524,12 @@ def cdc_dashboard(client):
         submitted = st.form_submit_button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary")
         
         if submitted:
-            handle_search(article, product, hs_code, supplier, DATA, client)
-    
-    # Auto-suggestions (keep outside form so they're always visible)
-    search_term = article or product or hs_code
-    if search_term:
-        suggestions = get_suggestions(search_term, supplier, DATA)
-        if suggestions:
-            st.markdown("**💡 Quick Suggestions:**")
-            for i, suggestion in enumerate(suggestions[:4]):
-                with st.form(key=f"{client}_form_{i}"):
-                    if st.form_submit_button(suggestion["display"], use_container_width=True):
-                        st.session_state.search_results = {
-                            "article": suggestion["value"],
-                            "supplier": supplier,
-                            "client": client
-                        }
-                        st.rerun()
+            search_term = article or product or hs_code
+            if search_term:
+                # Add to search history
+                add_to_search_history(search_term, client, supplier)
+                
+                handle_search(article, product, hs_code, supplier, DATA, client)
 
     # Display results from session state
     if st.session_state.search_results and st.session_state.search_results.get("client") == client:
@@ -1024,6 +1591,8 @@ def handle_search(article, product, hs_code, supplier, data, client):
         return
     
     found = False
+    found_article = None
+    
     for article_num, article_data in data[supplier].items():
         article_match = article and article == article_num
         product_match = product and any(product.lower() in name.lower() for name in article_data['names'])
@@ -1041,10 +1610,16 @@ def handle_search(article, product, hs_code, supplier, data, client):
             # Prepare export data
             st.session_state.export_data = create_export_data(article_data, article_num, supplier, client)
             found = True
+            found_article = article_num
             break
     
-    if not found:
+    if found:
+        # Add to search history with the found article
+        add_to_search_history(search_term, client, supplier, found_article)
+    else:
         st.error(f"❌ No results found for '{search_term}' in {supplier}")
+        # Still add to history (not found searches)
+        add_to_search_history(search_term, client, supplier)
 
 def create_export_data(article_data, article, supplier, client):
     """Create export data in different formats - UPDATED WITH YOUR HEADERS"""
@@ -1071,7 +1646,7 @@ def create_export_data(article_data, article, supplier, client):
     return pd.DataFrame(export_data)
 
 def display_from_session_state(data, client):
-    """Display search results with NEW CARD DESIGN"""
+    """Display search results with NEW CARD DESIGN AND FAVORITES FEATURE"""
     results = st.session_state.search_results
     article = results["article"]
     supplier = results["supplier"]
@@ -1082,7 +1657,34 @@ def display_from_session_state(data, client):
         
     article_data = data[supplier][article]
     
-    st.success(f"✅ **Article {article}** found in **{supplier}** for **{client}**")
+    # ============================================
+    # FEATURE 3: SAVED SEARCHES/FAVORITES
+    # ============================================
+    # Get search term from session state
+    search_term = ""
+    for key in [f"{client}_article", f"{client}_product", f"{client}_hscode", f"{client}_smart_search"]:
+        if key in st.session_state:
+            search_term = st.session_state[key]
+            if search_term:
+                break
+    
+    # Check if this search is favorited
+    is_favorited = is_search_favorited(search_term, client, supplier)
+    
+    # Favorites button
+    col1, col2 = st.columns([4, 1])
+    with col1:
+        st.success(f"✅ **Article {article}** found in **{supplier}** for **{client}**")
+    with col2:
+        if is_favorited:
+            if st.button("⭐ Remove Favorite", key="remove_fav", use_container_width=True):
+                remove_search_from_favorites(search_term, client, supplier)
+                st.rerun()
+        else:
+            if st.button("☆ Add to Favorites", key="add_fav", use_container_width=True):
+                if save_search_to_favorites(search_term, client, supplier, article):
+                    st.success("⭐ Added to favorites!")
+                    st.rerun()
     
     # Product names - SHOW ONLY UNIQUE NAMES
     st.subheader("📝 Product Names")
@@ -1158,6 +1760,38 @@ def display_from_session_state(data, client):
             </div>
             """
             st.markdown(order_details, unsafe_allow_html=True)
+    
+    # ============================================
+    # FEATURE 2: SEARCH HISTORY DISPLAY
+    # ============================================
+    # Show recent searches for this client
+    if st.session_state.get('search_history'):
+        client_history = [
+            h for h in st.session_state.search_history 
+            if h.get('client') == client and h.get('supplier') == supplier
+        ][:3]  # Show last 3 for this client/supplier
+        
+        if client_history:
+            st.subheader("🕐 Recent Searches for this Client")
+            for i, history_item in enumerate(client_history):
+                time_ago = format_time_ago(history_item['timestamp'])
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    if st.button(
+                        f"{history_item['search_term']}",
+                        key=f"recent_{i}",
+                        use_container_width=True,
+                        help=f"Searched {time_ago}"
+                    ):
+                        st.session_state[f"{client}_article"] = history_item['search_term']
+                        st.session_state.search_results = {
+                            "article": history_item.get('article_num', history_item['search_term']),
+                            "supplier": supplier,
+                            "client": client
+                        }
+                        st.rerun()
+                with col2:
+                    st.caption(time_ago)
     
     # EXPORT SECTION
     st.markdown('<div class="export-section">', unsafe_allow_html=True)
@@ -1240,6 +1874,10 @@ def convert_df_to_excel(df):
         df.to_excel(writer, index=False, sheet_name='Price_History')
     processed_data = output.getvalue()
     return processed_data
+
+# ============================================
+# KEEP ALL OTHER FUNCTIONS AS THEY WERE
+# ============================================
 
 def prices_tab():
     """NEW: All Customers Prices Tab"""
@@ -3064,7 +3702,9 @@ def load_palletizing_data(client):
         st.error(f"Error loading palletizing data for {client}: {str(e)}")
         return pd.DataFrame()
 
-# Run the main dashboard
+# ============================================
+# MAIN EXECUTION
+# ============================================
 if __name__ == "__main__":
     if not check_login():
         login_page()
