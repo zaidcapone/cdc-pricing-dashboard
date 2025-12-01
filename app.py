@@ -921,21 +921,6 @@ def cdc_dashboard(client):
     DATA = get_google_sheets_data(client)
     st.success(f"✅ Connected to Google Sheets - Live Data for {client}!")
     
-# ============ DEBUG CODE ============
-st.write("🔍 **Debug: Checking data structure...**")
-st.write(f"Type of DATA: {type(DATA)}")
-st.write(f"Keys in DATA: {list(DATA.keys())}")
-
-if 'Backaldrin' in DATA:
-    st.write(f"Backaldrin type: {type(DATA['Backaldrin'])}")
-    if DATA['Backaldrin']:
-        articles = list(DATA['Backaldrin'].keys())
-        st.write(f"Number of articles in Backaldrin: {len(articles)}")
-        # Show what columns were actually loaded
-        backaldrin_df = load_sheet_data(f"Backaldrin_{client}")
-        st.write(f"Actual columns in Backaldrin_{client}: {list(backaldrin_df.columns)}")
-    # ============ END DEBUG CODE ============
-
     # Refresh button
     if st.button("🔄 Refresh Data", use_container_width=True, type="secondary", key=f"{client}_refresh"):
         st.rerun()
@@ -2145,9 +2130,6 @@ def price_intelligence_tab():
     st.info("🔍 **Search across selected clients to compare pricing strategies and identify opportunities**")
     
     # Show only the clients that the current user has access to
-    available_clients = st.session_state.user_clients
-    
-    # Client selection - Show only user's accessible clients
     available_clients = st.session_state.user_clients
     
     # User-friendly message about client access
