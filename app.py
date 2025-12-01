@@ -50,11 +50,10 @@ def get_google_sheets_data(client="CDC"):
             if df.empty:
                 return result
                 
-            # Use your actual column names from the sheet
+            # Use your exact column names from the sheet
             for _, row in df.iterrows():
-                # Get article number - try multiple possible column names
-                article = (row.get('article_number') or row.get('Article_Number') or 
-                          row.get('Article') or row.get('article') or '')
+                # Get article number - using your exact column name
+                article = str(row.get('article_number', '')).strip()
                 if not article:
                     continue
                     
@@ -65,15 +64,13 @@ def get_google_sheets_data(client="CDC"):
                         'orders': []
                     }
                 
-                # Add product name - try multiple possible column names
-                product_name = (row.get('product_name') or row.get('Product_Name') or 
-                               row.get('Product') or row.get('product') or '')
+                # Add product name - using your exact column name
+                product_name = str(row.get('product_name', '')).strip()
                 if product_name and product_name not in result[article]['names']:
                     result[article]['names'].append(product_name)
                 
-                # Add price if available - try multiple possible column names
-                price = (row.get('price_per_') or row.get('price_per_kg') or 
-                        row.get('Price') or row.get('price') or '')
+                # Add price if available - using your exact column name
+                price = str(row.get('price_per_', '')).strip()
                 if price:
                     try:
                         price_float = float(price)
@@ -81,19 +78,19 @@ def get_google_sheets_data(client="CDC"):
                     except (ValueError, TypeError):
                         pass
                 
-                # Add order details with your actual column names
+                # Add order details with your exact column names
                 order_data = {
-                    'order_no': row.get('order_number') or row.get('Order_Number') or row.get('Order') or '',
-                    'date': row.get('order_date') or row.get('Date') or '',
-                    'year': row.get('year') or row.get('Year') or '',
+                    'order_no': str(row.get('order_number', '')).strip(),
+                    'date': str(row.get('order_date', '')).strip(),
+                    'year': str(row.get('year', '')).strip(),
                     'product_name': product_name,
                     'article': article,
-                    'hs_code': row.get('hs_code') or row.get('HS_Code') or '',
-                    'packaging': row.get('packaging') or row.get('Packaging') or '',
-                    'quantity': row.get('quantity') or row.get('Quantity') or '',
-                    'total_weight': row.get('total_weight') or row.get('Total_Weight') or '',
+                    'hs_code': str(row.get('hs_code', '')).strip(),
+                    'packaging': str(row.get('packaging', '')).strip(),
+                    'quantity': str(row.get('quantity', '')).strip(),
+                    'total_weight': str(row.get('total_weight', '')).strip(),
                     'price': price,
-                    'total_price': row.get('total_price') or row.get('Total_Price') or ''
+                    'total_price': str(row.get('total_price', '')).strip()
                 }
                 result[article]['orders'].append(order_data)
             
@@ -2452,23 +2449,23 @@ def get_google_sheets_data(client="CDC"):
         return {"Backaldrin": {}, "Bateel": {}}
 
 def create_export_data(article_data, article, supplier, client):
-    """Create export data in different formats - UPDATED WITH NEW COLUMNS"""
+    """Create export data in different formats - UPDATED WITH YOUR HEADERS"""
     # Create DataFrame for export
     export_data = []
     for order in article_data['orders']:
         export_data.append({
             'Client': client,
-            'Order_Number': order['order_no'],
-            'Date': order['date'],
-            'Year': order['year'],
-            'Product_Name': order['product_name'],
-            'Article_Number': article,
-            'HS_Code': order['hs_code'],
-            'Packaging': order['packaging'],
-            'Quantity': order['quantity'],
-            'Total_Weight': order['total_weight'],
-            'Price_per_kg': order['price'],
-            'Total_Price': order['total_price'],
+            'order_number': order.get('order_no', ''),
+            'order_date': order.get('date', ''),
+            'year': order.get('year', ''),
+            'product_name': order.get('product_name', ''),
+            'article_number': article,
+            'hs_code': order.get('hs_code', ''),
+            'packaging': order.get('packaging', ''),
+            'quantity': order.get('quantity', ''),
+            'total_weight': order.get('total_weight', ''),
+            'price_per_': order.get('price', ''),
+            'total_price': order.get('total_price', ''),
             'Supplier': supplier,
             'Export_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
@@ -2674,35 +2671,35 @@ def display_from_session_state(data, client):
         """, unsafe_allow_html=True)
     
     # UPDATED: NEW CARD DESIGN
-    st.subheader("💵 Historical Prices with Order Details")
-    cols = st.columns(2)
-    for i, order in enumerate(article_data['orders']):
-        with cols[i % 2]:
-            # NEW CARD DESIGN: Order Number as header, then date, then price, then details
-            order_details = f"""
-            <div class="price-box">
-                <div style="font-size: 1.4em; font-weight: bold; border-bottom: 2px solid white; padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
-                    📦 {order['order_no']}
-                </div>
-                <div style="font-size: 1.1em; margin-bottom: 0.5rem;">
-                    <strong>📅 Date:</strong> {order['date']}
-                </div>
-                <div style="font-size: 1.3em; font-weight: bold; color: #FEF3C7; margin-bottom: 0.8rem;">
-                    ${order['price']:.2f}/kg
-                </div>
-                <div class="order-info">
-                    <strong>📦 Product:</strong> {order['product_name']}<br>
-                    <strong>🔢 Article:</strong> {order['article']}<br>
-                    {f"<strong>🏷️ Year:</strong> {order['year']}<br>" if order['year'] else ""}
-                    {f"<strong>📊 HS Code:</strong> {order['hs_code']}<br>" if order['hs_code'] else ""}
-                    {f"<strong>📦 Packaging:</strong> {order['packaging']}<br>" if order['packaging'] else ""}
-                    {f"<strong>🔢 Quantity:</strong> {order['quantity']}<br>" if order['quantity'] else ""}
-                    {f"<strong>⚖️ Total Weight:</strong> {order['total_weight']}<br>" if order['total_weight'] else ""}
-                    {f"<strong>💰 Total Price:</strong> {order['total_price']}<br>" if order['total_price'] else ""}
-                </div>
+st.subheader("💵 Historical Prices with Order Details")
+cols = st.columns(2)
+for i, order in enumerate(article_data['orders']):
+    with cols[i % 2]:
+        # NEW CARD DESIGN: Order Number as header, then date, then price, then details
+        order_details = f"""
+        <div class="price-box">
+            <div style="font-size: 1.4em; font-weight: bold; border-bottom: 2px solid white; padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                📦 {order.get('order_no', 'N/A')}
             </div>
-            """
-            st.markdown(order_details, unsafe_allow_html=True)
+            <div style="font-size: 1.1em; margin-bottom: 0.5rem;">
+                <strong>📅 Date:</strong> {order.get('date', 'N/A')}
+            </div>
+            <div style="font-size: 1.3em; font-weight: bold; color: #FEF3C7; margin-bottom: 0.8rem;">
+                ${order.get('price', 'N/A')}/kg
+            </div>
+            <div class="order-info">
+                <strong>📦 Product:</strong> {order.get('product_name', 'N/A')}<br>
+                <strong>🔢 Article:</strong> {order.get('article', 'N/A')}<br>
+                {f"<strong>📅 Year:</strong> {order.get('year', 'N/A')}<br>" if order.get('year') else ""}
+                {f"<strong>🏷️ HS Code:</strong> {order.get('hs_code', 'N/A')}<br>" if order.get('hs_code') else ""}
+                {f"<strong>📦 Packaging:</strong> {order.get('packaging', 'N/A')}<br>" if order.get('packaging') else ""}
+                {f"<strong>🔢 Quantity:</strong> {order.get('quantity', 'N/A')}<br>" if order.get('quantity') else ""}
+                {f"<strong>⚖️ Total Weight:</strong> {order.get('total_weight', 'N/A')}<br>" if order.get('total_weight') else ""}
+                {f"<strong>💰 Total Price:</strong> {order.get('total_price', 'N/A')}<br>" if order.get('total_price') else ""}
+            </div>
+        </div>
+        """
+        st.markdown(order_details, unsafe_allow_html=True)
     
     # EXPORT SECTION
     st.markdown('<div class="export-section">', unsafe_allow_html=True)
