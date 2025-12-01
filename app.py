@@ -929,18 +929,26 @@ def cdc_dashboard(client):
     st.subheader("Select Supplier")
     supplier = st.radio("", ["Backaldrin", "Bateel"], horizontal=True, label_visibility="collapsed", key=f"{client}_supplier")
 
-    # Search section - THREE SEARCH OPTIONS
+        # Search section - THREE SEARCH OPTIONS
     st.subheader("🔍 Search Historical Prices")
     
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        article = st.text_input("**ARTICLE NUMBER**", placeholder="e.g., 1-366, 1-367...", key=f"{client}_article")
-    with col2:
-        product = st.text_input("**PRODUCT NAME**", placeholder="e.g., Moist Muffin, Date Mix...", key=f"{client}_product")
-    with col3:
-        hs_code = st.text_input("**HS CODE**", placeholder="e.g., 1901200000, 180690...", key=f"{client}_hscode")
-
-    # Auto-suggestions
+    # Use a form for Enter key support
+    with st.form(key=f"{client}_search_form"):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            article = st.text_input("**ARTICLE NUMBER**", placeholder="e.g., 1-366, 1-367...", key=f"{client}_article")
+        with col2:
+            product = st.text_input("**PRODUCT NAME**", placeholder="e.g., Moist Muffin, Date Mix...", key=f"{client}_product")
+        with col3:
+            hs_code = st.text_input("**HS CODE**", placeholder="e.g., 1901200000, 180690...", key=f"{client}_hscode")
+        
+        # Search button - now responds to Enter key
+        submitted = st.form_submit_button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary")
+        
+        if submitted:
+            handle_search(article, product, hs_code, supplier, DATA, client)
+    
+    # Auto-suggestions (keep outside form so they're always visible)
     search_term = article or product or hs_code
     if search_term:
         suggestions = get_suggestions(search_term, supplier, DATA)
@@ -955,10 +963,6 @@ def cdc_dashboard(client):
                             "client": client
                         }
                         st.rerun()
-    
-    # Manual search - UPDATED: Added hs_code parameter
-    if st.button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary", key=f"{client}_search"):
-        handle_search(article, product, hs_code, supplier, DATA, client)
 
     # Display results from session state
     if st.session_state.search_results and st.session_state.search_results.get("client") == client:
