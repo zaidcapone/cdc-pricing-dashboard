@@ -2499,7 +2499,7 @@ def cdc_dashboard(client):
         st.rerun()
 
     # Supplier selection - CLEAN VERSION (no white box)
-    st.subheader("🏢 Select Supplier")
+    st.subheader("Select Supplier")
     supplier = st.radio("", ["Backaldrin", "Bateel"], horizontal=True, label_visibility="collapsed", key=f"{client}_supplier")
 
     # Search section - THREE SEARCH OPTIONS
