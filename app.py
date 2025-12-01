@@ -929,7 +929,7 @@ def cdc_dashboard(client):
     st.subheader("Select Supplier")
     supplier = st.radio("", ["Backaldrin", "Bateel"], horizontal=True, label_visibility="collapsed", key=f"{client}_supplier")
 
-        # Search section - THREE SEARCH OPTIONS
+    # Search section - THREE SEARCH OPTIONS WITH ENTER KEY SUPPORT
     st.subheader("🔍 Search Historical Prices")
     
     # Use a form for Enter key support
@@ -2347,21 +2347,27 @@ def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="
                     if is_worst:
                         st.error("⚠️ HIGHEST PRICE")
                 
-                # Show detailed price history
-with st.expander(f"View price history for {client_name}"):
-    cols = st.columns(2)
-    for i, order in enumerate(result['orders']):
-        with cols[i % 2]:
-            st.markdown(f"""
-            <div class="price-box">
-                <div style="font-size: 1.1em; font-weight: bold;">${order['price']:.2f}/kg</div>
-                <div class="order-info">
-                    <strong>Order:</strong> {order['order_no']}<br>
-                    <strong>Date:</strong> {order['date']}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
+                # Show detailed price history - FIXED PRICE FORMATTING
+                with st.expander(f"View price history for {client_name}"):
+                    cols = st.columns(2)
+                    for i, order in enumerate(result['orders']):
+                        with cols[i % 2]:
+                            # Safely format price (handle string or float)
+                            try:
+                                price_value = float(order['price']) if order['price'] else 0
+                                price_display = f"${price_value:.2f}"
+                            except (ValueError, TypeError):
+                                price_display = f"${order['price']}" if order['price'] else "$N/A"
+                            
+                            st.markdown(f"""
+                            <div class="price-box">
+                                <div style="font-size: 1.1em; font-weight: bold;">{price_display}/kg</div>
+                                <div class="order-info">
+                                    <strong>Order:</strong> {order['order_no']}<br>
+                                    <strong>Date:</strong> {order['date']}
+                                </div>
+                            </div>
+                            """, unsafe_allow_html=True)
             else:
                 # Show N/A for clients without data
                 st.warning(f"**{client_name} - {supplier_name}**: ❌ No pricing data available for this article")
