@@ -2491,6 +2491,21 @@ def cdc_dashboard(client):
     DATA = get_google_sheets_data(client)
     st.success(f"✅ Connected to Google Sheets - Live Data for {client}!")
 
+    # Load data directly from Google Sheets
+DATA = get_google_sheets_data(client)
+st.success(f"✅ Connected to Google Sheets - Live Data for {client}!")
+
+# ADD THIS DEBUG CODE
+st.write("🔍 **Debug: Checking data structure...**")
+st.write(f"Backaldrin keys: {list(DATA['Backaldrin'].keys())[:5] if DATA['Backaldrin'] else 'No data'}")
+if DATA['Backaldrin']:
+    for article, article_data in list(DATA['Backaldrin'].items())[:3]:  # Check first 3
+        st.write(f"Article '{article}': Type = {type(article_data)}")
+        if isinstance(article_data, dict):
+            st.write(f"  Has 'orders' key: {'orders' in article_data}")
+            if 'orders' in article_data:
+                st.write(f"  Number of orders: {len(article_data['orders'])}")
+
     # Refresh button
     if st.button("🔄 Refresh Data", use_container_width=True, type="secondary", key=f"{client}_refresh"):
         st.rerun()
