@@ -726,8 +726,7 @@ def main_dashboard():
     # Header
     st.markdown("""
     <div class="main-header">
-        <h1>🏢 Backaldrin Arab Jordan Dashboard</h1>
-        <p>Centralized Management • Real-time Data • Professional Analytics</p>
+        <h1>Backaldrin Arab Jordan Dashboard</h1>
     </div>
     """, unsafe_allow_html=True)
     
@@ -2487,8 +2486,7 @@ def cdc_dashboard(client):
     
     st.markdown(f"""
     <div class="cdc-header">
-        <h2 style="margin:0;">📊 {client} Pricing Dashboard</h2>
-        <p style="margin:0; opacity:0.9;">Backaldrin & Bateel • Live Google Sheets Data • Export Ready</p>
+        <h2 style="margin:0;"> {client} Pricing Dashboard</h2>
     </div>
     """, unsafe_allow_html=True)
 
