@@ -2612,7 +2612,7 @@ def etd_tab():
                             else:
                                 st.write(f"**{month.strip()}**\n0 orders")
                         except:
-                            st.write(f"**{month.strip**}")
+                            st.write(f"**{month.strip()}**\n–")
 
         # Search and Filter Section
         st.subheader("🔍 Filter & Search Orders")
