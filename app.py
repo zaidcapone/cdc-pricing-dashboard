@@ -691,6 +691,7 @@ def display_favorites_sidebar():
         if st.sidebar.button("View All Favorites", use_container_width=True):
             st.session_state.show_favorites = True
 
+        
 # ============================================
 # CACHED FUNCTIONS (ORIGINAL)
 # ============================================
