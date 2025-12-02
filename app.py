@@ -222,35 +222,6 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 1rem;
     }
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 2px;
-        overflow-x: auto;
-        white-space: nowrap;
-        flex-wrap: nowrap;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        white-space: pre-wrap;
-        background-color: #F3F4F6;
-        border-radius: 4px 4px 0px 0px;
-        gap: 1px;
-        padding-top: 10px;
-        padding-bottom: 10px;
-        color: #000000 !important;
-    }
-    .stTabs [data-baseweb="tab"] span {
-        color: #000000 !important;
-    }
-    .stTabs [data-baseweb="tab"]:hover {
-        background-color: #E5E7EB;
-    }
-    .stTabs [data-baseweb="tab"][aria-selected="true"] {
-        background-color: #991B1B !important;
-        color: white !important;
-    }
-    .stTabs [data-baseweb="tab"][aria-selected="true"] span {
-        color: white !important;
-    }
     .search-suggestion {
         padding: 0.5rem 1rem;
         cursor: pointer;
@@ -285,6 +256,78 @@ st.markdown("""
         font-size: 0.75rem;
         color: #6B7280;
         margin-left: 0.5rem;
+    }
+    /* Sidebar tabs styling */
+    .sidebar-tab {
+        padding: 0.75rem 1rem;
+        margin: 0.25rem 0;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 500;
+        border-left: 4px solid transparent;
+    }
+    .sidebar-tab:hover {
+        background-color: #F3F4F6;
+    }
+    .sidebar-tab.active {
+        background-color: #991B1B;
+        color: white;
+        border-left: 4px solid #FEF3C7;
+    }
+    /* Header styling */
+    .top-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 0;
+        margin-bottom: 1.5rem;
+        border-bottom: 2px solid #E5E7EB;
+    }
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    .header-icons {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    .icon-button {
+        padding: 0.5rem;
+        border-radius: 6px;
+        background: #F3F4F6;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .icon-button:hover {
+        background: #E5E7EB;
+    }
+    /* Favorites modal */
+    .favorites-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        z-index: 1000;
+        min-width: 400px;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 999;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -540,6 +583,8 @@ def initialize_favorites():
         st.session_state.favorite_searches = []
     if 'show_favorites' not in st.session_state:
         st.session_state.show_favorites = False
+    if 'show_favorites_modal' not in st.session_state:
+        st.session_state.show_favorites_modal = False
 
 def save_search_to_favorites(search_term, client, supplier, article_num=None):
     """Save a search to favorites"""
@@ -586,50 +631,66 @@ def is_search_favorited(search_term, client, supplier):
             return True
     return False
 
-def display_favorites_sidebar():
-    """Display favorites in sidebar"""
-    if not st.session_state.get('favorite_searches'):
-        st.sidebar.markdown("### ⭐ Favorites")
-        st.sidebar.info("No favorites yet. Star a search to save it!")
-        return
-    
-    st.sidebar.markdown("### ⭐ Favorites")
-    
-    for i, fav in enumerate(st.session_state.favorite_searches[:5]):
-        display_text = f"{fav['search_term']}"
-        if fav.get('article_num'):
-            display_text += f" → {fav['article_num']}"
+def display_favorites_modal():
+    """Display favorites in a modal"""
+    if st.session_state.get('show_favorites_modal'):
+        # Create modal overlay
+        st.markdown('<div class="modal-overlay"></div>', unsafe_allow_html=True)
         
-        col1, col2, col3 = st.sidebar.columns([3, 1, 1])
+        # Create modal content
+        st.markdown("""
+        <div class="favorites-modal">
+            <h2 style="margin-top: 0; color: #991B1B;">⭐ Favorite Searches</h2>
+        """, unsafe_allow_html=True)
+        
+        if not st.session_state.get('favorite_searches'):
+            st.write("No favorites yet. Star a search to save it!")
+        else:
+            for i, fav in enumerate(st.session_state.favorite_searches):
+                display_text = f"{fav['search_term']}"
+                if fav.get('article_num'):
+                    display_text += f" → {fav['article_num']}"
+                
+                col1, col2, col3 = st.columns([3, 1, 1])
+                with col1:
+                    if st.button(
+                        display_text, 
+                        key=f"fav_modal_{i}",
+                        use_container_width=True,
+                        help=f"{fav['client']} • {fav['supplier']}"
+                    ):
+                        st.session_state[f"{fav['client']}_article"] = fav['search_term']
+                        st.session_state[f"{fav['client']}_supplier"] = fav['supplier']
+                        st.session_state.search_results = {
+                            "article": fav.get('article_num', fav['search_term']),
+                            "supplier": fav['supplier'],
+                            "client": fav['client']
+                        }
+                        st.session_state.show_favorites_modal = False
+                        st.rerun()
+                
+                with col2:
+                    if st.button("📝", key=f"fav_note_modal_{i}", help="Edit notes"):
+                        st.session_state.editing_favorite = i
+                        st.session_state.editing_favorite_notes = fav.get('notes', '')
+                
+                with col3:
+                    if st.button("🗑️", key=f"fav_remove_modal_{i}", help="Remove favorite"):
+                        remove_search_from_favorites(fav['search_term'], fav['client'], fav['supplier'])
+                        st.rerun()
+        
+        col1, col2 = st.columns(2)
         with col1:
-            if st.sidebar.button(
-                display_text, 
-                key=f"fav_sidebar_{i}",
-                use_container_width=True,
-                help=f"{fav['client']} • {fav['supplier']}"
-            ):
-                st.session_state[f"{fav['client']}_article"] = fav['search_term']
-                st.session_state[f"{fav['client']}_supplier"] = fav['supplier']
-                st.session_state.search_results = {
-                    "article": fav.get('article_num', fav['search_term']),
-                    "supplier": fav['supplier'],
-                    "client": fav['client']
-                }
+            if st.button("Close", use_container_width=True):
+                st.session_state.show_favorites_modal = False
                 st.rerun()
-        
         with col2:
-            if st.sidebar.button("📝", key=f"fav_note_{i}", help="Edit notes"):
-                st.session_state.editing_favorite = i
-                st.session_state.editing_favorite_notes = fav.get('notes', '')
-        
-        with col3:
-            if st.sidebar.button("🗑️", key=f"fav_remove_{i}", help="Remove favorite"):
-                remove_search_from_favorites(fav['search_term'], fav['client'], fav['supplier'])
+            if st.button("Clear All Favorites", use_container_width=True, type="secondary"):
+                st.session_state.favorite_searches = []
+                st.success("All favorites cleared!")
                 st.rerun()
-    
-    if len(st.session_state.favorite_searches) > 5:
-        if st.sidebar.button("View All Favorites", use_container_width=True):
-            st.session_state.show_favorites = True
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # ============================================
 # CACHED FUNCTIONS
@@ -1026,6 +1087,8 @@ def check_login():
         st.session_state.username = ""
     if 'user_clients' not in st.session_state:
         st.session_state.user_clients = []
+    if 'active_tab' not in st.session_state:
+        st.session_state.active_tab = "CLIENTS"
     
     return st.session_state.logged_in
 
@@ -1055,136 +1118,181 @@ def login_page():
     st.markdown('</div>', unsafe_allow_html=True)
 
 def logout_button():
-    """Logout button in sidebar"""
-    if st.sidebar.button("🚪 Logout", use_container_width=True):
+    """Logout button in header"""
+    if st.button("🚪 Logout", key="logout_header"):
         st.session_state.logged_in = False
         st.session_state.username = ""
         st.session_state.user_clients = []
         st.rerun()
 
 def main_dashboard():
-    """Main dashboard with tabs and sidebar announcements"""
+    """Main dashboard with tabs in sidebar"""
     
-    # Display user info in sidebar
-    st.sidebar.markdown(f"**👤 Welcome, {st.session_state.username}**")
-    st.sidebar.markdown(f"**🏢 Access to:** {', '.join(st.session_state.user_clients)}")
-    
-    # Initialize features
-    initialize_search_history()
-    initialize_favorites()
-    
-    # Cache Management Section
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### ⚡ Performance")
-    
-    col1, col2 = st.sidebar.columns(2)
-    
+    # Top Header
+    col1, col2 = st.columns([3, 1])
     with col1:
-        if st.button("🔄 Clear Cache", use_container_width=True):
-            st.cache_data.clear()
-            st.success("✅ Cache cleared! Data will reload on next request.")
-    
+        st.markdown(f"### 👤 Welcome, {st.session_state.username}")
     with col2:
-        if st.button("🔄 Refresh All", use_container_width=True):
-            st.cache_data.clear()
-            st.rerun()
+        # Header icons
+        icon_col1, icon_col2, icon_col3 = st.columns(3)
+        with icon_col1:
+            if st.button("⭐", key="favorites_icon", help="Favorites"):
+                st.session_state.show_favorites_modal = True
+        with icon_col2:
+            if st.button("🔄", key="refresh_icon", help="Refresh"):
+                st.cache_data.clear()
+                st.rerun()
+        with icon_col3:
+            if st.button("🗑️", key="clear_cache_icon", help="Clear Cache"):
+                st.cache_data.clear()
+                st.success("✅ Cache cleared!")
+                st.rerun()
     
-    # Search History Sidebar
-    display_search_history_sidebar()
+    # Favorites Modal
+    display_favorites_modal()
     
-    # Favorites Sidebar
-    display_favorites_sidebar()
+    # Sidebar with tabs
+    with st.sidebar:
+        st.markdown("### 📋 Navigation")
+        
+        # Define tabs based on user role
+        if st.session_state.username in ["ceo", "admin"]:
+            tabs = [
+                "🏢 CLIENTS",
+                "💰 PRICES", 
+                "📋 NEW ORDERS",
+                "📅 ETD SHEET",
+                "⭐ CEO SPECIAL PRICES",
+                "💰 PRICE INTELLIGENCE",
+                "📦 PRODUCT CATALOG",
+                "📊 ORDERS MANAGEMENT",
+                "📦 PALLETIZING"
+            ]
+        else:
+            tabs = [
+                "🏢 CLIENTS",
+                "💰 PRICES", 
+                "📋 NEW ORDERS",
+                "📅 ETD SHEET",
+                "⭐ CEO SPECIAL PRICES",
+                "💰 PRICE INTELLIGENCE",
+                "📦 PRODUCT CATALOG",
+                "📊 ORDERS MANAGEMENT"
+            ]
+            if st.session_state.username in ["zaid", "Rotana", "Khalid"]:
+                tabs.append("📦 PALLETIZING")
+        
+        # Display tabs as clickable buttons
+        for tab in tabs:
+            is_active = st.session_state.get('active_tab', 'CLIENTS') == tab
+            button_label = tab
+            if is_active:
+                button_label = f"▶️ {tab}"
+            
+            if st.button(
+                button_label,
+                key=f"tab_{tab}",
+                use_container_width=True,
+                type="primary" if is_active else "secondary"
+            ):
+                st.session_state.active_tab = tab
+                st.rerun()
+        
+        st.markdown("---")
+        
+        # General Announcements
+        st.markdown("### 📢 General Announcements")
+        
+        announcements = [
+            "🚨 ETD is officially working!",
+            "📦 Working on palletizing",
+            "⭐ **SPECIAL OFFER**",
+            "🔔 **REMINDER**:",
+            "📊 **NEW FEATURE**: HS Code search now available across all clients",
+            "📦 **NEW**: Palletizing Calculator added!",
+            "💰 **NEW**: All Customers Prices tab added!",
+            "🤖 **NEW**: Smart Search with AI suggestions!",
+            "⭐ **NEW**: Save favorite searches!",
+            "📁 **NEW**: Bulk article search available!"
+        ]
+        
+        for announcement in announcements:
+            st.markdown(f"""
+            <div style="
+                background: linear-gradient(135deg, #F0F9FF, #E0F2FE);
+                padding: 0.8rem;
+                border-radius: 8px;
+                border-left: 4px solid #0EA5E9;
+                margin: 0.5rem 0;
+                font-size: 0.9em;
+                color: #1E293B;
+            ">
+                {announcement}
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Search History (kept in sidebar)
+        if st.session_state.get('search_history'):
+            st.markdown("---")
+            st.markdown("### 🔍 Recent Searches")
+            
+            for i, history_item in enumerate(st.session_state.search_history[:3]):
+                time_ago = format_time_ago(history_item['timestamp'])
+                
+                display_text = f"{history_item['search_term']}"
+                if history_item.get('article_num'):
+                    display_text += f" → {history_item['article_num']}"
+                
+                if st.button(
+                    f"{display_text[:30]}...",
+                    key=f"hist_{i}",
+                    use_container_width=True,
+                    help=f"{history_item['client']} • {history_item['supplier']} • {time_ago}"
+                ):
+                    st.session_state[f"{history_item['client']}_article"] = history_item['search_term']
+                    st.session_state[f"{history_item['client']}_supplier"] = history_item['supplier']
+                    st.session_state.search_results = {
+                        "article": history_item.get('article_num', history_item['search_term']),
+                        "supplier": history_item['supplier'],
+                        "client": history_item['client']
+                    }
+                    st.session_state.active_tab = "CLIENTS"
+                    st.rerun()
     
-    # General Announcements Section
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### 📢 General Announcements")
-    
-    announcements = [
-        "🚨 ETD is officially working!",
-        "📦 Working on palletizing",
-        "⭐ **SPECIAL OFFER**",
-        "🔔 **REMINDER**:",
-        "📊 **NEW FEATURE**: HS Code search now available across all clients",
-        "📦 **NEW**: Palletizing Calculator added!",
-        "💰 **NEW**: All Customers Prices tab added!",
-        "🤖 **NEW**: Smart Search with AI suggestions!",
-        "⭐ **NEW**: Save favorite searches!",
-        "📁 **NEW**: Bulk article search available!"
-    ]
-    
-    for announcement in announcements:
-        st.sidebar.markdown(f"""
-        <div style="
-            background: linear-gradient(135deg, #F0F9FF, #E0F2FE);
-            padding: 0.8rem;
-            border-radius: 8px;
-            border-left: 4px solid #0EA5E9;
-            margin: 0.5rem 0;
-            font-size: 0.9em;
-            color: #1E293B;
-        ">
-            {announcement}
-        </div>
-        """, unsafe_allow_html=True)
-    
-    logout_button()
-    
-    # Header
-    st.markdown("""
+    # Main content area based on active tab
+    st.markdown(f"""
     <div class="main-header">
         <h1>Backaldrin Arab Jordan Dashboard</h1>
+        <h3>{st.session_state.active_tab}</h3>
     </div>
     """, unsafe_allow_html=True)
     
-    # Create tabs
-    if st.session_state.username in ["ceo", "admin"]:
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
-            "🏢 CLIENTS", "💰 PRICES", "📋 NEW ORDERS", "📅 ETD SHEET", 
-            "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG",
-            "📊 ORDERS MANAGEMENT", "📦 PALLETIZING"
-        ])
-    else:
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-            "🏢 CLIENTS", "💰 PRICES", "📋 NEW ORDERS", "📅 ETD SHEET", 
-            "⭐ CEO SPECIAL PRICES", "💰 PRICE INTELLIGENCE", "📦 PRODUCT CATALOG",
-            "📊 ORDERS MANAGEMENT", "📦 PALLETIZING"
-        ])
-    
-    with tab1:
+    # Display the active tab content
+    if st.session_state.active_tab == "🏢 CLIENTS":
         clients_tab()
-    
-    with tab2:
+    elif st.session_state.active_tab == "💰 PRICES":
         prices_tab()
-        
-    with tab3:
+    elif st.session_state.active_tab == "📋 NEW ORDERS":
         new_orders_tab()
-        
-    with tab4:
+    elif st.session_state.active_tab == "📅 ETD SHEET":
         etd_tab()
-        
-    with tab5:
+    elif st.session_state.active_tab == "⭐ CEO SPECIAL PRICES":
         ceo_specials_tab()
-    
-    with tab6:
+    elif st.session_state.active_tab == "💰 PRICE INTELLIGENCE":
         price_intelligence_tab()
-
-    with tab7:
+    elif st.session_state.active_tab == "📦 PRODUCT CATALOG":
         product_catalog_tab()
-        
-    with tab8:
+    elif st.session_state.active_tab == "📊 ORDERS MANAGEMENT":
         orders_management_tab()
-        
-    # For admin/ceo users, add the Palletizing tab
-    if st.session_state.username in ["ceo", "admin"]:
-        with tab9:
-            palletizing_tab()
-    else:
-        # For regular users, add Palletizing tab in the 8th position
-        with tab8:
-            palletizing_tab()
+    elif st.session_state.active_tab == "📦 PALLETIZING":
+        palletizing_tab()
+    
+    # Logout button at bottom
+    st.markdown("---")
+    logout_button()
 
 # ============================================
-# TAB FUNCTIONS
+# TAB FUNCTIONS (UNCHANGED - KEPT AS IS)
 # ============================================
 
 def clients_tab():
@@ -2504,7 +2612,7 @@ def etd_tab():
                             else:
                                 st.write(f"**{month.strip()}**\n0 orders")
                         except:
-                            st.write(f"**{month.strip()}**\n–")
+                            st.write(f"**{month.strip**}")
 
         # Search and Filter Section
         st.subheader("🔍 Filter & Search Orders")
