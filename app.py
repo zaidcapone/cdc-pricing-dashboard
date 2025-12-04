@@ -1397,351 +1397,351 @@ def cdc_dashboard(client):
                 with col2:
                     st.markdown(f"<span style='color:{score_color}; font-weight:bold;'>{sugg['score']}</span>", unsafe_allow_html=True)
 
-    # ============================================
-    # 🔴 URGENT: CDC PI PRICE VALIDATION TOOL
-    # ============================================
-    st.subheader("🔴 CDC PI PRICE VALIDATION TOOL")
+# ============================================
+# 🔴 URGENT: CDC PI PRICE VALIDATION TOOL
+# ============================================
+st.subheader("🔴 CDC PI PRICE VALIDATION TOOL")
     
-    st.warning("""
-    **CRITICAL: Before sending PI to client, validate ALL prices here!**
+st.warning("""
+**CRITICAL: Before sending PI to client, validate ALL prices here!**
+
+**Steps:**
+1. Upload client's Excel/CSV with Article Numbers and Prices
+2. System compares each price with 2 latest historical prices
+3. You decide which historical price to use
+4. Download validated PI for sharing
+""")
+
+with st.expander("📤 UPLOAD CLIENT PI DRAFT (Excel/CSV)", expanded=True):
+    # Upload options
+    upload_method = st.radio(
+        "Upload Method:",
+        ["Upload File", "Paste Data"],
+        horizontal=True,
+        key="cdc_upload_method"
+    )
     
-    **Steps:**
-    1. Upload client's Excel/CSV with Article Numbers and Prices
-    2. System compares each price with 2 latest historical prices
-    3. You decide which historical price to use
-    4. Download validated PI for sharing
-    """)
+    pi_data = None
     
-    with st.expander("📤 UPLOAD CLIENT PI DRAFT (Excel/CSV)", expanded=True):
-        # Upload options
-        upload_method = st.radio(
-            "Upload Method:",
-            ["Upload File", "Paste Data"],
-            horizontal=True,
-            key="cdc_upload_method"
+    if upload_method == "Upload File":
+        uploaded_file = st.file_uploader(
+            "Choose client's PI draft file (Excel/CSV)",
+            type=['csv', 'xlsx', 'xls'],
+            key="cdc_pi_upload"
         )
         
-        pi_data = None
-        
-        if upload_method == "Upload File":
-            uploaded_file = st.file_uploader(
-                "Choose client's PI draft file (Excel/CSV)",
-                type=['csv', 'xlsx', 'xls'],
-                key="cdc_pi_upload"
-            )
-            
-            if uploaded_file is not None:
-                try:
-                    if uploaded_file.name.endswith('.csv'):
-                        pi_data = pd.read_csv(uploaded_file)
-                    else:
-                        pi_data = pd.read_excel(uploaded_file)
+        if uploaded_file is not None:
+            try:
+                if uploaded_file.name.endswith('.csv'):
+                    pi_data = pd.read_csv(uploaded_file)
+                else:
+                    pi_data = pd.read_excel(uploaded_file)
+                
+                st.success(f"✅ Loaded {len(pi_data)} items from client PI")
+                
+                # Show file preview
+                with st.expander("📊 Preview Client PI Items", expanded=False):
+                    st.dataframe(pi_data.head(10), use_container_width=True)
                     
-                    st.success(f"✅ Loaded {len(pi_data)} items from client PI")
-                    
-                    # Show file preview
-                    with st.expander("📊 Preview Client PI Items", expanded=False):
-                        st.dataframe(pi_data.head(10), use_container_width=True)
-                        
-                except Exception as e:
-                    st.error(f"❌ Error loading file: {str(e)}")
-                    st.info("Please ensure file has columns: Article Number, Product Name, Price, Quantity, etc.")
+            except Exception as e:
+                st.error(f"❌ Error loading file: {str(e)}")
+                st.info("Please ensure file has columns: Article Number, Product Name, Price, Quantity, etc.")
+    
+    else:  # Paste Data
+        pasted_data = st.text_area(
+            "Paste tabular data from Excel (copy-paste):",
+            height=200,
+            placeholder="Article\tProduct Name\tPrice\tQuantity\n1-366\tChocolate Chips\t25.50\t100\n1-367\tDate Mix\t30.75\t50",
+            key="cdc_paste_data"
+        )
         
-        else:  # Paste Data
-            pasted_data = st.text_area(
-                "Paste tabular data from Excel (copy-paste):",
-                height=200,
-                placeholder="Article\tProduct Name\tPrice\tQuantity\n1-366\tChocolate Chips\t25.50\t100\n1-367\tDate Mix\t30.75\t50",
-                key="cdc_paste_data"
-            )
-            
-            if pasted_data:
+        if pasted_data:
+            try:
+                from io import StringIO
+                pi_data = pd.read_csv(StringIO(pasted_data), sep='\t')
+                st.success(f"✅ Loaded {len(pi_data)} items from pasted data")
+            except:
                 try:
-                    from io import StringIO
-                    pi_data = pd.read_csv(StringIO(pasted_data), sep='\t')
+                    pi_data = pd.read_csv(StringIO(pasted_data), sep=',')
                     st.success(f"✅ Loaded {len(pi_data)} items from pasted data")
-                except:
-                    try:
-                        pi_data = pd.read_csv(StringIO(pasted_data), sep=',')
-                        st.success(f"✅ Loaded {len(pi_data)} items from pasted data")
-                    except Exception as e:
-                        st.error("❌ Could not parse pasted data. Use Excel copy-paste format.")
+                except Exception as e:
+                    st.error("❌ Could not parse pasted data. Use Excel copy-paste format.")
+    
+    # Find article column
+    if pi_data is not None and not pi_data.empty:
+        # Auto-detect article column
+        article_column = None
+        for col in pi_data.columns:
+            col_lower = str(col).lower()
+            if any(keyword in col_lower for keyword in ['article', 'art', 'item', 'code', 'sku', 'no', 'num']):
+                article_column = col
+                break
         
-        # Find article column
-        if pi_data is not None and not pi_data.empty:
-            # Auto-detect article column
-            article_column = None
+        if article_column:
+            st.info(f"📋 Detected article column: **{article_column}**")
+            
+            # Auto-detect price column
+            price_column = None
             for col in pi_data.columns:
                 col_lower = str(col).lower()
-                if any(keyword in col_lower for keyword in ['article', 'art', 'item', 'code', 'sku', 'no', 'num']):
-                    article_column = col
+                if any(keyword in col_lower for keyword in ['price', 'cost', 'rate', 'usd', '$']):
+                    price_column = col
                     break
             
-            if article_column:
-                st.info(f"📋 Detected article column: **{article_column}**")
+            if price_column:
+                st.info(f"💰 Detected price column: **{price_column}**")
                 
-                # Auto-detect price column
-                price_column = None
-                for col in pi_data.columns:
-                    col_lower = str(col).lower()
-                    if any(keyword in col_lower for keyword in ['price', 'cost', 'rate', 'usd', '$']):
-                        price_column = col
-                        break
-                
-                if price_column:
-                    st.info(f"💰 Detected price column: **{price_column}**")
+                if st.button("🔍 VALIDATE ALL PRICES (Check vs Latest 2 Historical)", 
+                            type="primary", 
+                            use_container_width=True,
+                            key="cdc_validate_all"):
                     
-                    if st.button("🔍 VALIDATE ALL PRICES (Check vs Latest 2 Historical)", 
-                                type="primary", 
-                                use_container_width=True,
-                                key="cdc_validate_all"):
+                    with st.spinner(f"🔄 Validating {len(pi_data)} items..."):
+                        validation_results = []
+                        items_not_found = []
                         
-                        with st.spinner(f"🔄 Validating {len(pi_data)} items..."):
-                            validation_results = []
-                            items_not_found = []
+                        progress_bar = st.progress(0)
+                        
+                        for idx, row in pi_data.iterrows():
+                            article = str(row[article_column]).strip()
+                            client_price = float(row[price_column]) if pd.notna(row[price_column]) else None
                             
-                            progress_bar = st.progress(0)
+                            # Search in historical data
+                            historical_prices = []
                             
-                            for idx, row in pi_data.iterrows():
-                                article = str(row[article_column]).strip()
-                                client_price = float(row[price_column]) if pd.notna(row[price_column]) else None
+                            if article in DATA[supplier]:
+                                article_data = DATA[supplier][article]
                                 
-                                # Search in historical data
-                                historical_prices = []
+                                # Get orders sorted by date (newest first)
+                                orders = article_data.get('orders', [])
                                 
-                                if article in DATA[supplier]:
-                                    article_data = DATA[supplier][article]
-                                    
-                                    # Get orders sorted by date (newest first)
-                                    orders = article_data.get('orders', [])
-                                    
-                                    # Sort by date if available, otherwise use as is
-                                    try:
-                                        # Try to parse dates
-                                        for order in orders:
-                                            try:
-                                                if order.get('date'):
-                                                    order['parsed_date'] = pd.to_datetime(order['date'], errors='coerce')
-                                            except:
-                                                order['parsed_date'] = pd.NaT
-                                        
-                                        # Sort by date (newest first)
-                                        orders.sort(key=lambda x: x.get('parsed_date', pd.NaT), reverse=True)
-                                    except:
-                                        # If date parsing fails, keep original order
-                                        pass
-                                    
-                                    # Take latest 2 orders with prices
-                                    valid_orders = []
-                                    for order in orders[:10]:  # Check up to 10 latest
+                                # Sort by date if available, otherwise use as is
+                                try:
+                                    # Try to parse dates
+                                    for order in orders:
                                         try:
-                                            price_str = order.get('price', '')
-                                            if price_str:
-                                                price_val = float(price_str)
-                                                valid_orders.append({
-                                                    'order_no': order.get('order_no', 'N/A'),
-                                                    'date': order.get('date', 'N/A'),
-                                                    'price': price_val,
-                                                    'year': order.get('year', ''),
-                                                    'product_name': order.get('product_name', 'N/A')
-                                                })
+                                            if order.get('date'):
+                                                order['parsed_date'] = pd.to_datetime(order['date'], errors='coerce')
                                         except:
-                                            continue
+                                            order['parsed_date'] = pd.NaT
                                     
-                                    # Take latest 2
-                                    historical_prices = valid_orders[:2]
+                                    # Sort by date (newest first)
+                                    orders.sort(key=lambda x: x.get('parsed_date', pd.NaT), reverse=True)
+                                except:
+                                    # If date parsing fails, keep original order
+                                    pass
                                 
-                                # Prepare result
-                                result = {
-                                    'Article': article,
-                                    'Product_Name': row.get('Product Name', row.get('Product_Name', 'N/A')),
-                                    'Client_Price': f"${client_price:.2f}" if client_price else "N/A",
-                                    'Status': '',
-                                    'Decision': '❓ Pending',
-                                    'Selected_Price': None,
-                                    'Selected_Order': None,
-                                    'Selected_Date': None
-                                }
+                                # Take latest 2 orders with prices
+                                valid_orders = []
+                                for order in orders[:10]:  # Check up to 10 latest
+                                    try:
+                                        price_str = order.get('price', '')
+                                        if price_str:
+                                            price_val = float(price_str)
+                                            valid_orders.append({
+                                                'order_no': order.get('order_no', 'N/A'),
+                                                'date': order.get('date', 'N/A'),
+                                                'price': price_val,
+                                                'year': order.get('year', ''),
+                                                'product_name': order.get('product_name', 'N/A')
+                                            })
+                                    except:
+                                        continue
                                 
-                                if historical_prices:
-                                    # Compare with historical prices
-                                    latest_price = historical_prices[0]['price']
-                                    price_diff = client_price - latest_price if client_price else None
-                                    price_diff_percent = (price_diff / latest_price * 100) if client_price and latest_price else None
-                                    
-                                    if client_price:
-                                        if abs(price_diff) < 0.01:  # Less than 1 cent difference
-                                            result['Status'] = f"✅ MATCH: ${latest_price:.2f}"
-                                            result['Decision'] = '✅ Use Client Price'
-                                            result['Selected_Price'] = client_price
-                                        elif price_diff > 0:
-                                            result['Status'] = f"⚠️ HIGHER: +${price_diff:.2f} (+{price_diff_percent:.1f}%)"
-                                        else:
-                                            result['Status'] = f"⚠️ LOWER: -${abs(price_diff):.2f} ({price_diff_percent:.1f}%)"
+                                # Take latest 2
+                                historical_prices = valid_orders[:2]
+                            
+                            # Prepare result
+                            result = {
+                                'Article': article,
+                                'Product_Name': row.get('Product Name', row.get('Product_Name', 'N/A')),
+                                'Client_Price': f"${client_price:.2f}" if client_price else "N/A",
+                                'Status': '',
+                                'Decision': '❓ Pending',
+                                'Selected_Price': None,
+                                'Selected_Order': None,
+                                'Selected_Date': None
+                            }
+                            
+                            if historical_prices:
+                                # Compare with historical prices
+                                latest_price = historical_prices[0]['price']
+                                price_diff = client_price - latest_price if client_price else None
+                                price_diff_percent = (price_diff / latest_price * 100) if client_price and latest_price else None
+                                
+                                if client_price:
+                                    if abs(price_diff) < 0.01:  # Less than 1 cent difference
+                                        result['Status'] = f"✅ MATCH: ${latest_price:.2f}"
+                                        result['Decision'] = '✅ Use Client Price'
+                                        result['Selected_Price'] = client_price
+                                    elif price_diff > 0:
+                                        result['Status'] = f"⚠️ HIGHER: +${price_diff:.2f} (+{price_diff_percent:.1f}%)"
                                     else:
-                                        result['Status'] = "ℹ️ No client price provided"
-                                    
-                                    # Add historical price details
-                                    for i, hist in enumerate(historical_prices, 1):
-                                        result[f'Hist_Price_{i}'] = f"${hist['price']:.2f}"
-                                        result[f'Hist_Order_{i}'] = hist['order_no']
-                                        result[f'Hist_Date_{i}'] = hist['date']
-                                        result[f'Hist_Product_{i}'] = hist['product_name']
-                                        
-                                        if i == 1:  # Latest price
-                                            result['Latest_Price'] = f"${hist['price']:.2f}"
-                                            result['Latest_Order'] = hist['order_no']
-                                            result['Latest_Date'] = hist['date']
-                                    
+                                        result['Status'] = f"⚠️ LOWER: -${abs(price_diff):.2f} ({price_diff_percent:.1f}%)"
                                 else:
-                                    result['Status'] = "❌ NO HISTORY: Never ordered before"
-                                    items_not_found.append(article)
+                                    result['Status'] = "ℹ️ No client price provided"
                                 
-                                validation_results.append(result)
-                                progress_bar.progress((idx + 1) / len(pi_data))
-                            
-                            # Convert to DataFrame
-                            validation_df = pd.DataFrame(validation_results)
-                            
-                            # ============================================
-                            # DISPLAY VALIDATION RESULTS
-                            # ============================================
-                            st.subheader("📊 PRICE VALIDATION RESULTS")
-                            
-                            # Quick Stats
-                            col1, col2, col3, col4 = st.columns(4)
-                            
-                            with col1:
-                                total_items = len(validation_df)
-                                st.metric("Total Items", total_items)
-                            
-                            with col2:
-                                matches = len([r for r in validation_results if '✅' in r['Status']])
-                                st.metric("✅ Matches", matches)
-                            
-                            with col3:
-                                mismatches = len([r for r in validation_results if '⚠️' in r['Status']])
-                                st.metric("⚠️ Mismatches", mismatches)
-                            
-                            with col4:
-                                no_history = len([r for r in validation_results if '❌' in r['Status']])
-                                st.metric("❌ No History", no_history)
-                            
-                            # ============================================
-                            # INTERACTIVE VALIDATION TABLE
-                            # ============================================
-                            st.subheader("🎯 MAKE PRICE DECISIONS")
-                            
-                            for i, result in enumerate(validation_results):
-                                with st.expander(f"{result['Article']} - {result['Product_Name']} | {result['Status']}", expanded=True):
+                                # Add historical price details
+                                for i, hist in enumerate(historical_prices, 1):
+                                    result[f'Hist_Price_{i}'] = f"${hist['price']:.2f}"
+                                    result[f'Hist_Order_{i}'] = hist['order_no']
+                                    result[f'Hist_Date_{i}'] = hist['date']
+                                    result[f'Hist_Product_{i}'] = hist['product_name']
                                     
-                                    col1, col2 = st.columns([1, 1])
+                                    if i == 1:  # Latest price
+                                        result['Latest_Price'] = f"${hist['price']:.2f}"
+                                        result['Latest_Order'] = hist['order_no']
+                                        result['Latest_Date'] = hist['date']
+                                
+                            else:
+                                result['Status'] = "❌ NO HISTORY: Never ordered before"
+                                items_not_found.append(article)
+                            
+                            validation_results.append(result)
+                            progress_bar.progress((idx + 1) / len(pi_data))
+                        
+                        # Convert to DataFrame
+                        validation_df = pd.DataFrame(validation_results)
+                        
+                        # ============================================
+                        # DISPLAY VALIDATION RESULTS
+                        # ============================================
+                        st.subheader("📊 PRICE VALIDATION RESULTS")
+                        
+                        # Quick Stats
+                        col1, col2, col3, col4 = st.columns(4)
+                        
+                        with col1:
+                            total_items = len(validation_df)
+                            st.metric("Total Items", total_items)
+                        
+                        with col2:
+                            matches = len([r for r in validation_results if '✅' in r['Status']])
+                            st.metric("✅ Matches", matches)
+                        
+                        with col3:
+                            mismatches = len([r for r in validation_results if '⚠️' in r['Status']])
+                            st.metric("⚠️ Mismatches", mismatches)
+                        
+                        with col4:
+                            no_history = len([r for r in validation_results if '❌' in r['Status']])
+                            st.metric("❌ No History", no_history)
+                        
+                        # ============================================
+                        # INTERACTIVE VALIDATION TABLE
+                        # ============================================
+                        st.subheader("🎯 MAKE PRICE DECISIONS")
+                        
+                        for i, result in enumerate(validation_results):
+                            with st.expander(f"{result['Article']} - {result['Product_Name']} | {result['Status']}", expanded=True):
+                                
+                                col1, col2 = st.columns([1, 1])
+                                
+                                with col1:
+                                    st.write(f"**Client PI Price:** {result['Client_Price']}")
                                     
-                                    with col1:
-                                        st.write(f"**Client PI Price:** {result['Client_Price']}")
-                                        
-                                        if 'Latest_Price' in result:
-                                            st.write(f"**Latest Historical Price:** {result['Latest_Price']}")
-                                            st.write(f"**Order:** {result.get('Latest_Order', 'N/A')}")
-                                            st.write(f"**Date:** {result.get('Latest_Date', 'N/A')}")
-                                        
-                                        # Display 2 historical prices if available
-                                        if 'Hist_Price_1' in result:
-                                            st.write("---")
-                                            st.write("**📋 Historical Prices:**")
-                                            
-                                            for hist_num in [1, 2]:
-                                                if f'Hist_Price_{hist_num}' in result:
-                                                    hist_col1, hist_col2 = st.columns([3, 1])
-                                                    with hist_col1:
-                                                        st.write(f"{hist_num}. **${result[f'Hist_Price_{hist_num}'][1:]}**")
-                                                        st.caption(f"Order: {result[f'Hist_Order_{hist_num}']}")
-                                                        st.caption(f"Date: {result[f'Hist_Date_{hist_num}']}")
-                                                    with hist_col2:
-                                                        if st.button(f"Select #{hist_num}", 
-                                                                   key=f"select_{i}_{hist_num}",
-                                                                   help=f"Use historical price {hist_num}"):
-                                                            validation_results[i]['Decision'] = f"✅ Use Historical #{hist_num}"
-                                                            validation_results[i]['Selected_Price'] = float(result[f'Hist_Price_{hist_num}'][1:])
-                                                            validation_results[i]['Selected_Order'] = result[f'Hist_Order_{hist_num}']
-                                                            validation_results[i]['Selected_Date'] = result[f'Hist_Date_{hist_num}']
-                                                            st.rerun()
+                                    if 'Latest_Price' in result:
+                                        st.write(f"**Latest Historical Price:** {result['Latest_Price']}")
+                                        st.write(f"**Order:** {result.get('Latest_Order', 'N/A')}")
+                                        st.write(f"**Date:** {result.get('Latest_Date', 'N/A')}")
                                     
-                                    with col2:
-                                        # Decision options
-                                        decision_options = [
-                                            "❓ Pending",
-                                            "✅ Use Client Price",
-                                            "✅ Use Historical #1",
-                                            "✅ Use Historical #2",
-                                            "✏️ Set Custom Price",
-                                            "❌ Flag for Review"
-                                        ]
+                                    # Display 2 historical prices if available
+                                    if 'Hist_Price_1' in result:
+                                        st.write("---")
+                                        st.write("**📋 Historical Prices:**")
                                         
-                                        selected_decision = st.selectbox(
-                                            "Final Decision:",
-                                            decision_options,
-                                            index=decision_options.index(result['Decision']),
-                                            key=f"decision_{i}"
+                                        for hist_num in [1, 2]:
+                                            if f'Hist_Price_{hist_num}' in result:
+                                                hist_col1, hist_col2 = st.columns([3, 1])
+                                                with hist_col1:
+                                                    st.write(f"{hist_num}. **${result[f'Hist_Price_{hist_num}'][1:]}**")
+                                                    st.caption(f"Order: {result[f'Hist_Order_{hist_num}']}")
+                                                    st.caption(f"Date: {result[f'Hist_Date_{hist_num}']}")
+                                                with hist_col2:
+                                                    if st.button(f"Select #{hist_num}", 
+                                                               key=f"select_{i}_{hist_num}",
+                                                               help=f"Use historical price {hist_num}"):
+                                                        validation_results[i]['Decision'] = f"✅ Use Historical #{hist_num}"
+                                                        validation_results[i]['Selected_Price'] = float(result[f'Hist_Price_{hist_num}'][1:])
+                                                        validation_results[i]['Selected_Order'] = result[f'Hist_Order_{hist_num}']
+                                                        validation_results[i]['Selected_Date'] = result[f'Hist_Date_{hist_num}']
+                                                        st.rerun()
+                                
+                                with col2:
+                                    # Decision options
+                                    decision_options = [
+                                        "❓ Pending",
+                                        "✅ Use Client Price",
+                                        "✅ Use Historical #1",
+                                        "✅ Use Historical #2",
+                                        "✏️ Set Custom Price",
+                                        "❌ Flag for Review"
+                                    ]
+                                    
+                                    selected_decision = st.selectbox(
+                                        "Final Decision:",
+                                        decision_options,
+                                        index=decision_options.index(result['Decision']),
+                                        key=f"decision_{i}"
+                                    )
+                                    
+                                    validation_results[i]['Decision'] = selected_decision
+                                    
+                                    # If custom price needed
+                                    if selected_decision == "✏️ Set Custom Price":
+                                        custom_price = st.number_input(
+                                            "Enter custom price ($/kg):",
+                                            min_value=0.0,
+                                            value=float(result['Client_Price'][1:]) if result['Client_Price'] != 'N/A' else 0.0,
+                                            step=0.01,
+                                            key=f"custom_{i}"
                                         )
-                                        
-                                        validation_results[i]['Decision'] = selected_decision
-                                        
-                                        # If custom price needed
-                                        if selected_decision == "✏️ Set Custom Price":
-                                            custom_price = st.number_input(
-                                                "Enter custom price ($/kg):",
-                                                min_value=0.0,
-                                                value=float(result['Client_Price'][1:]) if result['Client_Price'] != 'N/A' else 0.0,
-                                                step=0.01,
-                                                key=f"custom_{i}"
-                                            )
-                                            validation_results[i]['Selected_Price'] = custom_price
-                                            validation_results[i]['Selected_Order'] = "Custom"
-                                            validation_results[i]['Selected_Date'] = datetime.now().strftime("%Y-%m-%d")
-                                        
-                                        # Show current selection
-                                        if validation_results[i]['Selected_Price']:
-                                            st.success(f"**Selected:** ${validation_results[i]['Selected_Price']:.2f}")
-                            
-                            # ============================================
-                            # FINAL PI GENERATION
-                            # ============================================
-                            st.subheader("📄 GENERATE VALIDATED PI")
-                            
-                            # Create final PI DataFrame
-                            final_pi_data = []
-                            for result in validation_results:
-                                final_item = {
-                                    'Article': result['Article'],
-                                    'Product_Name': result['Product_Name'],
-                                    'Original_Client_Price': result['Client_Price'],
-                                    'Final_Decision': result['Decision'],
-                                    'Final_Price': result.get('Selected_Price', ''),
-                                    'Reference_Order': result.get('Selected_Order', ''),
-                                    'Reference_Date': result.get('Selected_Date', ''),
-                                    'Validation_Status': result['Status']
-                                }
-                                final_pi_data.append(final_item)
-                            
-                            final_pi_df = pd.DataFrame(final_pi_data)
-                            
-                            col1, col2, col3 = st.columns(3)
-                            
-                            with col1:
-                                # Download Validation Report
-                                csv = final_pi_df.to_csv(index=False)
-                                st.download_button(
-                                    label="📥 Download Validation Report",
-                                    data=csv,
-                                    file_name=f"CDC_PI_Validation_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
-                                    mime="text/csv",
-                                    use_container_width=True
-                                )
-                            
-                            with col2:
-                                # Generate PI Summary
-                                summary_text = f"""
+                                        validation_results[i]['Selected_Price'] = custom_price
+                                        validation_results[i]['Selected_Order'] = "Custom"
+                                        validation_results[i]['Selected_Date'] = datetime.now().strftime("%Y-%m-%d")
+                                    
+                                    # Show current selection
+                                    if validation_results[i]['Selected_Price']:
+                                        st.success(f"**Selected:** ${validation_results[i]['Selected_Price']:.2f}")
+                        
+                        # ============================================
+                        # FINAL PI GENERATION
+                        # ============================================
+                        st.subheader("📄 GENERATE VALIDATED PI")
+                        
+                        # Create final PI DataFrame
+                        final_pi_data = []
+                        for result in validation_results:
+                            final_item = {
+                                'Article': result['Article'],
+                                'Product_Name': result['Product_Name'],
+                                'Original_Client_Price': result['Client_Price'],
+                                'Final_Decision': result['Decision'],
+                                'Final_Price': result.get('Selected_Price', ''),
+                                'Reference_Order': result.get('Selected_Order', ''),
+                                'Reference_Date': result.get('Selected_Date', ''),
+                                'Validation_Status': result['Status']
+                            }
+                            final_pi_data.append(final_item)
+                        
+                        final_pi_df = pd.DataFrame(final_pi_data)
+                        
+                        col1, col2, col3 = st.columns(3)
+                        
+                        with col1:
+                            # Download Validation Report
+                            csv = final_pi_df.to_csv(index=False)
+                            st.download_button(
+                                label="📥 Download Validation Report",
+                                data=csv,
+                                file_name=f"CDC_PI_Validation_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                                mime="text/csv",
+                                use_container_width=True
+                            )
+                        
+                        with col2:
+                            # Generate PI Summary
+                            summary_text = f"""
 CDC PI VALIDATION REPORT
 ========================
 
@@ -1761,30 +1761,30 @@ ITEMS REQUIRING ATTENTION ({mismatches + no_history}):
 
 VALIDATED PRICES:
 {chr(10).join([f"• {r['Article']}: ${r.get('Selected_Price', 'N/A')} ({r['Decision']})" for r in validation_results if r.get('Selected_Price')])}
-                                """
-                                
-                                st.download_button(
-                                    label="📋 Download Summary",
-                                    data=summary_text,
-                                    file_name=f"CDC_PI_Summary_{datetime.now().strftime('%Y%m%d')}.txt",
-                                    mime="text/plain",
-                                    use_container_width=True
-                                )
+                            """
                             
-                            with col3:
-                                # Quick Actions
-                                if st.button("🔄 Validate Again", use_container_width=True):
-                                    st.rerun()
-                                
-                                if items_not_found:
-                                    st.warning(f"❌ {len(items_not_found)} items not found in history")
-                                    with st.expander("View items with no history"):
-                                        st.write(", ".join(items_not_found))
-                
-                else:
-                    st.error("❌ Could not detect price column. Please ensure your file has a 'Price' column.")
+                            st.download_button(
+                                label="📋 Download Summary",
+                                data=summary_text,
+                                file_name=f"CDC_PI_Summary_{datetime.now().strftime('%Y%m%d')}.txt",
+                                mime="text/plain",
+                                use_container_width=True
+                            )
+                        
+                        with col3:
+                            # Quick Actions
+                            if st.button("🔄 Validate Again", use_container_width=True):
+                                st.rerun()
+                            
+                            if items_not_found:
+                                st.warning(f"❌ {len(items_not_found)} items not found in history")
+                                with st.expander("View items with no history"):
+                                    st.write(", ".join(items_not_found))
+            
             else:
-                st.error("❌ Could not detect article number column. Please ensure your file has an 'Article' column.")
+                st.error("❌ Could not detect price column. Please ensure your file has a 'Price' column.")
+        else:
+            st.error("❌ Could not detect article number column. Please ensure your file has an 'Article' column.")
     
     # Use a form for Enter key support
     with st.form(key=f"{client}_search_form"):
