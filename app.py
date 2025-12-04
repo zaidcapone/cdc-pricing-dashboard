@@ -3426,79 +3426,51 @@ def display_product_card_flexible(product, available_columns):
         border_color = "#059669"
     
     with st.expander(f"📦 {product['Article_Number']} - {product['Product_Name']}", expanded=False):
-        # Build HTML content safely
-        html_content = f"""
-        <div class="{card_class}">
-            <div style="border-left: 5px solid {border_color}; padding-left: 1rem;">
-                <h3 style="margin:0; color: {border_color};">{product['Article_Number']} - {product['Product_Name']}</h3>
-        """
+        # Build HTML content as a single line string
+        html_content = f'<div class="{card_class}"><div style="border-left: 5px solid {border_color}; padding-left: 1rem;"><h3 style="margin:0; color: {border_color};">{product["Article_Number"]} - {product["Product_Name"]}</h3>'
         
         if 'Supplier' in available_columns:
-            html_content += f"""<p style="margin:0; font-weight: bold; color: #6B7280;">Supplier: {product['Supplier']}</p>"""
+            html_content += f'<p style="margin:0; font-weight: bold; color: #6B7280;">Supplier: {product["Supplier"]}</p>'
         
-        html_content += """<div style="margin-top: 1rem;"><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">"""
+        html_content += '<div style="margin-top: 1rem;"><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">'
         
         # Left column
         left_content = ""
         if 'Category' in available_columns and product['Category']:
-            left_content += f"""<p style="margin:0;"><strong>Main Category:</strong> {product['Category']}</p>"""
+            left_content += f'<p style="margin:0;"><strong>Main Category:</strong> {product["Category"]}</p>'
         if 'Sub_Category' in available_columns and product['Sub_Category']:
-            left_content += f"""<p style="margin:0;"><strong>Sub Category:</strong> {product['Sub_Category']}</p>"""
+            left_content += f'<p style="margin:0;"><strong>Sub Category:</strong> {product["Sub_Category"]}</p>'
         if 'Sub_Sub_Category' in available_columns and product['Sub_Sub_Category']:
-            left_content += f"""<p style="margin:0;"><strong>Sub-Sub Category:</strong> {product['Sub_Sub_Category']}</p>"""
+            left_content += f'<p style="margin:0;"><strong>Sub-Sub Category:</strong> {product["Sub_Sub_Category"]}</p>'
         
         # Right column
         right_content = ""
         if 'UOM' in available_columns and product['UOM']:
-            right_content += f"""<p style="margin:0;"><strong>UOM:</strong> {product['UOM']}</p>"""
+            right_content += f'<p style="margin:0;"><strong>UOM:</strong> {product["UOM"]}</p>'
         if 'Unit_Weight' in available_columns and product['Unit_Weight']:
-            right_content += f"""<p style="margin:0;"><strong>Unit Weight:</strong> {product['Unit_Weight']}</p>"""
+            right_content += f'<p style="margin:0;"><strong>Unit Weight:</strong> {product["Unit_Weight"]}</p>'
         if 'Current_Price' in available_columns and product['Current_Price']:
-            right_content += f"""<p style="margin:0;"><strong>Current Price:</strong> ${product['Current_Price']}/kg</p>"""
+            right_content += f'<p style="margin:0;"><strong>Current Price:</strong> ${product["Current_Price"]}/kg</p>'
         
-        html_content += f"""<div>{left_content}</div><div>{right_content}</div></div></div>"""
+        html_content += f'<div>{left_content}</div><div>{right_content}</div></div></div>'
         
-        # Additional fields
+        # Additional fields - now as single line strings
         if 'Common_Description' in available_columns and product['Common_Description']:
-            html_content += f"""
-            <div style="margin-top: 1rem;">
-                <p style="margin:0;"><strong>Description:</strong></p>
-                <p style="margin:0; color: #6B7280;">{product['Common_Description']}</p>
-            </div>
-            """
+            html_content += f'<div style="margin-top: 1rem;"><p style="margin:0;"><strong>Description:</strong></p><p style="margin:0; color: #6B7280;">{product["Common_Description"]}</p></div>'
         
         if 'Purpose_Of_Use' in available_columns and product['Purpose_Of_Use']:
-            html_content += f"""
-            <div style="margin-top: 1rem;">
-                <p style="margin:0;"><strong>Purpose of Use:</strong></p>
-                <p style="margin:0; color: #6B7280;">{product['Purpose_Of_Use']}</p>
-            </div>
-            """
+            html_content += f'<div style="margin-top: 1rem;"><p style="margin:0;"><strong>Purpose of Use:</strong></p><p style="margin:0; color: #6B7280;">{product["Purpose_Of_Use"]}</p></div>'
         
         if 'Dosage' in available_columns and product['Dosage']:
-            html_content += f"""
-            <div style="margin-top: 1rem;">
-                <p style="margin:0;"><strong>Dosage:</strong></p>
-                <p style="margin:0; color: #6B7280;">{product['Dosage']}</p>
-            </div>
-            """
+            html_content += f'<div style="margin-top: 1rem;"><p style="margin:0;"><strong>Dosage:</strong></p><p style="margin:0; color: #6B7280;">{product["Dosage"]}</p></div>'
         
         if 'Ingredients' in available_columns and product['Ingredients']:
             # Escape HTML tags in ingredients
             ingredients = str(product['Ingredients']).replace('<', '&lt;').replace('>', '&gt;')
-            html_content += f"""
-            <div style="margin-top: 1rem;">
-                <p style="margin:0;"><strong>Ingredients:</strong></p>
-                <p style="margin:0; color: #6B7280; white-space: pre-wrap;">{ingredients}</p>
-            </div>
-            """
+            html_content += f'<div style="margin-top: 1rem;"><p style="margin:0;"><strong>Ingredients:</strong></p><p style="margin:0; color: #6B7280; white-space: pre-wrap;">{ingredients}</p></div>'
         
         if 'Datasheet_Link' in available_columns and product['Datasheet_Link']:
-            html_content += f"""
-            <div style="margin-top: 1rem;">
-                <p style="margin:0;"><strong>Datasheet:</strong> <a href="{product['Datasheet_Link']}" target="_blank" style="color: #0EA5E9;">View Datasheet</a></p>
-            </div>
-            """
+            html_content += f'<div style="margin-top: 1rem;"><p style="margin:0;"><strong>Datasheet:</strong> <a href="{product["Datasheet_Link"]}" target="_blank" style="color: #0EA5E9;">View Datasheet</a></p></div>'
         
         # Close the main divs
         html_content += "</div></div>"
