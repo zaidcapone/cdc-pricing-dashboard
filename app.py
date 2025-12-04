@@ -3426,37 +3426,41 @@ def display_product_card_flexible(product, available_columns):
         border_color = "#059669"
     
     with st.expander(f"📦 {product['Article_Number']} - {product['Product_Name']}", expanded=False):
-        card_content = f"""
+        # Build HTML content safely
+        html_content = f"""
         <div class="{card_class}">
             <div style="border-left: 5px solid {border_color}; padding-left: 1rem;">
                 <h3 style="margin:0; color: {border_color};">{product['Article_Number']} - {product['Product_Name']}</h3>
         """
         
         if 'Supplier' in available_columns:
-            card_content += f"""<p style="margin:0; font-weight: bold; color: #6B7280;">Supplier: {product['Supplier']}</p>"""
+            html_content += f"""<p style="margin:0; font-weight: bold; color: #6B7280;">Supplier: {product['Supplier']}</p>"""
         
-        card_content += """<div style="margin-top: 1rem;"><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">"""
+        html_content += """<div style="margin-top: 1rem;"><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">"""
         
-        left_column = ""
-        if 'Category' in available_columns:
-            left_column += f"""<p style="margin:0;"><strong>Main Category:</strong> {product['Category']}</p>"""
-        if 'Sub_Category' in available_columns:
-            left_column += f"""<p style="margin:0;"><strong>Sub Category:</strong> {product['Sub_Category']}</p>"""
-        if 'Sub_Sub_Category' in available_columns:
-            left_column += f"""<p style="margin:0;"><strong>Sub-Sub Category:</strong> {product['Sub_Sub_Category']}</p>"""
+        # Left column
+        left_content = ""
+        if 'Category' in available_columns and product['Category']:
+            left_content += f"""<p style="margin:0;"><strong>Main Category:</strong> {product['Category']}</p>"""
+        if 'Sub_Category' in available_columns and product['Sub_Category']:
+            left_content += f"""<p style="margin:0;"><strong>Sub Category:</strong> {product['Sub_Category']}</p>"""
+        if 'Sub_Sub_Category' in available_columns and product['Sub_Sub_Category']:
+            left_content += f"""<p style="margin:0;"><strong>Sub-Sub Category:</strong> {product['Sub_Sub_Category']}</p>"""
         
-        right_column = ""
-        if 'UOM' in available_columns:
-            right_column += f"""<p style="margin:0;"><strong>UOM:</strong> {product['UOM']}</p>"""
-        if 'Unit_Weight' in available_columns:
-            right_column += f"""<p style="margin:0;"><strong>Unit Weight:</strong> {product['Unit_Weight']}</p>"""
+        # Right column
+        right_content = ""
+        if 'UOM' in available_columns and product['UOM']:
+            right_content += f"""<p style="margin:0;"><strong>UOM:</strong> {product['UOM']}</p>"""
+        if 'Unit_Weight' in available_columns and product['Unit_Weight']:
+            right_content += f"""<p style="margin:0;"><strong>Unit Weight:</strong> {product['Unit_Weight']}</p>"""
         if 'Current_Price' in available_columns and product['Current_Price']:
-            right_column += f"""<p style="margin:0;"><strong>Current Price:</strong> ${product['Current_Price']}/kg</p>"""
+            right_content += f"""<p style="margin:0;"><strong>Current Price:</strong> ${product['Current_Price']}/kg</p>"""
         
-        card_content += f"""<div>{left_column}</div><div>{right_column}</div></div>"""
+        html_content += f"""<div>{left_content}</div><div>{right_content}</div></div></div>"""
         
+        # Additional fields
         if 'Common_Description' in available_columns and product['Common_Description']:
-            card_content += f"""
+            html_content += f"""
             <div style="margin-top: 1rem;">
                 <p style="margin:0;"><strong>Description:</strong></p>
                 <p style="margin:0; color: #6B7280;">{product['Common_Description']}</p>
@@ -3464,7 +3468,7 @@ def display_product_card_flexible(product, available_columns):
             """
         
         if 'Purpose_Of_Use' in available_columns and product['Purpose_Of_Use']:
-            card_content += f"""
+            html_content += f"""
             <div style="margin-top: 1rem;">
                 <p style="margin:0;"><strong>Purpose of Use:</strong></p>
                 <p style="margin:0; color: #6B7280;">{product['Purpose_Of_Use']}</p>
@@ -3472,7 +3476,7 @@ def display_product_card_flexible(product, available_columns):
             """
         
         if 'Dosage' in available_columns and product['Dosage']:
-            card_content += f"""
+            html_content += f"""
             <div style="margin-top: 1rem;">
                 <p style="margin:0;"><strong>Dosage:</strong></p>
                 <p style="margin:0; color: #6B7280;">{product['Dosage']}</p>
@@ -3480,23 +3484,26 @@ def display_product_card_flexible(product, available_columns):
             """
         
         if 'Ingredients' in available_columns and product['Ingredients']:
-            card_content += f"""
+            # Escape HTML tags in ingredients
+            ingredients = str(product['Ingredients']).replace('<', '&lt;').replace('>', '&gt;')
+            html_content += f"""
             <div style="margin-top: 1rem;">
                 <p style="margin:0;"><strong>Ingredients:</strong></p>
-                <p style="margin:0; color: #6B7280;">{product['Ingredients']}</p>
+                <p style="margin:0; color: #6B7280; white-space: pre-wrap;">{ingredients}</p>
             </div>
             """
         
         if 'Datasheet_Link' in available_columns and product['Datasheet_Link']:
-            card_content += f"""
+            html_content += f"""
             <div style="margin-top: 1rem;">
                 <p style="margin:0;"><strong>Datasheet:</strong> <a href="{product['Datasheet_Link']}" target="_blank" style="color: #0EA5E9;">View Datasheet</a></p>
             </div>
             """
         
-        card_content += "</div></div>"
+        # Close the main divs
+        html_content += "</div></div>"
         
-        st.markdown(card_content, unsafe_allow_html=True)
+        st.markdown(html_content, unsafe_allow_html=True)
 
 def orders_management_tab():
     """Orders Management Dashboard"""
