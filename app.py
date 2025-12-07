@@ -792,34 +792,30 @@ def get_google_sheets_data(client="CDC"):
             if df.empty:
                 return result
             
-            article_column = None
-            for possible_name in ['Article_Number', 'article_number', 'Article', 'article']:
-                if possible_name in df.columns:
-                    article_column = possible_name
-                    break
+            # Helper function to find columns
+            def get_column(df, possible_names):
+                for name in possible_names:
+                    if name in df.columns:
+                        return name
+                return None
+            
+            # Find columns using lowercase priority first
+            article_column = get_column(df, ['article_number', 'Article_Number', 'article', 'Article'])
+            product_column = get_column(df, ['product_name', 'Product_Name', 'Product', 'product'])
+            price_column = get_column(df, ['price_per_', 'price_per_kg', 'Price_per_', 'Price_per_kg', 'Price', 'price'])
+            order_column = get_column(df, ['order_number', 'Order_Number', 'Order', 'order'])
+            date_column = get_column(df, ['order_date', 'Order_Date', 'Date', 'date'])
+            year_column = get_column(df, ['year', 'Year', 'order_year', 'Order_Year'])
+            hs_code_column = get_column(df, ['hs_code', 'HS_Code', 'hs code', 'HS Code'])
+            packaging_column = get_column(df, ['packaging', 'Packaging', 'packing', 'Packing'])
+            quantity_column = get_column(df, ['quantity', 'Quantity', 'qty', 'Qty'])
+            weight_column = get_column(df, ['total_weight', 'Total_Weight', 'weight', 'Weight'])
+            total_price_column = get_column(df, ['total_price', 'Total_Price', 'total', 'Total'])
 
             if not article_column:
                 st.error(f"❌ Missing article number column! Available columns: {list(df.columns)}")
                 return result
 
-def get_column(df, possible_names):
-    for name in possible_names:
-        if name in df.columns:
-            return name
-    return None
-
-article_column = get_column(df, ['article_number', 'Article_Number', 'article', 'Article'])
-product_column = get_column(df, ['product_name', 'Product_Name', 'Product', 'product'])
-price_column = get_column(df, ['price_per_', 'price_per_kg', 'Price_per_', 'Price_per_kg', 'Price', 'price'])
-order_column = get_column(df, ['order_number', 'Order_Number', 'Order', 'order'])
-date_column = get_column(df, ['order_date', 'Order_Date', 'Date', 'date'])
-year_column = get_column(df, ['year', 'Year', 'order_year', 'Order_Year'])
-hs_code_column = get_column(df, ['hs_code', 'HS_Code', 'hs code', 'HS Code'])
-packaging_column = get_column(df, ['packaging', 'Packaging', 'packing', 'Packing'])
-quantity_column = get_column(df, ['quantity', 'Quantity', 'qty', 'Qty'])
-weight_column = get_column(df, ['total_weight', 'Total_Weight', 'weight', 'Weight'])
-total_price_column = get_column(df, ['total_price', 'Total_Price', 'total', 'Total'])
-            
             for _, row in df.iterrows():
                 article = str(row.get(article_column, '')).strip()
                 if not article:
@@ -845,18 +841,18 @@ total_price_column = get_column(df, ['total_price', 'Total_Price', 'total', 'Tot
                         pass
                 
                 order_details = {
-    'order_no': str(row.get(order_column, '')).strip() if order_column else '',
-    'date': str(row.get(date_column, '')).strip() if date_column else '',
-    'year': str(row.get(year_column, '')).strip() if year_column else '',
-    'product_name': product_name,
-    'article': article,
-    'hs_code': str(row.get(hs_code_column, '')).strip() if hs_code_column else '',
-    'packaging': str(row.get(packaging_column, '')).strip() if packaging_column else '',
-    'quantity': str(row.get(quantity_column, '')).strip() if quantity_column else '',
-    'total_weight': str(row.get(weight_column, '')).strip() if weight_column else '',
-    'price': price_str,
-    'total_price': str(row.get(total_price_column, '')).strip() if total_price_column else ''
-}
+                    'order_no': str(row.get(order_column, '')).strip() if order_column else '',
+                    'date': str(row.get(date_column, '')).strip() if date_column else '',
+                    'year': str(row.get(year_column, '')).strip() if year_column else '',
+                    'product_name': product_name,
+                    'article': article,
+                    'hs_code': str(row.get(hs_code_column, '')).strip() if hs_code_column else '',
+                    'packaging': str(row.get(packaging_column, '')).strip() if packaging_column else '',
+                    'quantity': str(row.get(quantity_column, '')).strip() if quantity_column else '',
+                    'total_weight': str(row.get(weight_column, '')).strip() if weight_column else '',
+                    'price': price_str,
+                    'total_price': str(row.get(total_price_column, '')).strip() if total_price_column else ''
+                }
                 result[article]['orders'].append(order_details)
             
             return result
@@ -1227,7 +1223,7 @@ def main_dashboard():
                 "📦 PRODUCT CATALOG",
                 "📊 ORDERS MANAGEMENT",
                 "📦 PALLETIZING",
-                "🔴 PRICE MATCHING"  # NEW TAB ADDED HERE
+                "🔴 PRICE MATCHING"
             ]
         else:
             tabs = [
@@ -1242,7 +1238,7 @@ def main_dashboard():
             ]
             if st.session_state.username in ["zaid", "Rotana", "Khalid"]:
                 tabs.append("📦 PALLETIZING")
-            tabs.append("🔴 PRICE MATCHING")  # NEW TAB ADDED HERE FOR ALL USERS
+            tabs.append("🔴 PRICE MATCHING")
         
         # Display tabs as clickable buttons
         for tab in tabs:
@@ -1349,7 +1345,7 @@ def main_dashboard():
         orders_management_tab()
     elif st.session_state.active_tab == "📦 PALLETIZING":
         palletizing_tab()
-    elif st.session_state.active_tab == "🔴 PRICE MATCHING":  # NEW TAB
+    elif st.session_state.active_tab == "🔴 PRICE MATCHING":
         price_matching_tab()
     
     # Logout button at bottom
@@ -1951,7 +1947,7 @@ GENERAL NOTES:
                             st.dataframe(final_pi_df, use_container_width=True)
 
 # ============================================
-# ORIGINAL TAB FUNCTIONS (KEPT AS IS)
+# ORIGINAL TAB FUNCTIONS
 # ============================================
 
 def clients_tab():
