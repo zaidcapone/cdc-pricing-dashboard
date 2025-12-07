@@ -802,16 +802,23 @@ def get_google_sheets_data(client="CDC"):
                 st.error(f"❌ Missing article number column! Available columns: {list(df.columns)}")
                 return result
 
-            def get_column(df, possible_names):
-                for name in possible_names:
-                    if name in df.columns:
-                        return name
-                return None
-            
-            product_column = get_column(df, ['product_name', 'Product_Name', 'Product', 'product'])
-            price_column = get_column(df, ['price_per_', 'Price_per_', 'Price_per_kg', 'price_per_kg', 'Price', 'price'])
-            order_column = get_column(df, ['order_number', 'Order_Number', 'Order', 'order'])
-            date_column = get_column(df, ['order_date', 'Order_Date', 'Date', 'date'])
+def get_column(df, possible_names):
+    for name in possible_names:
+        if name in df.columns:
+            return name
+    return None
+
+article_column = get_column(df, ['article_number', 'Article_Number', 'article', 'Article'])
+product_column = get_column(df, ['product_name', 'Product_Name', 'Product', 'product'])
+price_column = get_column(df, ['price_per_', 'price_per_kg', 'Price_per_', 'Price_per_kg', 'Price', 'price'])
+order_column = get_column(df, ['order_number', 'Order_Number', 'Order', 'order'])
+date_column = get_column(df, ['order_date', 'Order_Date', 'Date', 'date'])
+year_column = get_column(df, ['year', 'Year', 'order_year', 'Order_Year'])
+hs_code_column = get_column(df, ['hs_code', 'HS_Code', 'hs code', 'HS Code'])
+packaging_column = get_column(df, ['packaging', 'Packaging', 'packing', 'Packing'])
+quantity_column = get_column(df, ['quantity', 'Quantity', 'qty', 'Qty'])
+weight_column = get_column(df, ['total_weight', 'Total_Weight', 'weight', 'Weight'])
+total_price_column = get_column(df, ['total_price', 'Total_Price', 'total', 'Total'])
             
             for _, row in df.iterrows():
                 article = str(row.get(article_column, '')).strip()
@@ -838,18 +845,18 @@ def get_google_sheets_data(client="CDC"):
                         pass
                 
                 order_details = {
-                    'order_no': str(row.get(order_column, '')).strip() if order_column else '',
-                    'date': str(row.get(date_column, '')).strip() if date_column else '',
-                    'year': str(row.get('year', '')).strip() if 'year' in df.columns else '',
-                    'product_name': product_name,
-                    'article': article,
-                    'hs_code': str(row.get('hs_code', '')).strip() if 'hs_code' in df.columns else '',
-                    'packaging': str(row.get('packaging', '')).strip() if 'packaging' in df.columns else '',
-                    'quantity': str(row.get('quantity', '')).strip() if 'quantity' in df.columns else '',
-                    'total_weight': str(row.get('total_weight', '')).strip() if 'total_weight' in df.columns else '',
-                    'price': price_str,
-                    'total_price': str(row.get('total_price', '')).strip() if 'total_price' in df.columns else ''
-                }
+    'order_no': str(row.get(order_column, '')).strip() if order_column else '',
+    'date': str(row.get(date_column, '')).strip() if date_column else '',
+    'year': str(row.get(year_column, '')).strip() if year_column else '',
+    'product_name': product_name,
+    'article': article,
+    'hs_code': str(row.get(hs_code_column, '')).strip() if hs_code_column else '',
+    'packaging': str(row.get(packaging_column, '')).strip() if packaging_column else '',
+    'quantity': str(row.get(quantity_column, '')).strip() if quantity_column else '',
+    'total_weight': str(row.get(weight_column, '')).strip() if weight_column else '',
+    'price': price_str,
+    'total_price': str(row.get(total_price_column, '')).strip() if total_price_column else ''
+}
                 result[article]['orders'].append(order_details)
             
             return result
