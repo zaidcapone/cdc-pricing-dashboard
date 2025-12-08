@@ -5,6 +5,9 @@ import json
 from datetime import datetime
 from io import BytesIO
 import re
+# Add these imports if not already present
+import matplotlib.pyplot as plt
+import numpy as np
 
 # Page config
 st.set_page_config(
@@ -96,6 +99,14 @@ st.markdown("""
         color: #1F2937;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
+
+    .visual-header {
+    background: linear-gradient(135deg, #0EA5E9, #0284C7);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+}
     .pallet-stat-card {
         background: white;
         padding: 1.5rem;
@@ -1223,7 +1234,9 @@ def main_dashboard():
                 "📦 PRODUCT CATALOG",
                 "📊 ORDERS MANAGEMENT",
                 "📦 PALLETIZING",
-                "🔴 PRICE MATCHING"
+                "🔴 PRICE MATCHING",
+                    "📈 VISUAL ANALYTICS"  # NEW TAB ADDED HERE
+
             ]
         else:
             tabs = [
@@ -1347,6 +1360,9 @@ def main_dashboard():
         palletizing_tab()
     elif st.session_state.active_tab == "🔴 PRICE MATCHING":
         price_matching_tab()
+        # Add this to the if-elif chain for tab handling
+elif st.session_state.active_tab == "📈 VISUAL ANALYTICS":
+    visual_analytics_tab()
     
     # Logout button at bottom
     st.markdown("---")
@@ -1945,6 +1961,410 @@ GENERAL NOTES:
                     if st.button("📊 View Raw Results", use_container_width=True):
                         with st.expander("Raw Validation Results", expanded=True):
                             st.dataframe(final_pi_df, use_container_width=True)
+
+def visual_analytics_tab():
+    """Visual Analytics Tab with Interactive Charts"""
+    st.markdown("""
+    <div class="intelligence-header">
+        <h2 style="margin:0;">📈 Visual Analytics Dashboard</h2>
+        <p style="margin:0; opacity:0.9;">Interactive Charts • Sales Trends • Product Performance • Custom Visualizations</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Client selection
+    available_clients = st.session_state.user_clients
+    if not available_clients:
+        st.warning("No clients available for your account")
+        return
+    
+    client = st.selectbox(
+        "Select Client:",
+        available_clients,
+        key="visual_client_select"
+    )
+    
+    # Load client data
+    with st.spinner(f"📥 Loading data for {client}..."):
+        DATA = get_google_sheets_data(client)
+    
+    if not DATA.get("Backaldrin") and not DATA.get("Bateel"):
+        st.error(f"❌ No data found for {client}")
+        return
+    
+    st.success(f"✅ Loaded data for {client}")
+    
+    # Supplier selection
+    supplier = st.radio(
+        "Select Supplier:",
+        ["Backaldrin", "Bateel"],
+        horizontal=True,
+        key="visual_supplier"
+    )
+    
+    # ============================================
+    # SECTION 1: PRODUCT SELECTION
+    # ============================================
+    st.subheader("🎯 Select Product for Analysis")
+    
+    # Get all articles from the selected supplier
+    supplier_data = DATA.get(supplier, {})
+    articles = list(supplier_data.keys())
+    
+    if not articles:
+        st.info(f"No articles found for {supplier} - {client}")
+        return
+    
+    # Create searchable select box
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        selected_article = st.selectbox(
+            "Search and select article:",
+            articles,
+            format_func=lambda x: f"{x} - {supplier_data[x]['names'][0] if supplier_data[x]['names'] else 'No Name'}",
+            key="visual_article_select"
+        )
+    
+    with col2:
+        # Time range selection
+        time_range = st.selectbox(
+            "Time Period:",
+            ["All Time", "Last 2 Years", "Last Year", "Last 6 Months", "Custom"],
+            key="visual_time_range"
+        )
+    
+    # Get selected article data
+    article_data = supplier_data.get(selected_article, {})
+    
+    if not article_data:
+        st.error(f"No data found for article {selected_article}")
+        return
+    
+    # ============================================
+    # SECTION 2: PERFORMANCE METRICS
+    # ============================================
+    st.subheader("📊 Performance Overview")
+    
+    # Calculate metrics
+    orders = article_data.get('orders', [])
+    prices = article_data.get('prices', [])
+    
+    if not orders:
+        st.info(f"No order history for article {selected_article}")
+        return
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        total_orders = len(orders)
+        st.metric("Total Orders", total_orders)
+    
+    with col2:
+        avg_price = sum(prices) / len(prices) if prices else 0
+        st.metric("Avg Price/kg", f"${avg_price:.2f}")
+    
+    with col3:
+        min_price = min(prices) if prices else 0
+        st.metric("Min Price", f"${min_price:.2f}")
+    
+    with col4:
+        max_price = max(prices) if prices else 0
+        st.metric("Max Price", f"${max_price:.2f}")
+    
+    # ============================================
+    # SECTION 3: PRICE TREND CHART
+    # ============================================
+    st.subheader("📈 Price Trend Over Time")
+    
+    # Prepare data for chart
+    chart_data = []
+    for order in orders:
+        try:
+            price = float(order.get('price', 0))
+            date_str = order.get('date', '')
+            if price > 0 and date_str:
+                # Try to parse date
+                try:
+                    # Handle different date formats
+                    for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d']:
+                        try:
+                            date = datetime.strptime(date_str, fmt)
+                            chart_data.append({
+                                'Date': date,
+                                'Price': price,
+                                'Order': order.get('order_no', ''),
+                                'Quantity': float(order.get('quantity', 0) or 0),
+                                'Total_Weight': float(order.get('total_weight', 0) or 0)
+                            })
+                            break
+                        except:
+                            continue
+                except:
+                    continue
+        except:
+            continue
+    
+    if chart_data:
+        # Create DataFrame for charting
+        df_chart = pd.DataFrame(chart_data)
+        df_chart = df_chart.sort_values('Date')
+        
+        # Chart 1: Price Trend Line
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            st.markdown("**Price per kg over time**")
+            st.line_chart(df_chart.set_index('Date')['Price'], use_container_width=True)
+        
+        with col2:
+            st.markdown("**Statistics**")
+            st.write(f"First order: {df_chart['Date'].min().strftime('%b %Y')}")
+            st.write(f"Latest order: {df_chart['Date'].max().strftime('%b %Y')}")
+            st.write(f"Total period: {(df_chart['Date'].max() - df_chart['Date'].min()).days} days")
+        
+        # Chart 2: Quantity vs Price Scatter
+        st.subheader("📊 Quantity vs Price Analysis")
+        
+        if not df_chart.empty and 'Quantity' in df_chart.columns and df_chart['Quantity'].sum() > 0:
+            # Scatter plot
+            fig1, ax1 = plt.subplots(figsize=(10, 6))
+            scatter = ax1.scatter(df_chart['Quantity'], df_chart['Price'], 
+                                 c=range(len(df_chart)), cmap='viridis', s=100, alpha=0.6)
+            
+            # Add labels and trend line
+            ax1.set_xlabel('Quantity (units)')
+            ax1.set_ylabel('Price ($/kg)')
+            ax1.set_title(f'Quantity vs Price - {selected_article}')
+            ax1.grid(True, alpha=0.3)
+            
+            # Add trend line if enough points
+            if len(df_chart) > 1:
+                z = np.polyfit(df_chart['Quantity'], df_chart['Price'], 1)
+                p = np.poly1d(z)
+                ax1.plot(df_chart['Quantity'], p(df_chart['Quantity']), "r--", alpha=0.5, 
+                        label=f'Trend: y={z[0]:.4f}x + {z[1]:.2f}')
+                ax1.legend()
+            
+            # Add colorbar
+            plt.colorbar(scatter, ax=ax1, label='Order Sequence')
+            
+            st.pyplot(fig1)
+            
+            # Insights
+            correlation = df_chart['Quantity'].corr(df_chart['Price'])
+            st.info(f"**Insight:** Quantity-Price correlation: {correlation:.3f}")
+            if correlation < -0.3:
+                st.success("✅ **Negative correlation:** Higher quantities tend to get better prices")
+            elif correlation > 0.3:
+                st.warning("⚠️ **Positive correlation:** Higher quantities might be paying more")
+            else:
+                st.info("ℹ️ **Weak correlation:** Quantity doesn't strongly affect price")
+        
+        # Chart 3: Monthly Aggregation
+        st.subheader("📅 Monthly Performance")
+        
+        # Group by month
+        df_chart['YearMonth'] = df_chart['Date'].dt.to_period('M')
+        monthly_data = df_chart.groupby('YearMonth').agg({
+            'Price': ['mean', 'count', 'min', 'max'],
+            'Quantity': 'sum',
+            'Total_Weight': 'sum'
+        }).round(2)
+        
+        monthly_data.columns = ['Avg_Price', 'Order_Count', 'Min_Price', 'Max_Price', 'Total_Quantity', 'Total_Weight']
+        monthly_data = monthly_data.reset_index()
+        monthly_data['YearMonth'] = monthly_data['YearMonth'].astype(str)
+        
+        # Display monthly table
+        with st.expander("📋 View Monthly Breakdown", expanded=True):
+            st.dataframe(
+                monthly_data.style
+                .background_gradient(subset=['Avg_Price'], cmap='RdYlGn_r')
+                .background_gradient(subset=['Total_Quantity'], cmap='Blues')
+                .format({'Avg_Price': '${:.2f}', 'Min_Price': '${:.2f}', 'Max_Price': '${:.2f}'}),
+                use_container_width=True
+            )
+        
+        # Chart 4: Bar chart for monthly comparison
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**Monthly Average Price**")
+            st.bar_chart(monthly_data.set_index('YearMonth')['Avg_Price'])
+        
+        with col2:
+            st.markdown("**Monthly Order Count**")
+            st.bar_chart(monthly_data.set_index('YearMonth')['Order_Count'])
+        
+        # ============================================
+        # SECTION 4: COMPARATIVE ANALYSIS
+        # ============================================
+        st.subheader("🔍 Comparative Analysis")
+        
+        # Compare with other articles
+        compare_articles = st.multiselect(
+            "Compare with other articles:",
+            [a for a in articles if a != selected_article],
+            max_selections=3,
+            key="compare_articles"
+        )
+        
+        if compare_articles:
+            comparison_data = []
+            for article in [selected_article] + compare_articles:
+                art_data = supplier_data.get(article, {})
+                art_prices = art_data.get('prices', [])
+                if art_prices:
+                    comparison_data.append({
+                        'Article': article,
+                        'Name': art_data.get('names', [''])[0],
+                        'Avg_Price': sum(art_prices) / len(art_prices),
+                        'Min_Price': min(art_prices),
+                        'Max_Price': max(art_prices),
+                        'Order_Count': len(art_data.get('orders', [])),
+                        'Price_Range': max(art_prices) - min(art_prices)
+                    })
+            
+            if comparison_data:
+                df_comparison = pd.DataFrame(comparison_data)
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("**Price Comparison**")
+                    fig2, ax2 = plt.subplots(figsize=(8, 6))
+                    
+                    articles_list = df_comparison['Article'].tolist()
+                    avg_prices = df_comparison['Avg_Price'].tolist()
+                    
+                    bars = ax2.bar(range(len(articles_list)), avg_prices, 
+                                  color=['#991B1B' if a == selected_article else '#6B7280' for a in articles_list],
+                                  alpha=0.7)
+                    
+                    ax2.set_xlabel('Article')
+                    ax2.set_ylabel('Average Price ($/kg)')
+                    ax2.set_title('Average Price Comparison')
+                    ax2.set_xticks(range(len(articles_list)))
+                    ax2.set_xticklabels([f"{a[:15]}..." for a in articles_list], rotation=45, ha='right')
+                    
+                    # Add value labels on bars
+                    for bar in bars:
+                        height = bar.get_height()
+                        ax2.text(bar.get_x() + bar.get_width()/2., height,
+                                f'${height:.2f}', ha='center', va='bottom')
+                    
+                    st.pyplot(fig2)
+                
+                with col2:
+                    st.markdown("**Comparison Table**")
+                    st.dataframe(
+                        df_comparison.style
+                        .highlight_max(subset=['Avg_Price'], color='#FECACA')
+                        .highlight_min(subset=['Avg_Price'], color='#D1FAE5')
+                        .format({'Avg_Price': '${:.2f}', 'Min_Price': '${:.2f}', 
+                                'Max_Price': '${:.2f}', 'Price_Range': '${:.2f}'}),
+                        use_container_width=True
+                    )
+        
+        # ============================================
+        # SECTION 5: EXPORT VISUAL REPORT
+        # ============================================
+        st.markdown('<div class="export-section">', unsafe_allow_html=True)
+        st.subheader("📤 Export Visual Report")
+        
+        # Generate summary report
+        report_text = f"""
+VISUAL ANALYTICS REPORT
+=======================
+
+Client: {client}
+Supplier: {supplier}
+Article: {selected_article}
+Product: {article_data.get('names', [''])[0]}
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+PERFORMANCE SUMMARY:
+• Total Orders: {total_orders}
+• Average Price: ${avg_price:.2f}/kg
+• Price Range: ${min_price:.2f} - ${max_price:.2f}/kg
+• Analysis Period: {df_chart['Date'].min().strftime('%b %d, %Y')} to {df_chart['Date'].max().strftime('%b %d, %Y')}
+
+MONTHLY BREAKDOWN:
+{chr(10).join([f"• {row['YearMonth']}: ${row['Avg_Price']:.2f} avg ({row['Order_Count']} orders, {row['Total_Quantity']} units)" 
+               for _, row in monthly_data.iterrows()])}
+
+KEY INSIGHTS:
+1. Price stability: {'Stable' if (max_price - min_price) < avg_price * 0.2 else 'Volatile'}
+2. Order frequency: {'Regular' if len(df_chart) / ((df_chart['Date'].max() - df_chart['Date'].min()).days/30) > 0.5 else 'Irregular'}
+3. Best performing month: {monthly_data.loc[monthly_data['Order_Count'].idxmax(), 'YearMonth']}
+4. Highest average price: ${monthly_data['Avg_Price'].max():.2f} in {monthly_data.loc[monthly_data['Avg_Price'].idxmax(), 'YearMonth']}
+
+RECOMMENDATIONS:
+• Consider price adjustment if volatility > 20%
+• Monitor order patterns for seasonal trends
+• Compare with market benchmarks regularly
+        """
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Download CSV
+            if not df_chart.empty:
+                csv = df_chart.to_csv(index=False)
+                st.download_button(
+                    label="📥 Download Chart Data (CSV)",
+                    data=csv,
+                    file_name=f"{client}_{supplier}_{selected_article}_chart_data.csv",
+                    mime="text/csv",
+                    use_container_width=True,
+                    key="visual_csv"
+                )
+        
+        with col2:
+            # Download Report
+            st.download_button(
+                label="📄 Download Analysis Report",
+                data=report_text,
+                file_name=f"{client}_{supplier}_{selected_article}_analysis_report.txt",
+                mime="text/plain",
+                use_container_width=True,
+                key="visual_report"
+            )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    else:
+        st.warning("No valid date/price data available for charting")
+    
+    # ============================================
+    # SECTION 6: QUICK TIPS
+    # ============================================
+    with st.expander("💡 How to use this dashboard"):
+        st.markdown("""
+        **📈 Visual Analytics Guide:**
+        
+        1. **Select Client & Supplier** - Choose which data to analyze
+        2. **Search Article** - Use dropdown to find specific products
+        3. **Analyze Trends** - View price changes over time
+        4. **Compare Products** - Select multiple articles for comparison
+        5. **Export Insights** - Download reports for presentations
+        
+        **Key Metrics to Watch:**
+        - **Price Volatility**: Large price swings may indicate market changes
+        - **Order Frequency**: Regular orders suggest stable demand
+        - **Quantity-Price Correlation**: Bulk discounts or premium pricing patterns
+        - **Monthly Trends**: Seasonal demand patterns
+        
+        **Pro Tips:**
+        - Use monthly breakdown to identify seasonal patterns
+        - Compare similar products to spot pricing opportunities
+        - Export charts for client presentations
+        - Monitor price stability for negotiation strategies
+        """)
+
+    else:
+        st.info(f"No order history found for article {selected_article}")
+
 
 # ============================================
 # ORIGINAL TAB FUNCTIONS
