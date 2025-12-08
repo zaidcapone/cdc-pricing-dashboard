@@ -1541,107 +1541,24 @@ def visual_analytics_tab():
             price = float(order.get('price', 0))
             date_str = order.get('date', '')
             if price > 0 and date_str:
-                           # Try to parse date - EXTENDED FORMAT SUPPORT
-            try:
-                date_parsed = False
-                date_str_clean = str(date_str).strip()
-                
-                # More comprehensive date format list
-                date_formats = [
-                    '%d.%m.%Y',    # 25.12.2024
-                    '%d/%m/%Y',    # 25/12/2024  
-                    '%d-%m-%Y',    # 25-12-2024
-                    '%Y-%m-%d',    # 2024-12-25
-                    '%m/%d/%Y',    # 12/25/2024 (US format)
-                    '%m-%d-%Y',    # 12-25-2024
-                    '%d.%m.%y',    # 25.12.24 (2-digit year)
-                    '%d/%m/%y',    # 25/12/24
-                    '%d-%m-%y',    # 25-12-24
-                    '%b %d, %Y',   # Dec 25, 2024
-                    '%B %d, %Y',   # December 25, 2024
-                    '%Y.%m.%d',    # 2024.12.25
-                    '%d %b %Y',    # 25 Dec 2024
-                    '%d %B %Y',    # 25 December 2024
-                ]
-                
-                # Try each format
-                for fmt in date_formats:
-                    try:
-                        date = datetime.strptime(date_str_clean, fmt)
-                        chart_data.append({
-                            'Date': date,
-                            'Price': price,
-                            'Order': order.get('order_no', ''),
-                            'Quantity': float(str(order.get('quantity', 0)).replace(',', '') or 0),
-                            'Total_Weight': float(str(order.get('total_weight', 0)).replace(',', '') or 0)
-                        })
-                        date_parsed = True
-                        break
-                    except:
-                        continue
-                
-                # If standard formats fail, try to extract from text
-                if not date_parsed and date_str_clean:
-                    # Look for common date patterns in text
-                    import re
-                    
-                    # Pattern 1: DD/MM/YYYY or MM/DD/YYYY
-                    pattern1 = r'(\d{1,2})[/\-.](\d{1,2})[/\-.](?:\d{2})?(\d{2,4})'
-                    match1 = re.search(pattern1, date_str_clean)
-                    
-                    # Pattern 2: Month DD, YYYY
-                    pattern2 = r'([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})'
-                    match2 = re.search(pattern2, date_str_clean)
-                    
-                    if match1:
+                # Try to parse date
+                try:
+                    # Handle different date formats
+                    for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d']:
                         try:
-                            day, month, year = match1.groups()
-                            if len(year) == 2:
-                                year = '20' + year
-                            date_str_new = f"{int(day):02d}/{int(month):02d}/{year}"
-                            date = datetime.strptime(date_str_new, '%d/%m/%Y')
+                            date = datetime.strptime(date_str, fmt)
                             chart_data.append({
                                 'Date': date,
                                 'Price': price,
                                 'Order': order.get('order_no', ''),
-                                'Quantity': float(str(order.get('quantity', 0)).replace(',', '') or 0),
-                                'Total_Weight': float(str(order.get('total_weight', 0)).replace(',', '') or 0)
+                                'Quantity': float(order.get('quantity', 0) or 0),
+                                'Total_Weight': float(order.get('total_weight', 0) or 0)
                             })
-                            date_parsed = True
+                            break
                         except:
-                            pass
-                    
-                    elif match2:
-                        try:
-                            month_name, day, year = match2.groups()
-                            date_str_new = f"{month_name} {day}, {year}"
-                            date = datetime.strptime(date_str_new, '%B %d, %Y')
-                            chart_data.append({
-                                'Date': date,
-                                'Price': price,
-                                'Order': order.get('order_no', ''),
-                                'Quantity': float(str(order.get('quantity', 0)).replace(',', '') or 0),
-                                'Total_Weight': float(str(order.get('total_weight', 0)).replace(',', '') or 0)
-                            })
-                            date_parsed = True
-                        except:
-                            try:
-                                date = datetime.strptime(date_str_new, '%b %d, %Y')
-                                chart_data.append({
-                                    'Date': date,
-                                    'Price': price,
-                                    'Order': order.get('order_no', ''),
-                                    'Quantity': float(str(order.get('quantity', 0)).replace(',', '') or 0),
-                                    'Total_Weight': float(str(order.get('total_weight', 0)).replace(',', '') or 0)
-                                })
-                                date_parsed = True
-                            except:
-                                pass
-                
-            except Exception as e:
-                # Debug: Uncomment to see date parsing errors
-                # st.write(f"Date parsing error for '{date_str}': {e}")
-                continue
+                            continue
+                except:
+                    continue
         except:
             continue
     
