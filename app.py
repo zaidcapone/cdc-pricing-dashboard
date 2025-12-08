@@ -1,9 +1,9 @@
 # ============================================
 # MULTI-CLIENT PRICING DASHBOARD
 # ============================================
-# Author: Backaldrin Arab Jordan
+# Author: Zaid F. Al-Shami
 # Version: 3.0 (with Visual Analytics)
-# Last Updated: 2025-01-15
+# Last Updated: 8 Dec 2025
 # ============================================
 # IMPORTANT NOTES:
 # 1. This dashboard connects to Google Sheets for real-time data
