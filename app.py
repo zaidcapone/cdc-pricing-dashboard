@@ -1419,7 +1419,7 @@ def main_dashboard():
 
 def visual_analytics_tab():
     """
-    FIXED: Visual Analytics Tab with Interactive Charts
+    CLEANED: Visual Analytics Tab with Interactive Charts
     This tab provides graphical analysis of sales data, price trends, and product performance
     """
     st.markdown("""
@@ -1507,15 +1507,6 @@ def visual_analytics_tab():
     orders = article_data.get('orders', [])
     prices = article_data.get('prices', [])
     
-    # DEBUG: Show raw data structure
-    with st.expander("🔍 Debug: Data Structure", expanded=False):
-        st.write(f"Total orders found: {len(orders)}")
-        st.write(f"Total price entries: {len(prices)}")
-        
-        if orders:
-            st.write("Sample order structure:")
-            st.write(orders[0])
-    
     if not orders:
         st.info(f"No order history for article {selected_article}")
         return
@@ -1539,11 +1530,11 @@ def visual_analytics_tab():
         st.metric("Max Price", f"${max_price:.2f}")
     
     # ============================================
-    # SECTION 3: FIXED PRICE TREND CHART
+    # SECTION 3: PRICE TREND CHART
     # ============================================
     st.subheader("📈 Price Trend Over Time")
     
-    # Prepare data for chart - FIXED VERSION
+    # Prepare data for chart
     chart_data = []
     for order in orders:
         try:
@@ -1552,7 +1543,7 @@ def visual_analytics_tab():
             if not price_str:
                 continue
                 
-            # Clean price string (remove any non-numeric characters except . and -)
+            # Clean price string
             import re
             price_clean = re.sub(r'[^\d.-]', '', price_str)
             if not price_clean:
@@ -1594,11 +1585,10 @@ def visual_analytics_tab():
             if not date_obj:
                 continue
             
-            # Get quantity (handle Arabic text mixed with numbers)
+            # Get quantity
             quantity_str = str(order.get('quantity', '')).strip()
             quantity = 0
             if quantity_str:
-                # Extract numbers from string (e.g., "100 شوال" -> 100)
                 numbers = re.findall(r'\d+\.?\d*', quantity_str)
                 if numbers:
                     try:
@@ -1625,16 +1615,8 @@ def visual_analytics_tab():
                 'Total_Weight': total_weight
             })
             
-        except Exception as e:
-            # Silently continue if there's an error with this order
+        except:
             continue
-    
-    # Show debug info about chart data
-    with st.expander("📊 Debug: Chart Data Status", expanded=False):
-        st.write(f"Valid orders with date+price: {len(chart_data)} / {len(orders)}")
-        if chart_data:
-            st.write("Sample chart data:")
-            st.write(chart_data[0])
     
     if chart_data:
         # Create DataFrame for charting
@@ -1646,41 +1628,35 @@ def visual_analytics_tab():
         
         with col1:
             st.markdown("**Price per kg over time**")
-            # Ensure we have unique dates for line chart
             if len(df_chart) > 1:
-                # Use area chart for better visualization
                 st.area_chart(df_chart.set_index('Date')['Price'], use_container_width=True)
             else:
-                st.info("Only one data point available. Need more data for trend analysis.")
+                st.info("Only one data point available")
         
         with col2:
             st.markdown("**Statistics**")
             if not df_chart.empty:
-                st.write(f"First order: {df_chart['Date'].min().strftime('%b %Y')}")
-                st.write(f"Latest order: {df_chart['Date'].max().strftime('%b %Y')}")
-                st.write(f"Total period: {(df_chart['Date'].max() - df_chart['Date'].min()).days} days")
+                st.write(f"First: {df_chart['Date'].min().strftime('%b %Y')}")
+                st.write(f"Latest: {df_chart['Date'].max().strftime('%b %Y')}")
+                st.write(f"Period: {(df_chart['Date'].max() - df_chart['Date'].min()).days} days")
                 st.write(f"Data points: {len(df_chart)}")
         
-        # Chart 2: Quantity vs Price Scatter (if we have quantity data)
+        # Chart 2: Quantity vs Price Scatter
         if not df_chart.empty and 'Quantity' in df_chart.columns and df_chart['Quantity'].sum() > 0:
             st.subheader("📊 Quantity vs Price Analysis")
             
-            # Filter out zero quantities for scatter plot
             df_scatter = df_chart[df_chart['Quantity'] > 0]
             
             if len(df_scatter) > 1:
-                # Create scatter plot
                 fig1, ax1 = plt.subplots(figsize=(10, 6))
                 scatter = ax1.scatter(df_scatter['Quantity'], df_scatter['Price'], 
                                      c=range(len(df_scatter)), cmap='viridis', s=100, alpha=0.6)
                 
-                # Add labels and trend line
                 ax1.set_xlabel('Quantity (units)')
                 ax1.set_ylabel('Price ($/kg)')
                 ax1.set_title(f'Quantity vs Price - {selected_article}')
                 ax1.grid(True, alpha=0.3)
                 
-                # Add trend line if enough points
                 if len(df_scatter) > 2:
                     try:
                         z = np.polyfit(df_scatter['Quantity'], df_scatter['Price'], 1)
@@ -1691,25 +1667,22 @@ def visual_analytics_tab():
                     except:
                         pass
                 
-                # Add colorbar
                 plt.colorbar(scatter, ax=ax1, label='Order Sequence')
-                
                 st.pyplot(fig1)
                 
-                # Insights
                 try:
                     correlation = df_scatter['Quantity'].corr(df_scatter['Price'])
-                    st.info(f"**Insight:** Quantity-Price correlation: {correlation:.3f}")
+                    st.info(f"**Correlation:** {correlation:.3f}")
                     if correlation < -0.3:
-                        st.success("✅ **Negative correlation:** Higher quantities tend to get better prices")
+                        st.success("✅ Higher quantities get better prices")
                     elif correlation > 0.3:
-                        st.warning("⚠️ **Positive correlation:** Higher quantities might be paying more")
+                        st.warning("⚠️ Higher quantities pay more")
                     else:
-                        st.info("ℹ️ **Weak correlation:** Quantity doesn't strongly affect price")
+                        st.info("ℹ️ Quantity doesn't strongly affect price")
                 except:
                     pass
         
-        # Chart 3: Monthly Aggregation (if we have enough data)
+        # Chart 3: Monthly Aggregation
         if not df_chart.empty and len(df_chart) >= 2:
             st.subheader("📅 Monthly Performance")
             
@@ -1747,8 +1720,8 @@ def visual_analytics_tab():
                     with col2:
                         st.markdown("**Monthly Order Count**")
                         st.bar_chart(monthly_data.set_index('YearMonth')['Order_Count'])
-            except Exception as e:
-                st.warning(f"Could not generate monthly breakdown: {str(e)}")
+            except:
+                pass
         
         # ============================================
         # SECTION 4: EXPORT VISUAL REPORT
@@ -1781,7 +1754,6 @@ PERFORMANCE SUMMARY:
         col1, col2 = st.columns(2)
         
         with col1:
-            # Download CSV
             if not df_chart.empty:
                 csv = df_chart.to_csv(index=False)
                 st.download_button(
@@ -1794,7 +1766,6 @@ PERFORMANCE SUMMARY:
                 )
         
         with col2:
-            # Download Report
             st.download_button(
                 label="📄 Download Analysis Report",
                 data=report_text,
@@ -1807,23 +1778,7 @@ PERFORMANCE SUMMARY:
         st.markdown('</div>', unsafe_allow_html=True)
         
     else:
-        # Show why no chart data is available
-        with st.expander("⚠️ Why no chart data?", expanded=True):
-            st.write("### Possible reasons:")
-            st.write("1. **Missing dates in order data**")
-            st.write("2. **Missing or invalid prices**")
-            st.write("3. **Date format issues**")
-            st.write("4. **Price format issues**")
-            
-            # Show sample of problematic data
-            if orders:
-                st.write("### Sample of problematic orders:")
-                for i, order in enumerate(orders[:3]):
-                    st.write(f"**Order {i+1}:**")
-                    st.write(f"- Date: `{order.get('date')}`")
-                    st.write(f"- Price: `{order.get('price')}`")
-                    st.write(f"- Year: `{order.get('year')}`")
-                    st.write("---")
+        st.warning("No valid date/price data available for charting. Make sure orders have both date and price information.")
     
     # ============================================
     # SECTION 5: QUICK TIPS
