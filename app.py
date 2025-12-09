@@ -1516,6 +1516,43 @@ def visual_analytics_tab():
         return
     
     col1, col2, col3, col4 = st.columns(4)
+
+    # ============================================
+# DEBUG SECTION - ADD THIS
+# ============================================
+with st.expander("🔍 DEBUG: Check Data Structure", expanded=True):
+    st.write(f"Total orders found: {len(orders)}")
+    
+    # Show first 5 orders to see structure
+    st.write("### First 5 orders (raw data):")
+    for i, order in enumerate(orders[:5]):
+        st.write(f"**Order {i+1}:**")
+        st.write(f"- Article: {order.get('article')}")
+        st.write(f"- Date: `{order.get('date')}`")
+        st.write(f"- Year: `{order.get('year')}`")
+        st.write(f"- Price: `{order.get('price')}`")
+        st.write(f"- Quantity: `{order.get('quantity')}`")
+        st.write("---")
+    
+    # Check date formats
+    st.write("### Date formats found:")
+    dates_found = []
+    for order in orders:
+        date_str = str(order.get('date', '')).strip()
+        if date_str and date_str not in dates_found:
+            dates_found.append(date_str)
+    
+    st.write(f"Unique date formats: {dates_found[:10]}")  # Show first 10
+    
+    # Check price values
+    st.write("### Price values found:")
+    prices_found = []
+    for order in orders:
+        price_str = str(order.get('price', '')).strip()
+        if price_str and price_str not in prices_found:
+            prices_found.append(price_str)
+    
+    st.write(f"Price values: {prices_found[:10]}")
     
     with col1:
         total_orders = len(orders)
