@@ -798,7 +798,7 @@ def load_sheet_data(sheet_name, start_row=0):
 
 @st.cache_data(ttl=300)
 def get_google_sheets_data(client="CDC"):
-    """Optimized version - loads both suppliers in one call and returns proper structure - CACHED"""
+    """Optimized version - loads both suppliers in one call and returns proper structure for Visual Analytics - CACHED"""
     try:
         backaldrin_sheet = f"Backaldrin_{client}"
         bateel_sheet = f"Bateel_{client}"
@@ -807,7 +807,7 @@ def get_google_sheets_data(client="CDC"):
         bateel_df = load_sheet_data(bateel_sheet)
         
         def convert_df_to_dict(df):
-            """Simple converter that builds the expected structure"""
+            """Converter that builds the structure expected by Visual Analytics"""
             result = {}
             
             if df.empty:
@@ -820,8 +820,8 @@ def get_google_sheets_data(client="CDC"):
                         return name
                 return None
             
-            # Find columns using lowercase priority first
-            article_column = get_column(df, ['article_number', 'Article_Number', 'article', 'Article'])
+            # Find columns using common names
+            article_column = get_column(df, ['article_number', 'Article_Number', 'article', 'Article', 'article_number', 'Article Number'])
             product_column = get_column(df, ['product_name', 'Product_Name', 'Product', 'product'])
             price_column = get_column(df, ['price_per_', 'price_per_kg', 'Price_per_', 'Price_per_kg', 'Price', 'price'])
             order_column = get_column(df, ['order_number', 'Order_Number', 'Order', 'order'])
@@ -839,7 +839,7 @@ def get_google_sheets_data(client="CDC"):
 
             for _, row in df.iterrows():
                 article = str(row.get(article_column, '')).strip()
-                if not article:
+                if not article or article == 'nan':
                     continue
                     
                 if article not in result:
@@ -849,32 +849,75 @@ def get_google_sheets_data(client="CDC"):
                         'orders': []
                     }
                 
-                product_name = str(row.get(product_column, '')).strip() if product_column else ''
-                if product_name and product_name not in result[article]['names']:
+                # Get product name
+                product_name = str(row.get(product_column, '')).strip() if product_column and product_column in row else ''
+                if product_name and product_name not in result[article]['names'] and product_name != 'nan':
                     result[article]['names'].append(product_name)
                 
-                price_str = str(row.get(price_column, '')).strip() if price_column else ''
-                if price_str:
+                # Extract price (CRITICAL FOR VISUAL ANALYTICS)
+                price_str = str(row.get(price_column, '')).strip() if price_column and price_column in row else ''
+                price_value = 0
+                if price_str and price_str != 'nan':
                     try:
-                        price_float = float(price_str)
+                        # Clean price string
+                        price_clean = price_str.replace('$', '').replace(',', '').strip()
+                        price_float = float(price_clean)
                         result[article]['prices'].append(price_float)
+                        price_value = price_float
                     except:
-                        pass
+                        price_value = 0
                 
-                order_details = {
-                    'order_no': str(row.get(order_column, '')).strip() if order_column else '',
-                    'date': str(row.get(date_column, '')).strip() if date_column else '',
-                    'year': str(row.get(year_column, '')).strip() if year_column else '',
+                # Extract quantity (clean from Arabic text)
+                quantity_str = ''
+                if quantity_column and quantity_column in row:
+                    quantity_str = str(row.get(quantity_column, '')).strip()
+                
+                quantity_value = 0
+                if quantity_str and quantity_str != 'nan':
+                    # Remove Arabic text and extract numbers
+                    import re
+                    numbers = re.findall(r'\d+\.?\d*', quantity_str)
+                    if numbers:
+                        try:
+                            quantity_value = float(numbers[0])
+                        except:
+                            quantity_value = 0
+                
+                # Extract date
+                date_str = ''
+                if date_column and date_column in row:
+                    date_str = str(row.get(date_column, '')).strip()
+                
+                # Extract weight
+                weight_str = ''
+                if weight_column and weight_column in row:
+                    weight_str = str(row.get(weight_column, '')).strip()
+                
+                weight_value = 0
+                if weight_str and weight_str != 'nan':
+                    try:
+                        weight_value = float(weight_str)
+                    except:
+                        weight_value = 0
+                
+                # Create order dictionary - FORMAT EXPECTED BY VISUAL ANALYTICS
+                order = {
+                    'order_no': str(row.get(order_column, '')).strip() if order_column and order_column in row else '',
+                    'date': date_str,
+                    'year': str(row.get(year_column, '')).strip() if year_column and year_column in row else '',
                     'product_name': product_name,
                     'article': article,
-                    'hs_code': str(row.get(hs_code_column, '')).strip() if hs_code_column else '',
-                    'packaging': str(row.get(packaging_column, '')).strip() if packaging_column else '',
-                    'quantity': str(row.get(quantity_column, '')).strip() if quantity_column else '',
-                    'total_weight': str(row.get(weight_column, '')).strip() if weight_column else '',
-                    'price': price_str,
-                    'total_price': str(row.get(total_price_column, '')).strip() if total_price_column else ''
+                    'hs_code': str(row.get(hs_code_column, '')).strip() if hs_code_column and hs_code_column in row else '',
+                    'packaging': str(row.get(packaging_column, '')).strip() if packaging_column and packaging_column in row else '',
+                    'quantity': quantity_value,  # NUMERIC value now
+                    'total_weight': weight_value,  # NUMERIC value now
+                    'price': price_value,  # NUMERIC value now
+                    'total_price': str(row.get(total_price_column, '')).strip() if total_price_column and total_price_column in row else ''
                 }
-                result[article]['orders'].append(order_details)
+                
+                # Only add order if it has a price and date (for visual analytics)
+                if price_value > 0 and date_str and date_str != 'nan':
+                    result[article]['orders'].append(order)
             
             return result
         
@@ -1494,38 +1537,65 @@ def visual_analytics_tab():
         max_price = max(prices) if prices else 0
         st.metric("Max Price", f"${max_price:.2f}")
     
-    # ============================================
-    # SECTION 3: PRICE TREND CHART
-    # ============================================
-    st.subheader("📈 Price Trend Over Time")
-    
-    # Prepare data for chart
-    chart_data = []
-    for order in orders:
-        try:
-            price = float(order.get('price', 0))
-            date_str = order.get('date', '')
-            if price > 0 and date_str:
-                # Try to parse date
+# ============================================
+# SECTION 3: PRICE TREND CHART
+# ============================================
+st.subheader("📈 Price Trend Over Time")
+
+# Prepare data for chart - FIXED VERSION (REPLACE ONLY THIS PART)
+chart_data = []
+for order in orders:
+    try:
+        # Get price - handle float or string
+        price_obj = order.get('price', 0)
+        if isinstance(price_obj, (int, float)):
+            price = float(price_obj)
+        else:
+            price_str = str(price_obj)
+            price_clean = price_str.replace('$', '').replace(',', '').strip()
+            price = float(price_clean) if price_clean else 0
+        
+        # Get date
+        date_str = order.get('date', '')
+        if not date_str or date_str == 'nan':
+            continue
+        
+        # Get quantity - already numeric from our fix
+        quantity = float(order.get('quantity', 0) or 0)
+        
+        # Get weight - already numeric from our fix
+        weight = float(order.get('total_weight', 0) or 0)
+        
+        if price > 0 and date_str:
+            # Parse date - your dates are in 'dd.mm.YYYY' format
+            try:
+                # First try the Excel format (dd.mm.YYYY)
+                date = datetime.strptime(date_str, '%d.%m.%Y')
+            except:
                 try:
-                    # Handle different date formats
-                    for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d']:
+                    # Try other common formats
+                    for fmt in ['%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d']:
                         try:
                             date = datetime.strptime(date_str, fmt)
-                            chart_data.append({
-                                'Date': date,
-                                'Price': price,
-                                'Order': order.get('order_no', ''),
-                                'Quantity': float(order.get('quantity', 0) or 0),
-                                'Total_Weight': float(order.get('total_weight', 0) or 0)
-                            })
                             break
                         except:
                             continue
+                    else:
+                        # If all fail, skip this order
+                        continue
                 except:
                     continue
-        except:
-            continue
+            
+            chart_data.append({
+                'Date': date,
+                'Price': price,
+                'Order': order.get('order_no', ''),
+                'Quantity': quantity,
+                'Total_Weight': weight
+            })
+    except Exception as e:
+        # Skip orders that fail to parse
+        continue
     
     if chart_data:
         # Create DataFrame for charting
