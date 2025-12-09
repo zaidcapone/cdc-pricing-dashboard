@@ -1542,59 +1542,41 @@ def visual_analytics_tab():
 # ============================================
 st.subheader("📈 Price Trend Over Time")
 
-# Prepare data for chart - FIXED VERSION (REPLACE ONLY THIS PART)
+# Prepare data for chart - SIMPLE VERSION
 chart_data = []
 for order in orders:
     try:
-        # Get price - handle float or string
-        price_obj = order.get('price', 0)
-        if isinstance(price_obj, (int, float)):
-            price = float(price_obj)
-        else:
-            price_str = str(price_obj)
-            price_clean = price_str.replace('$', '').replace(',', '').strip()
-            price = float(price_clean) if price_clean else 0
+        # Get price (convert to float)
+        price = float(str(order.get('price', 0)).replace('$', '').replace(',', '').strip())
         
-        # Get date
-        date_str = order.get('date', '')
-        if not date_str or date_str == 'nan':
+        # Get date string
+        date_str = str(order.get('date', '')).strip()
+        
+        # Skip if no price or date
+        if price <= 0 or not date_str or date_str == 'nan':
             continue
         
-        # Get quantity - already numeric from our fix
-        quantity = float(order.get('quantity', 0) or 0)
+        # SIMPLE DATE PARSING - just for your format
+        try:
+            # Split by dots: "14.02.2024" -> day=14, month=02, year=2024
+            day, month, year = date_str.split('.')
+            date = datetime(int(year), int(month), int(day))
+        except:
+            # If split fails, skip this order
+            continue
         
-        # Get weight - already numeric from our fix
-        weight = float(order.get('total_weight', 0) or 0)
+        # Get quantity and weight
+        quantity = float(str(order.get('quantity', 0)).split()[0])  # Take first number
+        weight = float(str(order.get('total_weight', 0)).split()[0])  # Take first number
         
-        if price > 0 and date_str:
-            # Parse date - your dates are in 'dd.mm.YYYY' format
-            try:
-                # First try the Excel format (dd.mm.YYYY)
-                date = datetime.strptime(date_str, '%d.%m.%Y')
-            except:
-                try:
-                    # Try other common formats
-                    for fmt in ['%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d']:
-                        try:
-                            date = datetime.strptime(date_str, fmt)
-                            break
-                        except:
-                            continue
-                    else:
-                        # If all fail, skip this order
-                        continue
-                except:
-                    continue
-            
-            chart_data.append({
-                'Date': date,
-                'Price': price,
-                'Order': order.get('order_no', ''),
-                'Quantity': quantity,
-                'Total_Weight': weight
-            })
-    except Exception as e:
-        # Skip orders that fail to parse
+        chart_data.append({
+            'Date': date,
+            'Price': price,
+            'Order': order.get('order_no', ''),
+            'Quantity': quantity,
+            'Total_Weight': weight
+        })
+    except:
         continue
     
     if chart_data:
