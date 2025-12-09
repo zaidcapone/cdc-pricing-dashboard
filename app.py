@@ -1420,7 +1420,6 @@ def main_dashboard():
 def visual_analytics_tab():
     """
     NEW: Visual Analytics Tab with Interactive Charts
-    This tab provides graphical analysis of sales data, price trends, and product performance
     """
     st.markdown("""
     <div class="visual-header">
@@ -1428,6 +1427,9 @@ def visual_analytics_tab():
         <p style="margin:0; opacity:0.9;">Interactive Charts • Sales Trends • Product Performance • Custom Visualizations</p>
     </div>
     """, unsafe_allow_html=True)
+    
+    # SIMPLE TEST - JUST SHOW IF TAB LOADS
+    st.write("✅ Visual Analytics tab is loading...")
     
     # Client selection
     available_clients = st.session_state.user_clients
@@ -1440,6 +1442,8 @@ def visual_analytics_tab():
         available_clients,
         key="visual_client_select"
     )
+    
+    st.write(f"✅ Selected client: {client}")
     
     # Load client data
     with st.spinner(f"📥 Loading data for {client}..."):
