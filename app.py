@@ -1419,7 +1419,8 @@ def main_dashboard():
 
 def visual_analytics_tab():
     """
-    NEW: Visual Analytics Tab with Interactive Charts
+    FIXED: Visual Analytics Tab with Interactive Charts
+    This tab provides graphical analysis of sales data, price trends, and product performance
     """
     st.markdown("""
     <div class="visual-header">
@@ -1427,9 +1428,6 @@ def visual_analytics_tab():
         <p style="margin:0; opacity:0.9;">Interactive Charts • Sales Trends • Product Performance • Custom Visualizations</p>
     </div>
     """, unsafe_allow_html=True)
-    
-    # SIMPLE TEST - JUST SHOW IF TAB LOADS
-    st.write("✅ Visual Analytics tab is loading...")
     
     # Client selection
     available_clients = st.session_state.user_clients
@@ -1442,8 +1440,6 @@ def visual_analytics_tab():
         available_clients,
         key="visual_client_select"
     )
-    
-    st.write(f"✅ Selected client: {client}")
     
     # Load client data
     with st.spinner(f"📥 Loading data for {client}..."):
@@ -1511,48 +1507,20 @@ def visual_analytics_tab():
     orders = article_data.get('orders', [])
     prices = article_data.get('prices', [])
     
+    # DEBUG: Show raw data structure
+    with st.expander("🔍 Debug: Data Structure", expanded=False):
+        st.write(f"Total orders found: {len(orders)}")
+        st.write(f"Total price entries: {len(prices)}")
+        
+        if orders:
+            st.write("Sample order structure:")
+            st.write(orders[0])
+    
     if not orders:
         st.info(f"No order history for article {selected_article}")
         return
     
     col1, col2, col3, col4 = st.columns(4)
-
-    # ============================================
-# DEBUG SECTION - ADD THIS
-# ============================================
-with st.expander("🔍 DEBUG: Check Data Structure", expanded=True):
-    st.write(f"Total orders found: {len(orders)}")
-    
-    # Show first 5 orders to see structure
-    st.write("### First 5 orders (raw data):")
-    for i, order in enumerate(orders[:5]):
-        st.write(f"**Order {i+1}:**")
-        st.write(f"- Article: {order.get('article')}")
-        st.write(f"- Date: `{order.get('date')}`")
-        st.write(f"- Year: `{order.get('year')}`")
-        st.write(f"- Price: `{order.get('price')}`")
-        st.write(f"- Quantity: `{order.get('quantity')}`")
-        st.write("---")
-    
-    # Check date formats
-    st.write("### Date formats found:")
-    dates_found = []
-    for order in orders:
-        date_str = str(order.get('date', '')).strip()
-        if date_str and date_str not in dates_found:
-            dates_found.append(date_str)
-    
-    st.write(f"Unique date formats: {dates_found[:10]}")  # Show first 10
-    
-    # Check price values
-    st.write("### Price values found:")
-    prices_found = []
-    for order in orders:
-        price_str = str(order.get('price', '')).strip()
-        if price_str and price_str not in prices_found:
-            prices_found.append(price_str)
-    
-    st.write(f"Price values: {prices_found[:10]}")
     
     with col1:
         total_orders = len(orders)
@@ -1571,37 +1539,102 @@ with st.expander("🔍 DEBUG: Check Data Structure", expanded=True):
         st.metric("Max Price", f"${max_price:.2f}")
     
     # ============================================
-    # SECTION 3: PRICE TREND CHART
+    # SECTION 3: FIXED PRICE TREND CHART
     # ============================================
     st.subheader("📈 Price Trend Over Time")
     
-    # Prepare data for chart
+    # Prepare data for chart - FIXED VERSION
     chart_data = []
     for order in orders:
         try:
-            price = float(order.get('price', 0))
-            date_str = order.get('date', '')
-            if price > 0 and date_str:
-                # Try to parse date
-                try:
-                    # Handle different date formats
-                    for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d']:
-                        try:
-                            date = datetime.strptime(date_str, fmt)
-                            chart_data.append({
-                                'Date': date,
-                                'Price': price,
-                                'Order': order.get('order_no', ''),
-                                'Quantity': float(order.get('quantity', 0) or 0),
-                                'Total_Weight': float(order.get('total_weight', 0) or 0)
-                            })
-                            break
-                        except:
-                            continue
-                except:
+            # Get price
+            price_str = str(order.get('price', '')).strip()
+            if not price_str:
+                continue
+                
+            # Clean price string (remove any non-numeric characters except . and -)
+            import re
+            price_clean = re.sub(r'[^\d.-]', '', price_str)
+            if not price_clean:
+                continue
+                
+            price = float(price_clean)
+            if price <= 0:
+                continue
+            
+            # Get date
+            date_str = str(order.get('date', '')).strip()
+            if not date_str:
+                # Try to use year if date is not available
+                year_str = str(order.get('year', '')).strip()
+                if year_str and year_str.isdigit():
+                    date_str = f"01.01.{year_str}"
+                else:
                     continue
-        except:
+            
+            # Parse date - handle different formats
+            date_obj = None
+            date_formats = [
+                '%d.%m.%Y',  # 14.02.2024
+                '%d/%m/%Y',  # 14/02/2024
+                '%d-%m-%Y',  # 14-02-2024
+                '%Y-%m-%d',  # 2024-02-14
+                '%d.%m.%y',  # 14.02.24
+                '%d/%m/%y',  # 14/02/24
+                '%Y',        # 2024
+            ]
+            
+            for fmt in date_formats:
+                try:
+                    date_obj = datetime.strptime(date_str, fmt)
+                    break
+                except ValueError:
+                    continue
+            
+            if not date_obj:
+                continue
+            
+            # Get quantity (handle Arabic text mixed with numbers)
+            quantity_str = str(order.get('quantity', '')).strip()
+            quantity = 0
+            if quantity_str:
+                # Extract numbers from string (e.g., "100 شوال" -> 100)
+                numbers = re.findall(r'\d+\.?\d*', quantity_str)
+                if numbers:
+                    try:
+                        quantity = float(numbers[0])
+                    except:
+                        quantity = 0
+            
+            # Get total weight
+            weight_str = str(order.get('total_weight', '')).strip()
+            total_weight = 0
+            if weight_str:
+                try:
+                    total_weight = float(weight_str)
+                except:
+                    total_weight = 0
+            
+            chart_data.append({
+                'Date': date_obj,
+                'Price': price,
+                'Order': order.get('order_no', ''),
+                'Article': order.get('article', ''),
+                'Product': order.get('product_name', ''),
+                'Quantity': quantity,
+                'Total_Weight': total_weight
+            })
+            
+        except Exception as e:
+            # Silently continue if there's an error with this order
             continue
+    
+    # Show debug info about chart data
+    with st.expander("📊 Debug: Chart Data Status", expanded=False):
+        st.write(f"Valid orders with date+price: {len(chart_data)} / {len(orders)}")
+        if chart_data:
+            st.write("Sample chart data:")
+            st.write(chart_data[0])
     
     if chart_data:
         # Create DataFrame for charting
@@ -1613,160 +1646,112 @@ with st.expander("🔍 DEBUG: Check Data Structure", expanded=True):
         
         with col1:
             st.markdown("**Price per kg over time**")
-            st.line_chart(df_chart.set_index('Date')['Price'], use_container_width=True)
+            # Ensure we have unique dates for line chart
+            if len(df_chart) > 1:
+                # Use area chart for better visualization
+                st.area_chart(df_chart.set_index('Date')['Price'], use_container_width=True)
+            else:
+                st.info("Only one data point available. Need more data for trend analysis.")
         
         with col2:
             st.markdown("**Statistics**")
-            st.write(f"First order: {df_chart['Date'].min().strftime('%b %Y')}")
-            st.write(f"Latest order: {df_chart['Date'].max().strftime('%b %Y')}")
-            st.write(f"Total period: {(df_chart['Date'].max() - df_chart['Date'].min()).days} days")
+            if not df_chart.empty:
+                st.write(f"First order: {df_chart['Date'].min().strftime('%b %Y')}")
+                st.write(f"Latest order: {df_chart['Date'].max().strftime('%b %Y')}")
+                st.write(f"Total period: {(df_chart['Date'].max() - df_chart['Date'].min()).days} days")
+                st.write(f"Data points: {len(df_chart)}")
         
-        # Chart 2: Quantity vs Price Scatter
-        st.subheader("📊 Quantity vs Price Analysis")
-        
+        # Chart 2: Quantity vs Price Scatter (if we have quantity data)
         if not df_chart.empty and 'Quantity' in df_chart.columns and df_chart['Quantity'].sum() > 0:
-            # Scatter plot
-            fig1, ax1 = plt.subplots(figsize=(10, 6))
-            scatter = ax1.scatter(df_chart['Quantity'], df_chart['Price'], 
-                                 c=range(len(df_chart)), cmap='viridis', s=100, alpha=0.6)
+            st.subheader("📊 Quantity vs Price Analysis")
             
-            # Add labels and trend line
-            ax1.set_xlabel('Quantity (units)')
-            ax1.set_ylabel('Price ($/kg)')
-            ax1.set_title(f'Quantity vs Price - {selected_article}')
-            ax1.grid(True, alpha=0.3)
+            # Filter out zero quantities for scatter plot
+            df_scatter = df_chart[df_chart['Quantity'] > 0]
             
-            # Add trend line if enough points
-            if len(df_chart) > 1:
-                z = np.polyfit(df_chart['Quantity'], df_chart['Price'], 1)
-                p = np.poly1d(z)
-                ax1.plot(df_chart['Quantity'], p(df_chart['Quantity']), "r--", alpha=0.5, 
-                        label=f'Trend: y={z[0]:.4f}x + {z[1]:.2f}')
-                ax1.legend()
-            
-            # Add colorbar
-            plt.colorbar(scatter, ax=ax1, label='Order Sequence')
-            
-            st.pyplot(fig1)
-            
-            # Insights
-            correlation = df_chart['Quantity'].corr(df_chart['Price'])
-            st.info(f"**Insight:** Quantity-Price correlation: {correlation:.3f}")
-            if correlation < -0.3:
-                st.success("✅ **Negative correlation:** Higher quantities tend to get better prices")
-            elif correlation > 0.3:
-                st.warning("⚠️ **Positive correlation:** Higher quantities might be paying more")
-            else:
-                st.info("ℹ️ **Weak correlation:** Quantity doesn't strongly affect price")
-        
-        # Chart 3: Monthly Aggregation
-        st.subheader("📅 Monthly Performance")
-        
-        # Group by month
-        df_chart['YearMonth'] = df_chart['Date'].dt.to_period('M')
-        monthly_data = df_chart.groupby('YearMonth').agg({
-            'Price': ['mean', 'count', 'min', 'max'],
-            'Quantity': 'sum',
-            'Total_Weight': 'sum'
-        }).round(2)
-        
-        monthly_data.columns = ['Avg_Price', 'Order_Count', 'Min_Price', 'Max_Price', 'Total_Quantity', 'Total_Weight']
-        monthly_data = monthly_data.reset_index()
-        monthly_data['YearMonth'] = monthly_data['YearMonth'].astype(str)
-        
-        # Display monthly table
-        with st.expander("📋 View Monthly Breakdown", expanded=True):
-            st.dataframe(
-                monthly_data.style
-                .background_gradient(subset=['Avg_Price'], cmap='RdYlGn_r')
-                .background_gradient(subset=['Total_Quantity'], cmap='Blues')
-                .format({'Avg_Price': '${:.2f}', 'Min_Price': '${:.2f}', 'Max_Price': '${:.2f}'}),
-                use_container_width=True
-            )
-        
-        # Chart 4: Bar chart for monthly comparison
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("**Monthly Average Price**")
-            st.bar_chart(monthly_data.set_index('YearMonth')['Avg_Price'])
-        
-        with col2:
-            st.markdown("**Monthly Order Count**")
-            st.bar_chart(monthly_data.set_index('YearMonth')['Order_Count'])
-        
-        # ============================================
-        # SECTION 4: COMPARATIVE ANALYSIS
-        # ============================================
-        st.subheader("🔍 Comparative Analysis")
-        
-        # Compare with other articles
-        compare_articles = st.multiselect(
-            "Compare with other articles:",
-            [a for a in articles if a != selected_article],
-            max_selections=3,
-            key="compare_articles"
-        )
-        
-        if compare_articles:
-            comparison_data = []
-            for article in [selected_article] + compare_articles:
-                art_data = supplier_data.get(article, {})
-                art_prices = art_data.get('prices', [])
-                if art_prices:
-                    comparison_data.append({
-                        'Article': article,
-                        'Name': art_data.get('names', [''])[0],
-                        'Avg_Price': sum(art_prices) / len(art_prices),
-                        'Min_Price': min(art_prices),
-                        'Max_Price': max(art_prices),
-                        'Order_Count': len(art_data.get('orders', [])),
-                        'Price_Range': max(art_prices) - min(art_prices)
-                    })
-            
-            if comparison_data:
-                df_comparison = pd.DataFrame(comparison_data)
+            if len(df_scatter) > 1:
+                # Create scatter plot
+                fig1, ax1 = plt.subplots(figsize=(10, 6))
+                scatter = ax1.scatter(df_scatter['Quantity'], df_scatter['Price'], 
+                                     c=range(len(df_scatter)), cmap='viridis', s=100, alpha=0.6)
                 
-                col1, col2 = st.columns(2)
+                # Add labels and trend line
+                ax1.set_xlabel('Quantity (units)')
+                ax1.set_ylabel('Price ($/kg)')
+                ax1.set_title(f'Quantity vs Price - {selected_article}')
+                ax1.grid(True, alpha=0.3)
                 
-                with col1:
-                    st.markdown("**Price Comparison**")
-                    fig2, ax2 = plt.subplots(figsize=(8, 6))
-                    
-                    articles_list = df_comparison['Article'].tolist()
-                    avg_prices = df_comparison['Avg_Price'].tolist()
-                    
-                    bars = ax2.bar(range(len(articles_list)), avg_prices, 
-                                  color=['#991B1B' if a == selected_article else '#6B7280' for a in articles_list],
-                                  alpha=0.7)
-                    
-                    ax2.set_xlabel('Article')
-                    ax2.set_ylabel('Average Price ($/kg)')
-                    ax2.set_title('Average Price Comparison')
-                    ax2.set_xticks(range(len(articles_list)))
-                    ax2.set_xticklabels([f"{a[:15]}..." for a in articles_list], rotation=45, ha='right')
-                    
-                    # Add value labels on bars
-                    for bar in bars:
-                        height = bar.get_height()
-                        ax2.text(bar.get_x() + bar.get_width()/2., height,
-                                f'${height:.2f}', ha='center', va='bottom')
-                    
-                    st.pyplot(fig2)
+                # Add trend line if enough points
+                if len(df_scatter) > 2:
+                    try:
+                        z = np.polyfit(df_scatter['Quantity'], df_scatter['Price'], 1)
+                        p = np.poly1d(z)
+                        ax1.plot(df_scatter['Quantity'], p(df_scatter['Quantity']), "r--", alpha=0.5, 
+                                label=f'Trend: y={z[0]:.4f}x + {z[1]:.2f}')
+                        ax1.legend()
+                    except:
+                        pass
                 
-                with col2:
-                    st.markdown("**Comparison Table**")
+                # Add colorbar
+                plt.colorbar(scatter, ax=ax1, label='Order Sequence')
+                
+                st.pyplot(fig1)
+                
+                # Insights
+                try:
+                    correlation = df_scatter['Quantity'].corr(df_scatter['Price'])
+                    st.info(f"**Insight:** Quantity-Price correlation: {correlation:.3f}")
+                    if correlation < -0.3:
+                        st.success("✅ **Negative correlation:** Higher quantities tend to get better prices")
+                    elif correlation > 0.3:
+                        st.warning("⚠️ **Positive correlation:** Higher quantities might be paying more")
+                    else:
+                        st.info("ℹ️ **Weak correlation:** Quantity doesn't strongly affect price")
+                except:
+                    pass
+        
+        # Chart 3: Monthly Aggregation (if we have enough data)
+        if not df_chart.empty and len(df_chart) >= 2:
+            st.subheader("📅 Monthly Performance")
+            
+            try:
+                # Group by month
+                df_chart['YearMonth'] = df_chart['Date'].dt.to_period('M')
+                monthly_data = df_chart.groupby('YearMonth').agg({
+                    'Price': ['mean', 'count', 'min', 'max'],
+                    'Quantity': 'sum',
+                    'Total_Weight': 'sum'
+                }).round(2)
+                
+                monthly_data.columns = ['Avg_Price', 'Order_Count', 'Min_Price', 'Max_Price', 'Total_Quantity', 'Total_Weight']
+                monthly_data = monthly_data.reset_index()
+                monthly_data['YearMonth'] = monthly_data['YearMonth'].astype(str)
+                
+                # Display monthly table
+                with st.expander("📋 View Monthly Breakdown", expanded=True):
                     st.dataframe(
-                        df_comparison.style
-                        .highlight_max(subset=['Avg_Price'], color='#FECACA')
-                        .highlight_min(subset=['Avg_Price'], color='#D1FAE5')
-                        .format({'Avg_Price': '${:.2f}', 'Min_Price': '${:.2f}', 
-                                'Max_Price': '${:.2f}', 'Price_Range': '${:.2f}'}),
+                        monthly_data.style
+                        .background_gradient(subset=['Avg_Price'], cmap='RdYlGn_r')
+                        .background_gradient(subset=['Total_Quantity'], cmap='Blues')
+                        .format({'Avg_Price': '${:.2f}', 'Min_Price': '${:.2f}', 'Max_Price': '${:.2f}'}),
                         use_container_width=True
                     )
+                
+                # Chart 4: Bar chart for monthly comparison
+                if len(monthly_data) > 1:
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown("**Monthly Average Price**")
+                        st.bar_chart(monthly_data.set_index('YearMonth')['Avg_Price'])
+                    
+                    with col2:
+                        st.markdown("**Monthly Order Count**")
+                        st.bar_chart(monthly_data.set_index('YearMonth')['Order_Count'])
+            except Exception as e:
+                st.warning(f"Could not generate monthly breakdown: {str(e)}")
         
         # ============================================
-        # SECTION 5: EXPORT VISUAL REPORT
+        # SECTION 4: EXPORT VISUAL REPORT
         # ============================================
         st.markdown('<div class="export-section">', unsafe_allow_html=True)
         st.subheader("📤 Export Visual Report")
@@ -1786,23 +1771,12 @@ PERFORMANCE SUMMARY:
 • Total Orders: {total_orders}
 • Average Price: ${avg_price:.2f}/kg
 • Price Range: ${min_price:.2f} - ${max_price:.2f}/kg
-• Analysis Period: {df_chart['Date'].min().strftime('%b %d, %Y')} to {df_chart['Date'].max().strftime('%b %d, %Y')}
-
-MONTHLY BREAKDOWN:
-{chr(10).join([f"• {row['YearMonth']}: ${row['Avg_Price']:.2f} avg ({row['Order_Count']} orders, {row['Total_Quantity']} units)" 
-               for _, row in monthly_data.iterrows()])}
-
-KEY INSIGHTS:
-1. Price stability: {'Stable' if (max_price - min_price) < avg_price * 0.2 else 'Volatile'}
-2. Order frequency: {'Regular' if len(df_chart) / ((df_chart['Date'].max() - df_chart['Date'].min()).days/30) > 0.5 else 'Irregular'}
-3. Best performing month: {monthly_data.loc[monthly_data['Order_Count'].idxmax(), 'YearMonth']}
-4. Highest average price: ${monthly_data['Avg_Price'].max():.2f} in {monthly_data.loc[monthly_data['Avg_Price'].idxmax(), 'YearMonth']}
-
-RECOMMENDATIONS:
-• Consider price adjustment if volatility > 20%
-• Monitor order patterns for seasonal trends
-• Compare with market benchmarks regularly
-        """
+"""
+        
+        if not df_chart.empty:
+            report_text += f"""• Analysis Period: {df_chart['Date'].min().strftime('%b %d, %Y')} to {df_chart['Date'].max().strftime('%b %d, %Y')}
+• Data Points Available: {len(chart_data)}
+"""
         
         col1, col2 = st.columns(2)
         
@@ -1833,10 +1807,26 @@ RECOMMENDATIONS:
         st.markdown('</div>', unsafe_allow_html=True)
         
     else:
-        st.warning("No valid date/price data available for charting")
+        # Show why no chart data is available
+        with st.expander("⚠️ Why no chart data?", expanded=True):
+            st.write("### Possible reasons:")
+            st.write("1. **Missing dates in order data**")
+            st.write("2. **Missing or invalid prices**")
+            st.write("3. **Date format issues**")
+            st.write("4. **Price format issues**")
+            
+            # Show sample of problematic data
+            if orders:
+                st.write("### Sample of problematic orders:")
+                for i, order in enumerate(orders[:3]):
+                    st.write(f"**Order {i+1}:**")
+                    st.write(f"- Date: `{order.get('date')}`")
+                    st.write(f"- Price: `{order.get('price')}`")
+                    st.write(f"- Year: `{order.get('year')}`")
+                    st.write("---")
     
     # ============================================
-    # SECTION 6: QUICK TIPS
+    # SECTION 5: QUICK TIPS
     # ============================================
     with st.expander("💡 How to use this dashboard"):
         st.markdown("""
