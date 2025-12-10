@@ -412,12 +412,13 @@ CDC_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"
 
 # User authentication
 USERS = {
-    "admin": {"password": "123456", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse", "Cameron"]},
-    "ceo": {"password": "123456", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse", "Cameron"]},
+    "admin": {"password": "123456", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse", "Cameron", "Qzine", "MEPT"]},
+    "ceo": {"password": "123456", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse", "Cameron", "Qzine", "MEPT"]},
     "zaid": {"password": "123456", "clients": ["CDC"]},
     "mohammad": {"password": "123456", "clients": ["CoteDivoire"]},
     "Khalid": {"password": "123456", "clients": ["CakeArt", "SweetHouse"]},
-    "Rotana": {"password": "123456", "clients": ["CDC"]}
+    "Rotana": {"password": "123456", "clients": ["CDC"]},
+    "Abed": {"password": "123456", "clients": ["Qzine", "MEPT"]}
 }
 
 # Client data sheets mapping
@@ -455,6 +456,21 @@ CLIENT_SHEETS = {
         "backaldrin": "Backaldrin_Cameron",
         "bateel": "Bateel_Cameron", 
         "ceo_special": "Cameron_CEO_Special_Prices",
+        "new_orders": "New_client_orders",
+        "palletizing": "Palletizing_Data"
+    },
+    # NEW CLIENTS ADDED HERE
+    "Qzine": {
+        "backaldrin": "Backaldrin_Qzine",
+        "bateel": "Bateel_Qzine",  # If you have Bateel sheet for Qzine
+        "ceo_special": "Qzine_CEO_Special_Prices",
+        "new_orders": "New_client_orders",
+        "palletizing": "Palletizing_Data"
+    },
+    "MEPT": {
+        "backaldrin": "Backaldrin_MEPT",
+        "bateel": "Bateel_MEPT",  # If you have Bateel sheet for MEPT
+        "ceo_special": "MEPT_CEO_Special_Prices",
         "new_orders": "New_client_orders",
         "palletizing": "Palletizing_Data"
     }
