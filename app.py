@@ -1830,6 +1830,15 @@ def cdc_dashboard(client):
         st.session_state.search_results = None
     if 'export_data' not in st.session_state:
         st.session_state.export_data = None
+    if 'search_results_list' not in st.session_state:  # NEW
+        st.session_state.search_results_list = None
+    if 'show_search_results_page' not in st.session_state:  # NEW
+        st.session_state.show_search_results_page = False    
+    # Initialize session state
+    if 'search_results' not in st.session_state:
+        st.session_state.search_results = None
+    if 'export_data' not in st.session_state:
+        st.session_state.export_data = None
     
     st.markdown(f"""
     <div class="cdc-header">
@@ -2135,6 +2144,11 @@ def create_export_data(article_data, article, supplier, client):
 
 def display_from_session_state(data, client):
     """Display search results with NEW CARD DESIGN AND FAVORITES FEATURE"""
+    
+    # Check if we should show search results page instead
+    if st.session_state.get('show_search_results_page'):
+        display_search_results_page()
+        return
     results = st.session_state.search_results
     article = results["article"]
     supplier = results["supplier"]
