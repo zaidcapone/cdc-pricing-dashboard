@@ -2231,53 +2231,68 @@ def display_from_session_state(data, client):
             </div>
             """, unsafe_allow_html=True)
     
-    # NEW: COLLAPSIBLE ORDER CARDS
+    # NEW: COLLAPSIBLE ORDER CARDS WITH 2-COLUMN LAYOUT
     st.subheader("💵 Historical Prices with Order Details")
     
-    # Create expandable cards using Streamlit's native expander
+    # Create two columns
+    cols = st.columns(2)
+    
     for i, order in enumerate(article_data['orders']):
-        # Get price for display
-        price_display = order.get('price', 'N/A')
-        try:
-            # Try to format as currency
-            price_value = float(str(price_display).replace('$', '').replace(',', '').strip())
-            price_display = f"${price_value:.2f}"
-        except:
-            price_display = f"${price_display}" if price_display != 'N/A' else 'N/A'
-        
-        # Create expander header
-        expander_label = f"📦 {order.get('order_no', 'N/A')} | 📅 {order.get('date', 'N/A')} | 💰 {price_display}/kg"
-        
-        with st.expander(expander_label, expanded=False):
-            # Card content inside expander
-            order_card = f"""
-            <div class="price-box" style="margin: 0; border: none; box-shadow: none;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div>
-                        <div style="margin-bottom: 0.5rem;">
-                            <strong>📦 Product:</strong> {order.get('product_name', 'N/A')}
-                        </div>
-                        <div style="margin-bottom: 0.5rem;">
-                            <strong>🔢 Article:</strong> {order.get('article', 'N/A')}
-                        </div>
-                        {f'<div style="margin-bottom: 0.5rem;"><strong>📅 Year:</strong> {order.get("year", "N/A")}</div>' if order.get('year') else ''}
-                        {f'<div style="margin-bottom: 0.5rem;"><strong>🏷️ HS Code:</strong> {order.get("hs_code", "N/A")}</div>' if order.get('hs_code') else ''}
+        with cols[i % 2]:
+            # Get price for display
+            price_display = order.get('price', 'N/A')
+            try:
+                price_value = float(str(price_display).replace('$', '').replace(',', '').strip())
+                price_display = f"${price_value:.2f}"
+            except:
+                price_display = f"${price_display}" if price_display != 'N/A' else 'N/A'
+            
+            # Create expander
+            expander_label = f"📦 {order.get('order_no', 'N/A')}"
+            with st.expander(expander_label, expanded=False):
+                # Header inside expander
+                st.markdown(f"""
+                <div style="text-align: center; padding: 0.5rem 0;">
+                    <div style="font-size: 1.1em; color: #6B7280;">
+                        📅 {order.get('date', 'N/A')}
                     </div>
-                    <div>
-                        {f'<div style="margin-bottom: 0.5rem;"><strong>📦 Packaging:</strong> {order.get("packaging", "N/A")}</div>' if order.get('packaging') else ''}
-                        {f'<div style="margin-bottom: 0.5rem;"><strong>🔢 Quantity:</strong> {order.get("quantity", "N/A")}</div>' if order.get('quantity') else ''}
-                        {f'<div style="margin-bottom: 0.5rem;"><strong>⚖️ Total Weight:</strong> {order.get("total_weight", "N/A")}</div>' if order.get('total_weight') else ''}
-                        {f'<div style="margin-bottom: 0.5rem;"><strong>💰 Total Price:</strong> {order.get("total_price", "N/A")}</div>' if order.get('total_price') else ''}
-                    </div>
-                </div>
-                <div style="text-align: center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.2);">
-                    <div style="font-size: 1.5em; font-weight: bold; color: #FEF3C7;">
+                    <div style="font-size: 1.4em; font-weight: bold; color: #991B1B; margin: 0.5rem 0;">
                         {price_display}/kg
                     </div>
                 </div>
-            </div>
-            """
-            st.markdown(order_card, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
+                
+                # Details in a neat format
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown(f"""
+                    **📦 Product:**  
+                    {order.get('product_name', 'N/A')}
+                    
+                    **🔢 Article:**  
+                    {order.get('article', 'N/A')}
+                    
+                    **📅 Year:**  
+                    {order.get('year', 'N/A') if order.get('year') else 'N/A'}
+                    
+                    **🏷️ HS Code:**  
+                    {order.get('hs_code', 'N/A') if order.get('hs_code') else 'N/A'}
+                    """)
+                
+                with col2:
+                    st.markdown(f"""
+                    **📦 Packaging:**  
+                    {order.get('packaging', 'N/A') if order.get('packaging') else 'N/A'}
+                    
+                    **🔢 Quantity:**  
+                    {order.get('quantity', 'N/A') if order.get('quantity') else 'N/A'}
+                    
+                    **⚖️ Total Weight:**  
+                    {order.get('total_weight', 'N/A') if order.get('total_weight') else 'N/A'}
+                    
+                    **💰 Total Price:**  
+                    {order.get('total_price', 'N/A') if order.get('total_price') else 'N/A'}
+                    """)
     
     # ============================================
     # FEATURE 2: SEARCH HISTORY DISPLAY
