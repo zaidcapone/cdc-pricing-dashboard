@@ -2079,11 +2079,46 @@ def display_from_session_state(data, client):
                     st.success("⭐ Added to favorites!")
                     st.rerun()
     
-    # Product names - SHOW ONLY UNIQUE NAMES
-    st.subheader("📝 Product Names")
-    unique_names = list(set(article_data['names']))
-    for name in unique_names:
-        st.markdown(f'<div class="price-card">{name}</div>', unsafe_allow_html=True)
+    # Product names - SHOW ONLY ONE (most recent)
+    st.subheader("📝 Product Name")
+    
+    # Get the most recent product name from orders
+    most_recent_name = ""
+    
+    # Try to find from orders (sorted by date)
+    orders = article_data.get('orders', [])
+    if orders:
+        # Sort orders by date if possible
+        try:
+            # Create list of orders with parsed dates
+            orders_with_dates = []
+            for order in orders:
+                date_str = order.get('date', '')
+                if date_str:
+                    # Try different date formats
+                    for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d', '%d %b %Y', '%d %B %Y']:
+                        try:
+                            parsed_date = datetime.strptime(date_str, fmt)
+                            orders_with_dates.append((parsed_date, order))
+                            break
+                        except:
+                            continue
+            
+            # Sort by date descending (newest first)
+            orders_with_dates.sort(key=lambda x: x[0], reverse=True)
+            
+            # Get most recent product name
+            if orders_with_dates:
+                most_recent_name = orders_with_dates[0][1].get('product_name', '')
+        except:
+            # If date parsing fails, use first order
+            most_recent_name = orders[0].get('product_name', '')
+    
+    # If no orders or no product name in orders, use the first name from names list
+    if not most_recent_name and article_data['names']:
+        most_recent_name = article_data['names'][0]
+    
+    st.markdown(f'<div class="price-card">{most_recent_name}</div>', unsafe_allow_html=True)
     
     # Statistics
     prices = article_data['prices']
