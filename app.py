@@ -2079,205 +2079,79 @@ def display_from_session_state(data, client):
                     st.success("⭐ Added to favorites!")
                     st.rerun()
     
-    # Product names - SHOW ONLY ONE (most recent)
-    st.subheader("📝 Product Name")
-    
-    # Get the most recent product name from orders
-    most_recent_name = ""
-    
-    # Try to find from orders (sorted by date)
-    orders = article_data.get('orders', [])
-    if orders:
-        # Sort orders by date if possible
-        try:
-            # Create list of orders with parsed dates
-            orders_with_dates = []
-            for order in orders:
-                date_str = order.get('date', '')
-                if date_str:
-                    # Try different date formats
-                    for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d', '%d %b %Y', '%d %B %Y']:
-                        try:
-                            parsed_date = datetime.strptime(date_str, fmt)
-                            orders_with_dates.append((parsed_date, order))
-                            break
-                        except:
-                            continue
-            
-            # Sort by date descending (newest first)
-            orders_with_dates.sort(key=lambda x: x[0], reverse=True)
-            
-            # Get most recent product name
-            if orders_with_dates:
-                most_recent_name = orders_with_dates[0][1].get('product_name', '')
-        except:
-            # If date parsing fails, use first order
-            most_recent_name = orders[0].get('product_name', '')
-    
-    # If no orders or no product name in orders, use the first name from names list
-    if not most_recent_name and article_data['names']:
-        most_recent_name = article_data['names'][0]
-    
-    st.markdown(f'<div class="price-card">{most_recent_name}</div>', unsafe_allow_html=True)
+    # Product names - SHOW ONLY UNIQUE NAMES
+    st.subheader("📝 Product Names")
+    unique_names = list(set(article_data['names']))
+    for name in unique_names:
+        st.markdown(f'<div class="price-card">{name}</div>', unsafe_allow_html=True)
     
     # Statistics
     prices = article_data['prices']
-    orders = article_data.get('orders', [])
-    
     st.subheader("📊 Price Statistics")
-    
-    # Calculate required metrics
-    total_records = len(prices)
-    
-    # Get last sold price (most recent)
-    last_sold_price = None
-    second_last_price = None
-    
-    if orders and prices:
-        try:
-            # Create list of orders with prices and dates
-            order_price_list = []
-            for order in orders:
-                price_str = order.get('price', '')
-                date_str = order.get('date', '')
-                
-                if price_str and date_str:
-                    # Try to parse price
-                    try:
-                        price = float(str(price_str).replace('$', '').replace(',', '').strip())
-                        
-                        # Try to parse date
-                        parsed_date = None
-                        for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d', '%d %b %Y', '%d %B %Y']:
-                            try:
-                                parsed_date = datetime.strptime(date_str, fmt)
-                                break
-                            except:
-                                continue
-                        
-                        if parsed_date:
-                            order_price_list.append((parsed_date, price))
-                    except:
-                        continue
-            
-            # Sort by date descending (newest first)
-            order_price_list.sort(key=lambda x: x[0], reverse=True)
-            
-            # Get last and second last prices
-            if len(order_price_list) > 0:
-                last_sold_price = order_price_list[0][1]
-            if len(order_price_list) > 1:
-                second_last_price = order_price_list[1][1]
-                
-        except:
-            # Fallback: use the last prices from the prices list
-            if len(prices) > 0:
-                last_sold_price = prices[-1]
-            if len(prices) > 1:
-                second_last_price = prices[-2]
-    
-    # If still None, use min/max as fallback
-    if last_sold_price is None and prices:
-        last_sold_price = prices[-1] if prices else 0
-    
-    if second_last_price is None and len(prices) > 1:
-        second_last_price = prices[-2] if len(prices) > 1 else 0
-    elif second_last_price is None and prices:
-        second_last_price = prices[0]  # Use first as fallback
     
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         st.markdown(f"""
         <div class="stat-card">
-            <div class="stat-number">{total_records}</div>
+            <div class="stat-number">{len(prices)}</div>
             <div class="stat-label">Total Records</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col2:
-        price_display = f"${last_sold_price:.2f}" if last_sold_price is not None else "N/A"
         st.markdown(f"""
         <div class="stat-card">
-            <div class="stat-number">{price_display}</div>
-            <div class="stat-label">Last Sold Price/kg</div>
+            <div class="stat-number">${min(prices):.2f}</div>
+            <div class="stat-label">Min Price/kg</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col3:
-        price_display = f"${second_last_price:.2f}" if second_last_price is not None else "N/A"
         st.markdown(f"""
         <div class="stat-card">
-            <div class="stat-number">{price_display}</div>
-            <div class="stat-label">Previous Price/kg</div>
+            <div class="stat-number">${max(prices):.2f}</div>
+            <div class="stat-label">Max Price/kg</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col4:
-        if prices:
-            min_price = min(prices)
-            max_price = max(prices)
-            st.markdown(f"""
-            <div class="stat-card">
-                <div class="stat-number" style="font-size: 1.4em;">${min_price:.2f} - ${max_price:.2f}</div>
-                <div class="stat-label">Price Range (Min - Max)/kg</div>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown(f"""
-            <div class="stat-card">
-                <div class="stat-number">N/A</div>
-                <div class="stat-label">Price Range/kg</div>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class="stat-card">
+            <div class="stat-number">${max(prices) - min(prices):.2f}</div>
+            <div class="stat-label">Price Range/kg</div>
+        </div>
+        """, unsafe_allow_html=True)
     
-    # NEW: COLLAPSIBLE ORDER CARDS
+    # UPDATED: NEW CARD DESIGN
     st.subheader("💵 Historical Prices with Order Details")
-    
-    # Create expandable cards using Streamlit's native expander
+    cols = st.columns(2)
     for i, order in enumerate(article_data['orders']):
-        # Get price for display
-        price_display = order.get('price', 'N/A')
-        try:
-            # Try to format as currency
-            price_value = float(str(price_display).replace('$', '').replace(',', '').strip())
-            price_display = f"${price_value:.2f}"
-        except:
-            price_display = f"${price_display}" if price_display != 'N/A' else 'N/A'
-        
-        # Create expander header
-        expander_label = f"📦 {order.get('order_no', 'N/A')} | 📅 {order.get('date', 'N/A')} | 💰 {price_display}/kg"
-        
-        with st.expander(expander_label, expanded=False):
-            # Card content inside expander
-            order_card = f"""
-            <div class="price-box" style="margin: 0; border: none; box-shadow: none;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div>
-                        <div style="margin-bottom: 0.5rem;">
-                            <strong>📦 Product:</strong> {order.get('product_name', 'N/A')}
-                        </div>
-                        <div style="margin-bottom: 0.5rem;">
-                            <strong>🔢 Article:</strong> {order.get('article', 'N/A')}
-                        </div>
-                        {f'<div style="margin-bottom: 0.5rem;"><strong>📅 Year:</strong> {order.get("year", "N/A")}</div>' if order.get('year') else ''}
-                        {f'<div style="margin-bottom: 0.5rem;"><strong>🏷️ HS Code:</strong> {order.get("hs_code", "N/A")}</div>' if order.get('hs_code') else ''}
-                    </div>
-                    <div>
-                        {f'<div style="margin-bottom: 0.5rem;"><strong>📦 Packaging:</strong> {order.get("packaging", "N/A")}</div>' if order.get('packaging') else ''}
-                        {f'<div style="margin-bottom: 0.5rem;"><strong>🔢 Quantity:</strong> {order.get("quantity", "N/A")}</div>' if order.get('quantity') else ''}
-                        {f'<div style="margin-bottom: 0.5rem;"><strong>⚖️ Total Weight:</strong> {order.get("total_weight", "N/A")}</div>' if order.get('total_weight') else ''}
-                        {f'<div style="margin-bottom: 0.5rem;"><strong>💰 Total Price:</strong> {order.get("total_price", "N/A")}</div>' if order.get('total_price') else ''}
-                    </div>
+        with cols[i % 2]:
+            order_details = f"""
+            <div class="price-box">
+                <div style="font-size: 1.4em; font-weight: bold; border-bottom: 2px solid white; padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
+                    📦 {order.get('order_no', 'N/A')}
                 </div>
-                <div style="text-align: center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.2);">
-                    <div style="font-size: 1.5em; font-weight: bold; color: #FEF3C7;">
-                        {price_display}/kg
-                    </div>
+                <div style="font-size: 1.1em; margin-bottom: 0.5rem;">
+                    <strong>📅 Date:</strong> {order.get('date', 'N/A')}
+                </div>
+                <div style="font-size: 1.3em; font-weight: bold; color: #FEF3C7; margin-bottom: 0.8rem;">
+                    ${order.get('price', 'N/A')}/kg
+                </div>
+                <div class="order-info">
+                    <strong>📦 Product:</strong> {order.get('product_name', 'N/A')}<br>
+                    <strong>🔢 Article:</strong> {order.get('article', 'N/A')}<br>
+                    {f"<strong>📅 Year:</strong> {order.get('year', 'N/A')}<br>" if order.get('year') else ""}
+                    {f"<strong>🏷️ HS Code:</strong> {order.get('hs_code', 'N/A')}<br>" if order.get('hs_code') else ""}
+                    {f"<strong>📦 Packaging:</strong> {order.get('packaging', 'N/A')}<br>" if order.get('packaging') else ""}
+                    {f"<strong>🔢 Quantity:</strong> {order.get('quantity', 'N/A')}<br>" if order.get('quantity') else ""}
+                    {f"<strong>⚖️ Total Weight:</strong> {order.get('total_weight', 'N/A')}<br>" if order.get('total_weight') else ""}
+                    {f"<strong>💰 Total Price:</strong> {order.get('total_price', 'N/A')}<br>" if order.get('total_price') else ""}
                 </div>
             </div>
             """
-            st.markdown(order_card, unsafe_allow_html=True)
+            st.markdown(order_details, unsafe_allow_html=True)
     
     # ============================================
     # FEATURE 2: SEARCH HISTORY DISPLAY
