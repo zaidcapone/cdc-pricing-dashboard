@@ -2122,41 +2122,114 @@ def display_from_session_state(data, client):
     
     # Statistics
     prices = article_data['prices']
+    orders = article_data.get('orders', [])
+    
     st.subheader("📊 Price Statistics")
+    
+    # Calculate required metrics
+    total_records = len(prices)
+    
+    # Get last sold price (most recent)
+    last_sold_price = None
+    second_last_price = None
+    
+    if orders and prices:
+        try:
+            # Create list of orders with prices and dates
+            order_price_list = []
+            for order in orders:
+                price_str = order.get('price', '')
+                date_str = order.get('date', '')
+                
+                if price_str and date_str:
+                    # Try to parse price
+                    try:
+                        price = float(str(price_str).replace('$', '').replace(',', '').strip())
+                        
+                        # Try to parse date
+                        parsed_date = None
+                        for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d', '%d %b %Y', '%d %B %Y']:
+                            try:
+                                parsed_date = datetime.strptime(date_str, fmt)
+                                break
+                            except:
+                                continue
+                        
+                        if parsed_date:
+                            order_price_list.append((parsed_date, price))
+                    except:
+                        continue
+            
+            # Sort by date descending (newest first)
+            order_price_list.sort(key=lambda x: x[0], reverse=True)
+            
+            # Get last and second last prices
+            if len(order_price_list) > 0:
+                last_sold_price = order_price_list[0][1]
+            if len(order_price_list) > 1:
+                second_last_price = order_price_list[1][1]
+                
+        except:
+            # Fallback: use the last prices from the prices list
+            if len(prices) > 0:
+                last_sold_price = prices[-1]
+            if len(prices) > 1:
+                second_last_price = prices[-2]
+    
+    # If still None, use min/max as fallback
+    if last_sold_price is None and prices:
+        last_sold_price = prices[-1] if prices else 0
+    
+    if second_last_price is None and len(prices) > 1:
+        second_last_price = prices[-2] if len(prices) > 1 else 0
+    elif second_last_price is None and prices:
+        second_last_price = prices[0]  # Use first as fallback
     
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         st.markdown(f"""
         <div class="stat-card">
-            <div class="stat-number">{len(prices)}</div>
+            <div class="stat-number">{total_records}</div>
             <div class="stat-label">Total Records</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col2:
+        price_display = f"${last_sold_price:.2f}" if last_sold_price is not None else "N/A"
         st.markdown(f"""
         <div class="stat-card">
-            <div class="stat-number">${min(prices):.2f}</div>
-            <div class="stat-label">Min Price/kg</div>
+            <div class="stat-number">{price_display}</div>
+            <div class="stat-label">Last Sold Price/kg</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col3:
+        price_display = f"${second_last_price:.2f}" if second_last_price is not None else "N/A"
         st.markdown(f"""
         <div class="stat-card">
-            <div class="stat-number">${max(prices):.2f}</div>
-            <div class="stat-label">Max Price/kg</div>
+            <div class="stat-number">{price_display}</div>
+            <div class="stat-label">Previous Price/kg</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col4:
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-number">${max(prices) - min(prices):.2f}</div>
-            <div class="stat-label">Price Range/kg</div>
-        </div>
-        """, unsafe_allow_html=True)
+        if prices:
+            min_price = min(prices)
+            max_price = max(prices)
+            st.markdown(f"""
+            <div class="stat-card">
+                <div class="stat-number" style="font-size: 1.4em;">${min_price:.2f} - ${max_price:.2f}</div>
+                <div class="stat-label">Price Range (Min - Max)/kg</div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div class="stat-card">
+                <div class="stat-number">N/A</div>
+                <div class="stat-label">Price Range/kg</div>
+            </div>
+            """, unsafe_allow_html=True)
     
     # UPDATED: NEW CARD DESIGN
     st.subheader("💵 Historical Prices with Order Details")
