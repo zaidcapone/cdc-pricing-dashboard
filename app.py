@@ -1981,17 +1981,16 @@ def get_suggestions(search_term, supplier, data):
     return list(unique_suggestions.values())
 
 def handle_search(article, product, hs_code, supplier, data, client):
-    """Handle search across article, product name, and HS code"""
+    """Handle search across article, product name, and HS code - SHOW MULTIPLE RESULTS"""
     search_term = article or product or hs_code
     if not search_term:
         st.error("❌ Please enter an article number, product name, or HS code")
         return
     
-    found = False
-    found_article = None
+    found_articles = []
     
     for article_num, article_data in data[supplier].items():
-        article_match = article and article == article_num
+        article_match = article and article.lower() == article_num.lower()
         product_match = product and any(product.lower() in name.lower() for name in article_data['names'])
         hs_code_match = hs_code and any(
             hs_code.lower() in str(order.get('hs_code', '')).lower() 
@@ -1999,21 +1998,117 @@ def handle_search(article, product, hs_code, supplier, data, client):
         )
         
         if article_match or product_match or hs_code_match:
-            st.session_state.search_results = {
+            # Get the best matching product name
+            best_name = ""
+            if article_data['names']:
+                if product:  # If searching by product name
+                    for name in article_data['names']:
+                        if product.lower() in name.lower():
+                            best_name = name
+                            break
+                if not best_name:
+                    best_name = article_data['names'][0]
+            
+            found_articles.append({
                 "article": article_num,
-                "supplier": supplier,
-                "client": client
-            }
-            st.session_state.export_data = create_export_data(article_data, article_num, supplier, client)
-            found = True
-            found_article = article_num
-            break
+                "product_name": best_name,
+                "article_data": article_data,
+                "match_type": "exact" if article_match else "product" if product_match else "hs_code"
+            })
     
-    if found:
-        add_to_search_history(search_term, client, supplier, found_article)
+    if found_articles:
+        # Store ALL results in session state
+        st.session_state.search_results_list = {
+            "results": found_articles,
+            "supplier": supplier,
+            "client": client,
+            "search_term": search_term
+        }
+        
+        # Don't auto-select first result - show selection page
+        st.session_state.show_search_results_page = True
+        add_to_search_history(search_term, client, supplier)
+        
+        # Don't set individual search_results yet
+        # st.session_state.search_results = None
+        
     else:
         st.error(f"❌ No results found for '{search_term}' in {supplier}")
         add_to_search_history(search_term, client, supplier)
+def handle_search(article, product, hs_code, supplier, data, client):
+    """Handle search across article, product name, and HS code"""
+    # ... (existing handle_search code) ...
+
+def display_search_results_page():
+    """Display page with multiple search results to choose from"""
+    results_data = st.session_state.get('search_results_list')
+    
+    if not results_data:
+        st.warning("No search results to display")
+        return
+    
+    st.markdown(f"""
+    <div class="cdc-header">
+        <h2 style="margin:0;">🔍 Search Results</h2>
+        <p style="margin:0; opacity:0.9;">Found {len(results_data['results'])} items matching "{results_data['search_term']}"</p>
+        <p style="margin:0; font-size: 0.9em;">Supplier: {results_data['supplier']} | Client: {results_data['client']}</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Show all results as selectable cards
+    st.subheader("📋 Select an item to view details:")
+    
+    # Sort results by article number
+    sorted_results = sorted(results_data['results'], key=lambda x: x['article'])
+    
+    # Display in 2 columns
+    cols = st.columns(2)
+    
+    for idx, result in enumerate(sorted_results):
+        with cols[idx % 2]:
+            article = result['article']
+            product_name = result['product_name']
+            match_type = result['match_type']
+            
+            # Create a card for each result
+            st.markdown(f"""
+            <div class="price-card" style="cursor: pointer; transition: all 0.3s ease; margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div>
+                        <h4 style="margin:0; color: #991B1B;">{article}</h4>
+                        <p style="margin:0.5rem 0; color: #6B7280; font-size: 0.9em;">
+                            {product_name[:50]}{'...' if len(product_name) > 50 else ''}
+                        </p>
+                    </div>
+                    <div style="background: #FEF3C7; color: #92400E; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8em;">
+                        {match_type}
+                    </div>
+                </div>
+                <div style="margin-top: 0.5rem; font-size: 0.8em; color: #6B7280;">
+                    📊 {len(result['article_data'].get('orders', []))} orders | 
+                    💰 {len(result['article_data'].get('prices', []))} prices
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Button to select this article
+            if st.button(f"Select {article}", key=f"select_{article}_{idx}", use_container_width=True):
+                # Set as selected result
+                st.session_state.search_results = {
+                    "article": article,
+                    "supplier": results_data['supplier'],
+                    "client": results_data['client']
+                }
+                st.session_state.export_data = create_export_data(
+                    result['article_data'], article, results_data['supplier'], results_data['client']
+                )
+                st.session_state.show_search_results_page = False
+                st.rerun()
+    
+    # Back button
+    if st.button("← Back to Search", use_container_width=True):
+        st.session_state.show_search_results_page = False
+        st.rerun()
 
 def create_export_data(article_data, article, supplier, client):
     """Create export data in different formats"""
