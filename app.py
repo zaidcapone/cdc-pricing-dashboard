@@ -2231,35 +2231,53 @@ def display_from_session_state(data, client):
             </div>
             """, unsafe_allow_html=True)
     
-    # UPDATED: NEW CARD DESIGN
+    # NEW: COLLAPSIBLE ORDER CARDS
     st.subheader("💵 Historical Prices with Order Details")
-    cols = st.columns(2)
+    
+    # Create expandable cards using Streamlit's native expander
     for i, order in enumerate(article_data['orders']):
-        with cols[i % 2]:
-            order_details = f"""
-            <div class="price-box">
-                <div style="font-size: 1.4em; font-weight: bold; border-bottom: 2px solid white; padding-bottom: 0.5rem; margin-bottom: 0.5rem;">
-                    📦 {order.get('order_no', 'N/A')}
+        # Get price for display
+        price_display = order.get('price', 'N/A')
+        try:
+            # Try to format as currency
+            price_value = float(str(price_display).replace('$', '').replace(',', '').strip())
+            price_display = f"${price_value:.2f}"
+        except:
+            price_display = f"${price_display}" if price_display != 'N/A' else 'N/A'
+        
+        # Create expander header
+        expander_label = f"📦 {order.get('order_no', 'N/A')} | 📅 {order.get('date', 'N/A')} | 💰 {price_display}/kg"
+        
+        with st.expander(expander_label, expanded=False):
+            # Card content inside expander
+            order_card = f"""
+            <div class="price-box" style="margin: 0; border: none; box-shadow: none;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div>
+                        <div style="margin-bottom: 0.5rem;">
+                            <strong>📦 Product:</strong> {order.get('product_name', 'N/A')}
+                        </div>
+                        <div style="margin-bottom: 0.5rem;">
+                            <strong>🔢 Article:</strong> {order.get('article', 'N/A')}
+                        </div>
+                        {f'<div style="margin-bottom: 0.5rem;"><strong>📅 Year:</strong> {order.get("year", "N/A")}</div>' if order.get('year') else ''}
+                        {f'<div style="margin-bottom: 0.5rem;"><strong>🏷️ HS Code:</strong> {order.get("hs_code", "N/A")}</div>' if order.get('hs_code') else ''}
+                    </div>
+                    <div>
+                        {f'<div style="margin-bottom: 0.5rem;"><strong>📦 Packaging:</strong> {order.get("packaging", "N/A")}</div>' if order.get('packaging') else ''}
+                        {f'<div style="margin-bottom: 0.5rem;"><strong>🔢 Quantity:</strong> {order.get("quantity", "N/A")}</div>' if order.get('quantity') else ''}
+                        {f'<div style="margin-bottom: 0.5rem;"><strong>⚖️ Total Weight:</strong> {order.get("total_weight", "N/A")}</div>' if order.get('total_weight') else ''}
+                        {f'<div style="margin-bottom: 0.5rem;"><strong>💰 Total Price:</strong> {order.get("total_price", "N/A")}</div>' if order.get('total_price') else ''}
+                    </div>
                 </div>
-                <div style="font-size: 1.1em; margin-bottom: 0.5rem;">
-                    <strong>📅 Date:</strong> {order.get('date', 'N/A')}
-                </div>
-                <div style="font-size: 1.3em; font-weight: bold; color: #FEF3C7; margin-bottom: 0.8rem;">
-                    ${order.get('price', 'N/A')}/kg
-                </div>
-                <div class="order-info">
-                    <strong>📦 Product:</strong> {order.get('product_name', 'N/A')}<br>
-                    <strong>🔢 Article:</strong> {order.get('article', 'N/A')}<br>
-                    {f"<strong>📅 Year:</strong> {order.get('year', 'N/A')}<br>" if order.get('year') else ""}
-                    {f"<strong>🏷️ HS Code:</strong> {order.get('hs_code', 'N/A')}<br>" if order.get('hs_code') else ""}
-                    {f"<strong>📦 Packaging:</strong> {order.get('packaging', 'N/A')}<br>" if order.get('packaging') else ""}
-                    {f"<strong>🔢 Quantity:</strong> {order.get('quantity', 'N/A')}<br>" if order.get('quantity') else ""}
-                    {f"<strong>⚖️ Total Weight:</strong> {order.get('total_weight', 'N/A')}<br>" if order.get('total_weight') else ""}
-                    {f"<strong>💰 Total Price:</strong> {order.get('total_price', 'N/A')}<br>" if order.get('total_price') else ""}
+                <div style="text-align: center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.2);">
+                    <div style="font-size: 1.5em; font-weight: bold; color: #FEF3C7;">
+                        {price_display}/kg
+                    </div>
                 </div>
             </div>
             """
-            st.markdown(order_details, unsafe_allow_html=True)
+            st.markdown(order_card, unsafe_allow_html=True)
     
     # ============================================
     # FEATURE 2: SEARCH HISTORY DISPLAY
