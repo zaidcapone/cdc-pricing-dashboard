@@ -439,9 +439,7 @@ st.markdown("""
         margin: 1rem 0;
     }
 </style>
-""", unsafe_allow_html=True)
-</style>
-""", unsafe_allow_html=True)
+""", unsafe_allow_html=True)  # ← ONLY ONE CLOSING TAG HERE
 
 # Configuration
 API_KEY = "AIzaSyA3P-ZpLjDdVtGB82_1kaWuO7lNbKDj9HU"
