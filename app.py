@@ -1283,38 +1283,38 @@ def main_dashboard():
     with st.sidebar:
         st.markdown("### 📋 Navigation")
         
-# Define tabs based on user role
-if st.session_state.username in ["ceo", "admin"]:
-    tabs = [
-        "🏢 CLIENTS",
-        "💰 PRICES", 
-        "📋 NEW ORDERS",
-        "📅 ETD SHEET",
-        "⭐ CEO SPECIAL PRICES",
-        "💰 PRICE INTELLIGENCE",
-        "📦 PRODUCT CATALOG",
-        "📊 ORDERS MANAGEMENT",
-        "📦 PALLETIZING",
-        "🔴 PRICE MATCHING",
-        "📈 VISUAL ANALYTICS",
-        "📊 ITEM ANALYSIS"  # NEW TAB ADDED HERE
-    ]
-else:
-    tabs = [
-        "🏢 CLIENTS",
-        "💰 PRICES", 
-        "📋 NEW ORDERS",
-        "📅 ETD SHEET",
-        "⭐ CEO SPECIAL PRICES",
-        "💰 PRICE INTELLIGENCE",
-        "📦 PRODUCT CATALOG",
-        "📊 ORDERS MANAGEMENT"
-    ]
-    if st.session_state.username in ["zaid", "Rotana", "Khalid"]:
-        tabs.append("📦 PALLETIZING")
-    tabs.append("🔴 PRICE MATCHING")
-    tabs.append("📈 VISUAL ANALYTICS")
-    tabs.append("📊 ITEM ANALYSIS")  # NEW TAB ADDED FOR ALL USERS
+        # Define tabs based on user role
+        if st.session_state.username in ["ceo", "admin"]:
+            tabs = [
+                "🏢 CLIENTS",
+                "💰 PRICES", 
+                "📋 NEW ORDERS",
+                "📅 ETD SHEET",
+                "⭐ CEO SPECIAL PRICES",
+                "💰 PRICE INTELLIGENCE",
+                "📦 PRODUCT CATALOG",
+                "📊 ORDERS MANAGEMENT",
+                "📦 PALLETIZING",
+                "🔴 PRICE MATCHING",
+                "📈 VISUAL ANALYTICS",
+                "📊 ITEM ANALYSIS"  # NEW TAB ADDED HERE
+            ]
+        else:
+            tabs = [
+                "🏢 CLIENTS",
+                "💰 PRICES", 
+                "📋 NEW ORDERS",
+                "📅 ETD SHEET",
+                "⭐ CEO SPECIAL PRICES",
+                "💰 PRICE INTELLIGENCE",
+                "📦 PRODUCT CATALOG",
+                "📊 ORDERS MANAGEMENT"
+            ]
+            if st.session_state.username in ["zaid", "Rotana", "Khalid"]:
+                tabs.append("📦 PALLETIZING")
+            tabs.append("🔴 PRICE MATCHING")
+            tabs.append("📈 VISUAL ANALYTICS")
+            tabs.append("📊 ITEM ANALYSIS")  # NEW TAB ADDED FOR ALL USERS
         
         # Display tabs as clickable buttons
         for tab in tabs:
