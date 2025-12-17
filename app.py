@@ -767,7 +767,7 @@ def display_favorites_modal():
         # Create modal content
         st.markdown("""
         <div class="favorites-modal">
-            <h2 style="margin-top: 0; color: #991B1B;">⭐ Favorite Searches</h2>
+    <h2 style="margin-top: 0; color: #991B1B;">&#9733; Favorite Searches</h2>
         """, unsafe_allow_html=True)
         
         if not st.session_state.get('favorite_searches'):
