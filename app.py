@@ -403,6 +403,43 @@ st.markdown("""
         border-radius: 8px;
         border: 1px solid #0EA5E9;
     }
+        .decision-selector {
+        background: #F0F9FF;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid #0EA5E9;
+    }
+    /* NEW: Item Analysis specific styling */
+    .item-analysis-header {
+        background: linear-gradient(135deg, #1E40AF, #1E3A8A);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+    .item-stat-card {
+        background: white;
+        padding: 1rem;
+        border-radius: 10px;
+        border: 2px solid #1E40AF;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .item-stat-number {
+        font-size: 1.8em;
+        font-weight: bold;
+        color: #1E40AF;
+        margin: 0;
+    }
+    .comparison-card {
+        background: linear-gradient(135deg, #F0F9FF, #E0F2FE);
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 2px solid #0EA5E9;
+        margin: 1rem 0;
+    }
+</style>
+""", unsafe_allow_html=True)
 </style>
 """, unsafe_allow_html=True)
 
@@ -1248,36 +1285,38 @@ def main_dashboard():
     with st.sidebar:
         st.markdown("### 📋 Navigation")
         
-        # Define tabs based on user role
-        if st.session_state.username in ["ceo", "admin"]:
-            tabs = [
-                "🏢 CLIENTS",
-                "💰 PRICES", 
-                "📋 NEW ORDERS",
-                "📅 ETD SHEET",
-                "⭐ CEO SPECIAL PRICES",
-                "💰 PRICE INTELLIGENCE",
-                "📦 PRODUCT CATALOG",
-                "📊 ORDERS MANAGEMENT",
-                "📦 PALLETIZING",
-                "🔴 PRICE MATCHING",
-                "📈 VISUAL ANALYTICS"  # NEW TAB ADDED HERE
-            ]
-        else:
-            tabs = [
-                "🏢 CLIENTS",
-                "💰 PRICES", 
-                "📋 NEW ORDERS",
-                "📅 ETD SHEET",
-                "⭐ CEO SPECIAL PRICES",
-                "💰 PRICE INTELLIGENCE",
-                "📦 PRODUCT CATALOG",
-                "📊 ORDERS MANAGEMENT"
-            ]
-            if st.session_state.username in ["zaid", "Rotana", "Khalid"]:
-                tabs.append("📦 PALLETIZING")
-            tabs.append("🔴 PRICE MATCHING")
-            tabs.append("📈 VISUAL ANALYTICS")  # NEW TAB ADDED FOR ALL USERS
+# Define tabs based on user role
+if st.session_state.username in ["ceo", "admin"]:
+    tabs = [
+        "🏢 CLIENTS",
+        "💰 PRICES", 
+        "📋 NEW ORDERS",
+        "📅 ETD SHEET",
+        "⭐ CEO SPECIAL PRICES",
+        "💰 PRICE INTELLIGENCE",
+        "📦 PRODUCT CATALOG",
+        "📊 ORDERS MANAGEMENT",
+        "📦 PALLETIZING",
+        "🔴 PRICE MATCHING",
+        "📈 VISUAL ANALYTICS",
+        "📊 ITEM ANALYSIS"  # NEW TAB ADDED HERE
+    ]
+else:
+    tabs = [
+        "🏢 CLIENTS",
+        "💰 PRICES", 
+        "📋 NEW ORDERS",
+        "📅 ETD SHEET",
+        "⭐ CEO SPECIAL PRICES",
+        "💰 PRICE INTELLIGENCE",
+        "📦 PRODUCT CATALOG",
+        "📊 ORDERS MANAGEMENT"
+    ]
+    if st.session_state.username in ["zaid", "Rotana", "Khalid"]:
+        tabs.append("📦 PALLETIZING")
+    tabs.append("🔴 PRICE MATCHING")
+    tabs.append("📈 VISUAL ANALYTICS")
+    tabs.append("📊 ITEM ANALYSIS")  # NEW TAB ADDED FOR ALL USERS
         
         # Display tabs as clickable buttons
         for tab in tabs:
@@ -1387,8 +1426,10 @@ def main_dashboard():
         palletizing_tab()
     elif st.session_state.active_tab == "🔴 PRICE MATCHING":
         price_matching_tab()
-    elif st.session_state.active_tab == "📈 VISUAL ANALYTICS":  # NEW TAB HANDLER
+    elif st.session_state.active_tab == "📈 VISUAL ANALYTICS":
         visual_analytics_tab()
+    elif st.session_state.active_tab == "📊 ITEM ANALYSIS":  # NEW TAB HANDLER
+        item_analysis_tab()  # NEW FUNCTION
     
     # Logout button at bottom
     st.markdown("---")
@@ -1801,7 +1842,647 @@ RECOMMENDATIONS:
         - Monitor price stability for negotiation strategies
         """)
 
+# ============================================
+# NEW ITEM ANALYSIS TAB FUNCTION
+# ============================================
 
+def item_analysis_tab():
+    """
+    NEW: Advanced Item Analysis Tab
+    Compare item performance between months and years with growth percentages
+    """
+    st.markdown("""
+    <div style="
+        background: linear-gradient(135deg, #1E40AF, #1E3A8A);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    ">
+        <h2 style="margin:0;">📊 Advanced Item Analysis</h2>
+        <p style="margin:0; opacity:0.9;">Monthly Comparison • Year-over-Year Growth • Item Performance Tracking</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Client selection
+    available_clients = st.session_state.user_clients
+    if not available_clients:
+        st.warning("No clients available for your account")
+        return
+    
+    client = st.selectbox(
+        "Select Client:",
+        available_clients,
+        key="item_analysis_client"
+    )
+    
+    st.info(f"📊 **Analyzing data for:** {client}")
+    
+    # Load data for the selected client
+    with st.spinner(f"📥 Loading data for {client}..."):
+        DATA = get_google_sheets_data(client)
+    
+    if not DATA.get("Backaldrin") and not DATA.get("Bateel"):
+        st.error(f"❌ No data found for {client}")
+        return
+    
+    # Supplier selection
+    supplier = st.radio(
+        "Select Supplier:",
+        ["Backaldrin", "Bateel"],
+        horizontal=True,
+        key="item_analysis_supplier"
+    )
+    
+    supplier_data = DATA.get(supplier, {})
+    
+    if not supplier_data:
+        st.warning(f"No data available for {supplier} - {client}")
+        return
+    
+    # ============================================
+    # STEP 1: EXTRACT AND PROCESS DATA
+    # ============================================
+    st.subheader("🔍 Select Item for Analysis")
+    
+    # Get all unique items from the data
+    all_items = {}
+    
+    for article_num, article_data in supplier_data.items():
+        if article_data.get('orders'):
+            # Get product name
+            product_name = ""
+            if article_data.get('names'):
+                product_name = article_data['names'][0] if article_data['names'] else ""
+            
+            # Process each order to extract weight, date, etc.
+            monthly_data = {}
+            
+            for order in article_data['orders']:
+                try:
+                    # Extract month and year
+                    date_str = order.get('date', '')
+                    year = order.get('year', '')
+                    
+                    if not date_str and not year:
+                        continue
+                    
+                    # Parse date or use year
+                    if date_str:
+                        try:
+                            # Try multiple date formats
+                            for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d', '%d %b %Y']:
+                                try:
+                                    date_obj = datetime.strptime(date_str, fmt)
+                                    month_year = date_obj.strftime("%B %Y")
+                                    month = date_obj.strftime("%B")
+                                    year = date_obj.strftime("%Y")
+                                    break
+                                except:
+                                    continue
+                        except:
+                            # If date parsing fails, use year from data
+                            month = order.get('month', 'Unknown')
+                            year = order.get('year', 'Unknown')
+                            month_year = f"{month} {year}" if month != 'Unknown' else f"Unknown {year}"
+                    else:
+                        month = order.get('month', 'Unknown')
+                        year = order.get('year', 'Unknown')
+                        month_year = f"{month} {year}" if month != 'Unknown' else f"Unknown {year}"
+                    
+                    # Extract weight (convert to float)
+                    weight_str = order.get('total_weight', '0')
+                    try:
+                        weight = float(str(weight_str).replace(',', '').strip())
+                    except:
+                        weight = 0
+                    
+                    # Extract price
+                    price_str = order.get('price', '0')
+                    try:
+                        price = float(str(price_str).replace('$', '').replace(',', '').strip())
+                    except:
+                        price = 0
+                    
+                    # Extract quantity
+                    quantity_str = order.get('quantity', '0')
+                    try:
+                        quantity = float(str(quantity_str).replace(',', '').strip())
+                    except:
+                        quantity = 0
+                    
+                    # Add to monthly data
+                    if month_year not in monthly_data:
+                        monthly_data[month_year] = {
+                            'weight': 0,
+                            'quantity': 0,
+                            'revenue': 0,
+                            'orders_count': 0,
+                            'month': month,
+                            'year': year,
+                            'avg_price': 0,
+                            'prices': []
+                        }
+                    
+                    monthly_data[month_year]['weight'] += weight
+                    monthly_data[month_year]['quantity'] += quantity
+                    monthly_data[month_year]['orders_count'] += 1
+                    
+                    # Calculate revenue if both weight and price are available
+                    if weight > 0 and price > 0:
+                        revenue = weight * price
+                        monthly_data[month_year]['revenue'] += revenue
+                        monthly_data[month_year]['prices'].append(price)
+                
+                except Exception as e:
+                    continue
+            
+            # Calculate average price for each month
+            for month_year, data in monthly_data.items():
+                if data['prices']:
+                    data['avg_price'] = sum(data['prices']) / len(data['prices'])
+            
+            all_items[article_num] = {
+                'product_name': product_name,
+                'monthly_data': monthly_data,
+                'total_weight': sum(data['weight'] for data in monthly_data.values()),
+                'total_orders': sum(data['orders_count'] for data in monthly_data.values()),
+                'total_revenue': sum(data['revenue'] for data in monthly_data.values())
+            }
+    
+    if not all_items:
+        st.warning(f"No item data available for analysis for {supplier} - {client}")
+        return
+    
+    # Create dropdown for item selection
+    items_list = list(all_items.keys())
+    
+    # Add search functionality
+    search_term = st.text_input(
+        "🔍 Search for item by article number or product name:",
+        placeholder="e.g., 558, Roxella, 1-366...",
+        key="item_search"
+    )
+    
+    # Filter items based on search
+    filtered_items = {}
+    if search_term:
+        search_lower = search_term.lower()
+        for item_id, item_data in all_items.items():
+            if (search_lower in item_id.lower() or 
+                search_lower in item_data['product_name'].lower()):
+                filtered_items[item_id] = item_data
+    else:
+        filtered_items = all_items
+    
+    # Item selection dropdown
+    if filtered_items:
+        # Format display options
+        item_options = {
+            f"{item_id} - {item_data['product_name']} (Total: {item_data['total_weight']:,.0f} kg)": item_id
+            for item_id, item_data in filtered_items.items()
+        }
+        
+        selected_display = st.selectbox(
+            "Select Item for Detailed Analysis:",
+            list(item_options.keys()),
+            key="item_selection"
+        )
+        
+        selected_item = item_options[selected_display]
+        item_data = filtered_items[selected_item]
+    else:
+        st.warning("No items match your search. Try a different search term.")
+        return
+    
+    # ============================================
+    # STEP 2: DISPLAY ITEM OVERVIEW
+    # ============================================
+    st.subheader(f"📋 Overview: {selected_item} - {item_data['product_name']}")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("Total Weight Sold", f"{item_data['total_weight']:,.0f} kg")
+    
+    with col2:
+        st.metric("Total Orders", item_data['total_orders'])
+    
+    with col3:
+        st.metric("Total Revenue", f"${item_data['total_revenue']:,.0f}")
+    
+    with col4:
+        if item_data['total_weight'] > 0:
+            avg_price_per_kg = item_data['total_revenue'] / item_data['total_weight']
+            st.metric("Avg Price/kg", f"${avg_price_per_kg:.2f}")
+        else:
+            st.metric("Avg Price/kg", "$0.00")
+    
+    # ============================================
+    # STEP 3: MONTHLY COMPARISON TABLE
+    # ============================================
+    st.subheader("📅 Monthly Performance Comparison")
+    
+    # Prepare monthly data for comparison
+    monthly_comparison = []
+    
+    # Get all months from the data and sort them properly
+    months_data = item_data['monthly_data']
+    
+    # Convert month names to datetime for proper sorting
+    month_objs = []
+    for month_year_str, data in months_data.items():
+        try:
+            month_name = data['month']
+            year = data['year']
+            
+            # Create a sortable date
+            month_num = datetime.strptime(month_name, "%B").month if month_name != 'Unknown' else 1
+            sort_key = f"{year}-{month_num:02d}"
+            
+            month_objs.append({
+                'sort_key': sort_key,
+                'month_year': month_year_str,
+                'data': data
+            })
+        except:
+            continue
+    
+    # Sort by year and month
+    month_objs.sort(key=lambda x: x['sort_key'])
+    
+    # Calculate month-over-month growth
+    previous_weight = None
+    previous_month = None
+    
+    for i, month_obj in enumerate(month_objs):
+        month_year = month_obj['month_year']
+        data = month_obj['data']
+        
+        # Calculate growth percentage
+        growth_percent = None
+        if previous_weight is not None and previous_weight > 0:
+            growth_percent = ((data['weight'] - previous_weight) / previous_weight) * 100
+        
+        monthly_comparison.append({
+            'Period': month_year,
+            'Month': data['month'],
+            'Year': data['year'],
+            'Total Weight (kg)': f"{data['weight']:,.0f}",
+            'Weight_Value': data['weight'],
+            'Quantity': f"{data['quantity']:,.0f}",
+            'Orders': data['orders_count'],
+            'Avg Price/kg': f"${data['avg_price']:.2f}" if data['avg_price'] > 0 else "N/A",
+            'Revenue': f"${data['revenue']:,.0f}" if data['revenue'] > 0 else "N/A",
+            'Growth vs Previous': f"{growth_percent:+.1f}%" if growth_percent is not None else "First Record"
+        })
+        
+        previous_weight = data['weight']
+        previous_month = month_year
+    
+    # Display the comparison table
+    if monthly_comparison:
+        df_comparison = pd.DataFrame(monthly_comparison)
+        
+        # Create styled DataFrame
+        styled_df = df_comparison.style
+        
+        # Add color coding for growth
+        def color_growth(val):
+            if isinstance(val, str) and '%' in val:
+                try:
+                    percent = float(val.replace('%', '').replace('+', ''))
+                    if percent > 20:
+                        return 'background-color: #D1FAE5; color: #065F46; font-weight: bold;'  # Green for high growth
+                    elif percent > 0:
+                        return 'background-color: #FEF3C7; color: #92400E;'  # Yellow for moderate growth
+                    elif percent < -10:
+                        return 'background-color: #FEE2E2; color: #991B1B; font-weight: bold;'  # Red for significant drop
+                    elif percent < 0:
+                        return 'background-color: #FEF3C7; color: #92400E;'  # Yellow for small drop
+                except:
+                    pass
+            return ''
+        
+        # Apply styling
+        styled_df = styled_df.applymap(color_growth, subset=['Growth vs Previous'])
+        
+        # Display the table
+        st.dataframe(
+            styled_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Weight_Value": st.column_config.NumberColumn("Weight Value", format="%d")
+            }
+        )
+        
+        # ============================================
+        # STEP 4: YEAR-OVER-YEAR COMPARISON
+        # ============================================
+        st.subheader("📈 Year-over-Year Comparison")
+        
+        # Group data by year
+        year_data = {}
+        for month_obj in month_objs:
+            data = month_obj['data']
+            year = data['year']
+            
+            if year not in year_data:
+                year_data[year] = {
+                    'total_weight': 0,
+                    'total_revenue': 0,
+                    'total_orders': 0,
+                    'months': []
+                }
+            
+            year_data[year]['total_weight'] += data['weight']
+            year_data[year]['total_revenue'] += data['revenue']
+            year_data[year]['total_orders'] += data['orders_count']
+            year_data[year]['months'].append(data['month'])
+        
+        # Create year comparison table
+        year_comparison = []
+        years = sorted(year_data.keys())
+        
+        previous_year_weight = None
+        
+        for year in years:
+            data = year_data[year]
+            
+            # Calculate YoY growth
+            yoy_growth = None
+            if previous_year_weight is not None and previous_year_weight > 0:
+                yoy_growth = ((data['total_weight'] - previous_year_weight) / previous_year_weight) * 100
+            
+            year_comparison.append({
+                'Year': year,
+                'Total Weight (kg)': f"{data['total_weight']:,.0f}",
+                'Weight_Value': data['total_weight'],
+                'Total Revenue': f"${data['total_revenue']:,.0f}",
+                'Total Orders': data['total_orders'],
+                'Months with Sales': len(set(data['months'])),
+                'YoY Growth': f"{yoy_growth:+.1f}%" if yoy_growth is not None else "N/A"
+            })
+            
+            previous_year_weight = data['total_weight']
+        
+        if len(year_comparison) > 1:
+            df_year_comparison = pd.DataFrame(year_comparison)
+            
+            # Style YoY growth
+            styled_year_df = df_year_comparison.style
+            
+            def color_yoy_growth(val):
+                if isinstance(val, str) and '%' in val:
+                    try:
+                        percent = float(val.replace('%', '').replace('+', ''))
+                        if percent > 0:
+                            return 'background-color: #D1FAE5; color: #065F46; font-weight: bold;'
+                        else:
+                            return 'background-color: #FEE2E2; color: #991B1B; font-weight: bold;'
+                    except:
+                        pass
+                return ''
+            
+            styled_year_df = styled_year_df.applymap(color_yoy_growth, subset=['YoY Growth'])
+            
+            st.dataframe(
+                styled_year_df,
+                use_container_width=True,
+                hide_index=True
+            )
+            
+            # ============================================
+            # STEP 5: SPECIFIC MONTH COMPARISON (As requested)
+            # ============================================
+            st.subheader("🔍 Specific Month-to-Month Comparison")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                month1 = st.selectbox(
+                    "Select First Month:",
+                    [m['Period'] for m in monthly_comparison],
+                    key="month1_select"
+                )
+            
+            with col2:
+                month2 = st.selectbox(
+                    "Select Second Month:",
+                    [m['Period'] for m in monthly_comparison],
+                    index=min(1, len(monthly_comparison)-1),
+                    key="month2_select"
+                )
+            
+            # Find data for selected months
+            month1_data = next((m for m in monthly_comparison if m['Period'] == month1), None)
+            month2_data = next((m for m in monthly_comparison if m['Period'] == month2), None)
+            
+            if month1_data and month2_data:
+                weight1 = month1_data['Weight_Value']
+                weight2 = month2_data['Weight_Value']
+                
+                # Calculate comparison metrics
+                weight_difference = weight2 - weight1
+                if weight1 > 0:
+                    percentage_change = (weight_difference / weight1) * 100
+                else:
+                    percentage_change = 100 if weight2 > 0 else 0
+                
+                # Display comparison cards
+                st.markdown("---")
+                st.subheader("📊 Comparison Results")
+                
+                comp_col1, comp_col2, comp_col3 = st.columns(3)
+                
+                with comp_col1:
+                    st.metric(
+                        f"{month1}",
+                        f"{weight1:,.0f} kg",
+                        delta=None
+                    )
+                
+                with comp_col2:
+                    st.metric(
+                        f"{month2}",
+                        f"{weight2:,.0f} kg",
+                        delta=f"{weight_difference:+,.0f} kg"
+                    )
+                
+                with comp_col3:
+                    if weight1 > 0:
+                        st.metric(
+                            "Percentage Change",
+                            f"{percentage_change:+.1f}%",
+                            delta_color="normal" if percentage_change >= 0 else "inverse"
+                        )
+                    else:
+                        st.metric(
+                            "Percentage Change",
+                            f"{percentage_change:+.1f}%",
+                            delta="New Sales"
+                        )
+                
+                # Detailed comparison
+                st.markdown("#### 📋 Detailed Comparison")
+                
+                comparison_details = pd.DataFrame([
+                    {
+                        'Metric': 'Total Weight',
+                        f'{month1}': f"{weight1:,.0f} kg",
+                        f'{month2}': f"{weight2:,.0f} kg",
+                        'Difference': f"{weight_difference:+,.0f} kg",
+                        'Change %': f"{percentage_change:+.1f}%"
+                    }
+                ])
+                
+                st.dataframe(comparison_details, use_container_width=True, hide_index=True)
+        
+        # ============================================
+        # STEP 6: VISUALIZATION
+        # ============================================
+        st.subheader("📈 Weight Sales Trend")
+        
+        # Prepare data for chart
+        chart_data = pd.DataFrame([
+            {
+                'Month': m['Period'],
+                'Weight (kg)': m['Weight_Value'],
+                'Growth %': float(m['Growth vs Previous'].replace('%', '').replace('+', '').replace('First Record', '0')) 
+                if m['Growth vs Previous'] != 'First Record' else 0
+            }
+            for m in monthly_comparison
+        ])
+        
+        if not chart_data.empty:
+            # Create two columns for charts
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**Monthly Weight Sales**")
+                st.bar_chart(chart_data.set_index('Month')['Weight (kg)'], use_container_width=True)
+            
+            with col2:
+                st.markdown("**Growth Percentage**")
+                st.line_chart(chart_data.set_index('Month')['Growth %'], use_container_width=True)
+        
+        # ============================================
+        # STEP 7: EXPORT FUNCTIONALITY
+        # ============================================
+        st.markdown("---")
+        st.subheader("📤 Export Analysis")
+        
+        # Create comprehensive export data
+        export_data = []
+        for month_data in monthly_comparison:
+            export_data.append({
+                'Item_ID': selected_item,
+                'Product_Name': item_data['product_name'],
+                'Period': month_data['Period'],
+                'Month': month_data['Month'],
+                'Year': month_data['Year'],
+                'Total_Weight_kg': month_data['Weight_Value'],
+                'Quantity': month_data['Quantity'].replace(',', ''),
+                'Number_of_Orders': month_data['Orders'],
+                'Average_Price_kg': month_data['Avg Price/kg'].replace('$', '').replace('N/A', '0'),
+                'Revenue': month_data['Revenue'].replace('$', '').replace(',', '').replace('N/A', '0'),
+                'Month_over_Month_Growth': month_data['Growth vs Previous'].replace('%', '').replace('+', '').replace('First Record', '0')
+            })
+        
+        export_df = pd.DataFrame(export_data)
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            csv = export_df.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV Report",
+                data=csv,
+                file_name=f"{client}_{supplier}_{selected_item}_analysis_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="item_analysis_csv"
+            )
+        
+        with col2:
+            # Create summary report
+            summary_text = f"""
+ITEM ANALYSIS REPORT
+====================
+
+Client: {client}
+Supplier: {supplier}
+Item: {selected_item}
+Product: {item_data['product_name']}
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+OVERALL STATISTICS:
+• Total Weight Sold: {item_data['total_weight']:,.0f} kg
+• Total Orders: {item_data['total_orders']}
+• Total Revenue: ${item_data['total_revenue']:,.0f}
+• Average Price/kg: ${(item_data['total_revenue'] / item_data['total_weight']):.2f if item_data['total_weight'] > 0 else 0}
+
+MONTHLY BREAKDOWN:
+{chr(10).join([f"• {row['Period']}: {row['Total_Weight_kg']} kg | Growth: {row['Month_over_Month_Growth']}% | Revenue: ${float(row['Revenue']):,.0f}" for row in export_data])}
+
+YEAR-OVER-YEAR COMPARISON:
+{chr(10).join([f"• {row['Year']}: {row['Total_Weight_kg']} kg" for row in export_data if row['Year'] in years])}
+
+KEY INSIGHTS:
+1. Best Performing Month: {max(monthly_comparison, key=lambda x: x['Weight_Value'])['Period']}
+2. Total Sales Period: {len(monthly_comparison)} months
+3. Average Monthly Weight: {item_data['total_weight']/len(monthly_comparison):,.0f} kg
+4. Most Recent Month: {monthly_comparison[-1]['Period']} - {monthly_comparison[-1]['Weight_Value']:,.0f} kg
+
+RECOMMENDATIONS:
+• Monitor growth trends for inventory planning
+• Analyze price changes vs. volume changes
+• Compare with market demand patterns
+            """
+            
+            st.download_button(
+                label="📄 Download Summary Report",
+                data=summary_text,
+                file_name=f"{client}_{supplier}_{selected_item}_summary_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True,
+                key="item_analysis_summary"
+            )
+    
+    else:
+        st.info("No monthly data available for comparison.")
+    
+    # ============================================
+    # STEP 8: QUICK TIPS
+    # ============================================
+    with st.expander("💡 How to Use This Analysis Tool", expanded=False):
+        st.markdown("""
+        **📊 Item Analysis Guide:**
+        
+        1. **Select Client & Supplier** - Choose which data to analyze
+        2. **Search for Items** - Use the search box to find specific items
+        3. **View Monthly Breakdown** - See weight, revenue, and growth per month
+        4. **Compare Specific Months** - Select two months for direct comparison
+        5. **Analyze Trends** - View year-over-year and month-over-month growth
+        6. **Export Reports** - Download data for presentations
+        
+        **Key Metrics Explained:**
+        - **Total Weight**: Kilograms sold in that period
+        - **Growth %**: Percentage change from previous period
+        - **YoY Growth**: Year-over-Year growth percentage
+        - **Revenue**: Total sales value (weight × price)
+        
+        **Pro Tips:**
+        - Use month comparison to identify seasonal patterns
+        - Export data for client presentations
+        - Monitor growth trends for inventory planning
+        - Compare multiple items to identify best sellers
+        """)
+
+# ============================================
+# END OF NEW FUNCTION
+# ============================================
 
 
 # ============================================
