@@ -1511,581 +1511,98 @@ def main_dashboard():
 
 def all_prices_tab():
     """
-    NEW: All Prices Tab - Displays data from General_prices sheet
-    Shows complete pricing information with filtering and search capabilities
+    SIMPLE: Search All Items by Article or Description
     """
     st.markdown("""
     <div class="all-prices-header">
-        <h2 style="margin:0;">📊 All Items Price Database</h2>
-        <p style="margin:0; opacity:0.9;">Complete Item Catalog • Pricing Information • Category-wise Analysis</p>
+        <h2 style="margin:0;">🔍 Search All Items</h2>
+        <p style="margin:0; opacity:0.9;">Search by Article Number or Description</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Load general prices data
-    with st.spinner("📥 Loading all prices data from General_prices sheet..."):
+    # Load data
+    with st.spinner("📥 Loading items..."):
         prices_data = load_general_prices_data()
     
     if prices_data.empty:
-        st.warning("""
-        ⚠️ **General_prices data not found or empty!**
-        
-        **Please check:**
-        1. Go to your Google Sheet
-        2. Make sure there's a tab called **'General_prices'**
-        3. Make sure it has these EXACT headers in Row 1:
-           - # (Number)
-           - CATEG. (Category)
-           - SUB CATEG. (Sub Category)
-           - SUB. SUB. (Sub Sub Category)
-           - DESCRIPTION
-           - ART# (Article Number)
-           - UOM (Unit of Measure)
-           - UNT WGT (Unit Weight)
-           - NEW EXW (New EXW Price)
-        """)
+        st.error("❌ No data found in General_prices sheet!")
         return
     
-    # Clean up column names - remove any extra spaces
-    prices_data.columns = [str(col).strip() for col in prices_data.columns]
-    
-    # Show what headers were found
-    st.info(f"✅ Found {len(prices_data)} items with these headers: {', '.join(prices_data.columns)}")
-    
-    # Verify we have the expected headers
-    expected_headers = ['#', 'CATEG.', 'SUB CATEG.', 'SUB. SUB.', 'DESCRIPTION', 'ART#', 'UOM', 'UNT WGT', 'NEW EXW']
-    missing_headers = [h for h in expected_headers if h not in prices_data.columns]
-    
-    if missing_headers:
-        st.error(f"❌ Missing headers: {', '.join(missing_headers)}")
-        st.info("Please check that your Google Sheet has the exact headers listed above.")
-        return
-    
-    # Convert numeric columns
-    try:
-        prices_data['NEW EXW'] = pd.to_numeric(prices_data['NEW EXW'], errors='coerce')
-    except:
-        st.warning("Could not convert NEW EXW column to numeric. Some features may not work properly.")
+    # Show how many items loaded
+    st.success(f"✅ Loaded {len(prices_data)} items")
     
     # ============================================
-    # DATA OVERVIEW
+    # SIMPLE SEARCH
     # ============================================
-    st.subheader("📊 Data Overview")
+    st.subheader("🔍 Search")
     
-    # Calculate statistics
-    total_items = len(prices_data)
-    categories = prices_data['CATEG.'].nunique() if 'CATEG.' in prices_data.columns else 0
-    subcategories = prices_data['SUB CATEG.'].nunique() if 'SUB CATEG.' in prices_data.columns else 0
-    avg_price = prices_data['NEW EXW'].mean() if 'NEW EXW' in prices_data.columns else 0
+    search_term = st.text_input(
+        "Search by Article Number or Description:",
+        placeholder="e.g., 558 or Chocolate...",
+        key="simple_search"
+    )
     
-    # Display statistics
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric("Total Items", total_items)
-    
-    with col2:
-        st.metric("Categories", categories)
-    
-    with col3:
-        st.metric("Sub Categories", subcategories)
-    
-    with col4:
-        st.metric("Avg Price", f"${avg_price:.2f}" if not pd.isna(avg_price) else "N/A")
-    
-    # ============================================
-    # SIMPLE SEARCH - FIXED VERSION
-    # ============================================
-    st.subheader("🔍 Search Items")
-    
-    col1, col2 = st.columns([3, 1])
-    
-    with col1:
-        search_term = st.text_input(
-            "Search by article number (ART#) or description:",
-            placeholder="e.g., 558, Chocolate, Roxella...",
-            key="all_prices_search"
-        )
-    
-    with col2:
-        if 'CATEG.' in prices_data.columns:
-            category_options = ["All"] + sorted(prices_data['CATEG.'].dropna().unique().tolist())
-            category_filter = st.selectbox("Category:", category_options, key="all_prices_category")
-        else:
-            category_filter = "All"
-    
-    # Apply filters
-    filtered_data = prices_data.copy()
-    
+    # Show results
     if search_term:
-        # Search in ART# and DESCRIPTION columns
         search_lower = search_term.lower()
         
-        # Create mask for ART# column
-        art_mask = filtered_data['ART#'].astype(str).str.lower().str.contains(search_lower, na=False)
-        
-        # Create mask for DESCRIPTION column
-        desc_mask = filtered_data['DESCRIPTION'].astype(str).str.lower().str.contains(search_lower, na=False)
-        
-        # Combine masks
-        combined_mask = art_mask | desc_mask
-        
-        filtered_data = filtered_data[combined_mask]
-        
-        # Show debug info
-        st.caption(f"Found {len(filtered_data)} items containing '{search_term}' in ART# or DESCRIPTION")
-    
-    if category_filter != "All" and 'CATEG.' in filtered_data.columns:
-        filtered_data = filtered_data[filtered_data['CATEG.'] == category_filter]
-    
-    # ============================================
-    # DISPLAY RESULTS
-    # ============================================
-    st.subheader(f"📋 Items Found: {len(filtered_data)}")
-    
-    if not filtered_data.empty:
-        # Show simple table view
-        display_cols = ['ART#', 'DESCRIPTION', 'CATEG.', 'NEW EXW', 'UOM']
-        display_cols = [col for col in display_cols if col in filtered_data.columns]
-        
-        st.dataframe(
-            filtered_data[display_cols].head(50),
-            use_container_width=True,
-            column_config={
-                "ART#": st.column_config.TextColumn("Article"),
-                "DESCRIPTION": st.column_config.TextColumn("Description"),
-                "CATEG.": st.column_config.TextColumn("Category"),
-                "NEW EXW": st.column_config.NumberColumn("Price", format="$%.2f"),
-                "UOM": st.column_config.TextColumn("UOM")
-            }
+        # Search in both ART# and DESCRIPTION columns
+        mask = (
+            prices_data['ART#'].astype(str).str.lower().str.contains(search_lower, na=False) |
+            prices_data['DESCRIPTION'].astype(str).str.lower().str.contains(search_lower, na=False)
         )
         
-        # Show detailed view for selected items
-        if len(filtered_data) <= 20:  # Only show details if not too many items
-            st.subheader("📄 Item Details")
-            for idx, item in filtered_data.iterrows():
-                with st.expander(f"{item['ART#']} - {item['DESCRIPTION']}", expanded=False):
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.write(f"**Article:** {item['ART#']}")
-                        st.write(f"**Description:** {item['DESCRIPTION']}")
-                        st.write(f"**Category:** {item['CATEG.']}")
-                        st.write(f"**Sub Category:** {item.get('SUB CATEG.', 'N/A')}")
-                        st.write(f"**Sub Sub Category:** {item.get('SUB. SUB.', 'N/A')}")
-                    
-                    with col2:
-                        if 'NEW EXW' in item and pd.notna(item['NEW EXW']):
-                            st.write(f"**Price:** ${item['NEW EXW']:.2f}")
-                        st.write(f"**UOM:** {item.get('UOM', 'N/A')}")
-                        st.write(f"**Unit Weight:** {item.get('UNT WGT', 'N/A')}")
-                        st.write(f"**#:** {item.get('#', 'N/A')}")
+        results = prices_data[mask]
         
-        # ============================================
-        # EXPORT FUNCTIONALITY
-        # ============================================
-        st.markdown("---")
-        st.subheader("📤 Export Data")
+        st.subheader(f"📋 Results: {len(results)} items found")
         
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            csv = filtered_data.to_csv(index=False)
-            st.download_button(
-                label="📥 Download CSV",
-                data=csv,
-                file_name=f"all_prices_export_{datetime.now().strftime('%Y%m%d')}.csv",
-                mime="text/csv",
-                use_container_width=True,
-                key="all_prices_csv"
-            )
-        
-        with col2:
-            summary_text = f"""
-All Prices Export - General_prices Sheet
-========================================
-
-Export Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}
-Total Items: {len(filtered_data)}
-Search Term: "{search_term}"
-Category Filter: {category_filter}
-
-Items Found:
-{chr(10).join([f"• {row['ART#']} - {row['DESCRIPTION']} - {row['CATEG.']} - ${row.get('NEW EXW', 'N/A')}" for _, row in filtered_data.iterrows()])}
-            """
+        if len(results) > 0:
+            # Show results in a clean table
+            display_cols = ['ART#', 'DESCRIPTION', 'CATEG.', 'SUB CATEG.', 'SUB. SUB.', 'UOM', 'UNT WGT', 'NEW EXW']
             
-            st.download_button(
-                label="📄 Download Summary",
-                data=summary_text,
-                file_name=f"all_prices_summary_{datetime.now().strftime('%Y%m%d')}.txt",
-                mime="text/plain",
-                use_container_width=True,
-                key="all_prices_summary"
-            )
-    
-    else:
-        if search_term:
-            st.info(f"No items found containing '{search_term}'. Try a different search term.")
+            # Filter to only show columns that exist
+            display_cols = [col for col in display_cols if col in results.columns]
             
-            # Show sample data for reference
-            with st.expander("🔍 View sample data to see what to search for"):
-                sample_data = prices_data[['ART#', 'DESCRIPTION', 'CATEG.']].head(10)
-                st.write("**Sample article numbers and descriptions:**")
-                st.dataframe(sample_data, use_container_width=True)
-        else:
-            st.info("Enter a search term to find items.")
-    
-    # ============================================
-    # DATA PREVIEW
-    # ============================================
-    with st.expander("👀 View All Data", expanded=False):
-        st.dataframe(
-            prices_data,
-            use_container_width=True,
-            hide_index=True
-        )
-    
-    # ============================================
-    # QUICK TIPS
-    # ============================================
-    with st.expander("💡 How to use this section", expanded=False):
-        st.markdown("""
-        **📊 All Prices Database Guide:**
-        
-        1. **Search Items** - Use the search box to find items by article number, description, or any field
-        2. **Filter by Category** - Narrow down results by main category
-        3. **Price Range Filter** - Set minimum and maximum price limits
-        4. **Advanced Filters** - Use the expander for sub-category and UOM filters
-        5. **Export Data** - Download filtered results in CSV, Excel, or summary format
-        
-        **Available Columns:**
-        - **#**: Item number
-        - **CATEG.**: Main category
-        - **SUB CATEG.**: Sub category
-        - **SUB. SUB.**: Sub sub category
-        - **DESCRIPTION**: Item description
-        - **ART#**: Article number
-        - **UOM**: Unit of measure
-        - **UNT WGT**: Unit weight
-        - **NEW EXW**: New EXW price
-        
-        **Pro Tips:**
-        - Use wildcards in search (e.g., "choc*" for chocolate, chocolates, etc.)
-        - Export data for offline analysis
-        - Combine filters for precise results
-        - Check raw data preview for complete information
-        - If search doesn't work, check the "Debug Info" section
-        """)
-
-# ============================================
-# VISUAL ANALYTICS TAB FUNCTION
-# ============================================
-
-def visual_analytics_tab():
-    """
-    Visual Analytics Tab with Interactive Charts
-    This tab provides graphical analysis of sales data, price trends, and product performance
-    """
-    st.markdown("""
-    <div class="visual-header">
-        <h2 style="margin:0;">📈 Visual Analytics Dashboard</h2>
-        <p style="margin:0; opacity:0.9;">Interactive Charts • Sales Trends • Product Performance • Custom Visualizations</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Client selection
-    available_clients = st.session_state.user_clients
-    if not available_clients:
-        st.warning("No clients available for your account")
-        return
-    
-    client = st.selectbox(
-        "Select Client:",
-        available_clients,
-        key="visual_client_select"
-    )
-    
-    # Load client data
-    with st.spinner(f"📥 Loading data for {client}..."):
-        DATA = get_google_sheets_data(client)
-    
-    if not DATA.get("Backaldrin") and not DATA.get("Bateel"):
-        st.error(f"❌ No data found for {client}")
-        return
-    
-    st.success(f"✅ Loaded data for {client}")
-    
-    # Supplier selection
-    supplier = st.radio(
-        "Select Supplier:",
-        ["Backaldrin", "Bateel"],
-        horizontal=True,
-        key="visual_supplier"
-    )
-    
-    # ============================================
-    # SECTION 1: PRODUCT SELECTION
-    # ============================================
-    st.subheader("🎯 Select Product for Analysis")
-    
-    # Get all articles from the selected supplier
-    supplier_data = DATA.get(supplier, {})
-    articles = list(supplier_data.keys())
-    
-    if not articles:
-        st.info(f"No articles found for {supplier} - {client}")
-        return
-    
-    # Create searchable select box
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        selected_article = st.selectbox(
-            "Search and select article:",
-            articles,
-            format_func=lambda x: f"{x} - {supplier_data[x]['names'][0] if supplier_data[x]['names'] else 'No Name'}",
-            key="visual_article_select"
-        )
-    
-    with col2:
-        # Time range selection
-        time_range = st.selectbox(
-            "Time Period:",
-            ["All Time", "Last 2 Years", "Last Year", "Last 6 Months", "Custom"],
-            key="visual_time_range"
-        )
-    
-    # Get selected article data
-    article_data = supplier_data.get(selected_article, {})
-    
-    if not article_data:
-        st.error(f"No data found for article {selected_article}")
-        return
-    
-    # ============================================
-    # SECTION 2: PERFORMANCE METRICS
-    # ============================================
-    st.subheader("📊 Performance Overview")
-    
-    # Calculate metrics
-    orders = article_data.get('orders', [])
-    prices = article_data.get('prices', [])
-    
-    if not orders:
-        st.info(f"No order history for article {selected_article}")
-        return
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        total_orders = len(orders)
-        st.metric("Total Orders", total_orders)
-    
-    with col2:
-        avg_price = sum(prices) / len(prices) if prices else 0
-        st.metric("Avg Price/kg", f"${avg_price:.2f}")
-    
-    with col3:
-        min_price = min(prices) if prices else 0
-        st.metric("Min Price", f"${min_price:.2f}")
-    
-    with col4:
-        max_price = max(prices) if prices else 0
-        st.metric("Max Price", f"${max_price:.2f}")
-    
-    # ============================================
-    # SECTION 3: PRICE TREND CHART
-    # ============================================
-    st.subheader("📈 Price Trend Over Time")
-    
-    # Prepare data for chart
-    chart_data = []
-    for order in orders:
-        try:
-            price = float(order.get('price', 0))
-            date_str = order.get('date', '')
-            if price > 0 and date_str:
-                # Try to parse date
-                try:
-                    # Handle different date formats
-                    for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d']:
-                        try:
-                            date = datetime.strptime(date_str, fmt)
-                            chart_data.append({
-                                'Date': date,
-                                'Price': price,
-                                'Order': order.get('order_no', ''),
-                                'Quantity': float(order.get('quantity', 0) or 0),
-                                'Total_Weight': float(order.get('total_weight', 0) or 0)
-                            })
-                            break
-                        except:
-                            continue
-                except:
-                    continue
-        except:
-            continue
-    
-    if chart_data:
-        # Create DataFrame for charting
-        df_chart = pd.DataFrame(chart_data)
-        df_chart = df_chart.sort_values('Date')
-        
-        # Chart 1: Price Trend Line
-        col1, col2 = st.columns([3, 1])
-        
-        with col1:
-            st.markdown("**Price per kg over time**")
-            st.line_chart(df_chart.set_index('Date')['Price'], use_container_width=True)
-        
-        with col2:
-            st.markdown("**Statistics**")
-            st.write(f"First order: {df_chart['Date'].min().strftime('%b %Y')}")
-            st.write(f"Latest order: {df_chart['Date'].max().strftime('%b %Y')}")
-            st.write(f"Total period: {(df_chart['Date'].max() - df_chart['Date'].min()).days} days")
-        
-        # Chart 2: Quantity vs Price Scatter
-        st.subheader("📊 Quantity vs Price Analysis")
-        
-        if not df_chart.empty and 'Quantity' in df_chart.columns and df_chart['Quantity'].sum() > 0:
-            # Scatter plot
-            fig1, ax1 = plt.subplots(figsize=(10, 6))
-            scatter = ax1.scatter(df_chart['Quantity'], df_chart['Price'], 
-                                 c=range(len(df_chart)), cmap='viridis', s=100, alpha=0.6)
+            # Format the display
+            display_df = results[display_cols].copy()
             
-            # Add labels and trend line
-            ax1.set_xlabel('Quantity (units)')
-            ax1.set_ylabel('Price ($/kg)')
-            ax1.set_title(f'Quantity vs Price - {selected_article}')
-            ax1.grid(True, alpha=0.3)
+            # Format price column
+            if 'NEW EXW' in display_df.columns:
+                display_df['NEW EXW'] = display_df['NEW EXW'].apply(lambda x: f"${float(x):.2f}" if pd.notna(x) else "N/A")
             
-            # Add trend line if enough points
-            if len(df_chart) > 1:
-                z = np.polyfit(df_chart['Quantity'], df_chart['Price'], 1)
-                p = np.poly1d(z)
-                ax1.plot(df_chart['Quantity'], p(df_chart['Quantity']), "r--", alpha=0.5, 
-                        label=f'Trend: y={z[0]:.4f}x + {z[1]:.2f}')
-                ax1.legend()
-            
-            # Add colorbar
-            plt.colorbar(scatter, ax=ax1, label='Order Sequence')
-            
-            st.pyplot(fig1)
-            
-            # Insights
-            correlation = df_chart['Quantity'].corr(df_chart['Price'])
-            st.info(f"**Insight:** Quantity-Price correlation: {correlation:.3f}")
-            if correlation < -0.3:
-                st.success("✅ **Negative correlation:** Higher quantities tend to get better prices")
-            elif correlation > 0.3:
-                st.warning("⚠️ **Positive correlation:** Higher quantities might be paying more")
-            else:
-                st.info("ℹ️ **Weak correlation:** Quantity doesn't strongly affect price")
-        
-        # Chart 3: Monthly Aggregation
-        st.subheader("📅 Monthly Performance")
-        
-        # Group by month
-        df_chart['YearMonth'] = df_chart['Date'].dt.to_period('M')
-        monthly_data = df_chart.groupby('YearMonth').agg({
-            'Price': ['mean', 'count', 'min', 'max'],
-            'Quantity': 'sum',
-            'Total_Weight': 'sum'
-        }).round(2)
-        
-        monthly_data.columns = ['Avg_Price', 'Order_Count', 'Min_Price', 'Max_Price', 'Total_Quantity', 'Total_Weight']
-        monthly_data = monthly_data.reset_index()
-        monthly_data['YearMonth'] = monthly_data['YearMonth'].astype(str)
-        
-        # Display monthly table
-        with st.expander("📋 View Monthly Breakdown", expanded=True):
             st.dataframe(
-                monthly_data.style
-                .background_gradient(subset=['Avg_Price'], cmap='RdYlGn_r')
-                .background_gradient(subset=['Total_Quantity'], cmap='Blues')
-                .format({'Avg_Price': '${:.2f}', 'Min_Price': '${:.2f}', 'Max_Price': '${:.2f}'}),
-                use_container_width=True
+                display_df,
+                use_container_width=True,
+                hide_index=True
             )
-        
-        # Chart 4: Bar chart for monthly comparison
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("**Monthly Average Price**")
-            st.bar_chart(monthly_data.set_index('YearMonth')['Avg_Price'])
-        
-        with col2:
-            st.markdown("**Monthly Order Count**")
-            st.bar_chart(monthly_data.set_index('YearMonth')['Order_Count'])
-        
-        # ============================================
-        # SECTION 4: COMPARATIVE ANALYSIS
-        # ============================================
-        st.subheader("🔍 Comparative Analysis")
-        
-        # Compare with other articles
-        compare_articles = st.multiselect(
-            "Compare with other articles:",
-            [a for a in articles if a != selected_article],
-            max_selections=3,
-            key="compare_articles"
-        )
-        
-        if compare_articles:
-            comparison_data = []
-            for article in [selected_article] + compare_articles:
-                art_data = supplier_data.get(article, {})
-                art_prices = art_data.get('prices', [])
-                if art_prices:
-                    comparison_data.append({
-                        'Article': article,
-                        'Name': art_data.get('names', [''])[0],
-                        'Avg_Price': sum(art_prices) / len(art_prices),
-                        'Min_Price': min(art_prices),
-                        'Max_Price': max(art_prices),
-                        'Order_Count': len(art_data.get('orders', [])),
-                        'Price_Range': max(art_prices) - min(art_prices)
-                    })
             
-            if comparison_data:
-                df_comparison = pd.DataFrame(comparison_data)
-                
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.markdown("**Price Comparison**")
-                    fig2, ax2 = plt.subplots(figsize=(8, 6))
-                    
-                    articles_list = df_comparison['Article'].tolist()
-                    avg_prices = df_comparison['Avg_Price'].tolist()
-                    
-                    bars = ax2.bar(range(len(articles_list)), avg_prices, 
-                                  color=['#991B1B' if a == selected_article else '#6B7280' for a in articles_list],
-                                  alpha=0.7)
-                    
-                    ax2.set_xlabel('Article')
-                    ax2.set_ylabel('Average Price ($/kg)')
-                    ax2.set_title('Average Price Comparison')
-                    ax2.set_xticks(range(len(articles_list)))
-                    ax2.set_xticklabels([f"{a[:15]}..." for a in articles_list], rotation=45, ha='right')
-                    
-                    # Add value labels on bars
-                    for bar in bars:
-                        height = bar.get_height()
-                        ax2.text(bar.get_x() + bar.get_width()/2., height,
-                                f'${height:.2f}', ha='center', va='bottom')
-                    
-                    st.pyplot(fig2)
-                
-                with col2:
-                    st.markdown("**Comparison Table**")
-                    st.dataframe(
-                        df_comparison.style
-                        .highlight_max(subset=['Avg_Price'], color='#FECACA')
-                        .highlight_min(subset=['Avg_Price'], color='#D1FAE5')
-                        .format({'Avg_Price': '${:.2f}', 'Min_Price': '${:.2f}', 
-                                'Max_Price': '${:.2f}', 'Price_Range': '${:.2f}'}),
-                        use_container_width=True
-                    )
+            # Optional: Download results
+            st.download_button(
+                label="📥 Download Results as CSV",
+                data=results.to_csv(index=False),
+                file_name=f"search_results_{search_term}_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                key="download_results"
+            )
+        else:
+            st.info("No items found. Try a different search term.")
+            
+            # Show sample of what's available
+            with st.expander("📋 View sample items"):
+                sample = prices_data[['ART#', 'DESCRIPTION']].head(10)
+                st.dataframe(sample, use_container_width=True, hide_index=True)
+    else:
+        st.info("👆 Enter a search term above to find items")
+        
+        # Show quick stats
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Items", len(prices_data))
+        with col2:
+            st.metric("Categories", prices_data['CATEG.'].nunique() if 'CATEG.' in prices_data.columns else 0)
+        with col3:
+            avg_price = prices_data['NEW EXW'].mean() if 'NEW EXW' in prices_data.columns else 0
+            st.metric("Avg Price", f"${avg_price:.2f}" if not pd.isna(avg_price) else "N/A")
         
         # ============================================
         # SECTION 5: EXPORT VISUAL REPORT
