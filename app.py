@@ -1543,9 +1543,17 @@ def all_prices_tab():
            - UNT WGT (Unit Weight)
            - NEW EXW (New EXW Price)
         """)
+        
+        # Debug: Show what columns are actually in the data
+        st.info("**Debug Information:**")
+        st.write(f"Available columns in General_prices sheet: {list(prices_data.columns) if not prices_data.empty else 'No columns found'}")
+        
         return
     
     st.success(f"✅ Loaded {len(prices_data)} items from General_prices sheet")
+    
+    # Debug: Show the actual column names
+    st.info(f"📋 **Available columns:** {', '.join(prices_data.columns)}")
     
     # ============================================
     # DATA OVERVIEW
@@ -1555,26 +1563,43 @@ def all_prices_tab():
     # Calculate statistics
     total_items = len(prices_data)
     
-    # Check if expected columns exist
-    has_category = 'CATEG.' in prices_data.columns
-    has_subcategory = 'SUB CATEG.' in prices_data.columns
-    has_subsubcategory = 'SUB. SUB.' in prices_data.columns
-    has_price = 'NEW EXW' in prices_data.columns
+    # Check if expected columns exist - with flexible naming
+    has_category = any('categ' in str(col).lower() for col in prices_data.columns)
+    has_subcategory = any('sub categ' in str(col).lower() for col in prices_data.columns)
+    has_subsubcategory = any('sub. sub' in str(col).lower() for col in prices_data.columns)
+    has_price = any('new exw' in str(col).lower() for col in prices_data.columns)
+    has_article = any('art#' in str(col).lower() for col in prices_data.columns) or any('art' in str(col).lower() for col in prices_data.columns)
+    has_description = 'DESCRIPTION' in prices_data.columns
     
-    if has_category:
-        categories = prices_data['CATEG.'].nunique()
+    # Get actual column names
+    category_col = next((col for col in prices_data.columns if 'categ' in str(col).lower()), None)
+    subcategory_col = next((col for col in prices_data.columns if 'sub categ' in str(col).lower()), None)
+    subsubcategory_col = next((col for col in prices_data.columns if 'sub. sub' in str(col).lower()), None)
+    price_col = next((col for col in prices_data.columns if 'new exw' in str(col).lower()), None)
+    article_col = next((col for col in prices_data.columns if 'art#' in str(col).lower()), None) or next((col for col in prices_data.columns if 'art' in str(col).lower() and '#' in str(col)), None)
+    description_col = 'DESCRIPTION' if 'DESCRIPTION' in prices_data.columns else next((col for col in prices_data.columns if 'desc' in str(col).lower()), None)
+    uom_col = next((col for col in prices_data.columns if 'uom' in str(col).lower()), None)
+    weight_col = next((col for col in prices_data.columns if 'unt wgt' in str(col).lower()), None)
+    
+    if has_category and category_col:
+        categories = prices_data[category_col].nunique()
     else:
         categories = 0
     
-    if has_subcategory:
-        subcategories = prices_data['SUB CATEG.'].nunique()
+    if has_subcategory and subcategory_col:
+        subcategories = prices_data[subcategory_col].nunique()
     else:
         subcategories = 0
     
-    if has_price:
-        avg_price = prices_data['NEW EXW'].mean()
-        min_price = prices_data['NEW EXW'].min()
-        max_price = prices_data['NEW EXW'].max()
+    if has_price and price_col:
+        # Clean price column - remove any non-numeric characters
+        try:
+            prices_data['price_clean'] = pd.to_numeric(prices_data[price_col], errors='coerce')
+            avg_price = prices_data['price_clean'].mean()
+            min_price = prices_data['price_clean'].min()
+            max_price = prices_data['price_clean'].max()
+        except:
+            avg_price = min_price = max_price = 0
     else:
         avg_price = min_price = max_price = 0
     
@@ -1592,7 +1617,7 @@ def all_prices_tab():
     
     with col4:
         if has_price:
-            st.metric("Avg Price", f"${avg_price:.2f}")
+            st.metric("Avg Price", f"${avg_price:.2f}" if not pd.isna(avg_price) else "N/A")
         else:
             st.metric("Avg Price", "N/A")
     
@@ -1601,28 +1626,41 @@ def all_prices_tab():
     # ============================================
     st.subheader("🔍 Search & Filter Items")
     
+    # Show available search columns
+    search_columns = []
+    if article_col:
+        search_columns.append(f"Article ({article_col})")
+    if description_col:
+        search_columns.append(f"Description ({description_col})")
+    if category_col:
+        search_columns.append(f"Category ({category_col})")
+    if subcategory_col:
+        search_columns.append(f"Sub Category ({subcategory_col})")
+    
+    st.caption(f"Searchable columns: {', '.join(search_columns)}")
+    
     # Search options in columns
     col1, col2, col3 = st.columns([2, 1, 1])
     
     with col1:
         search_term = st.text_input(
-            "Search by article, description, or any field:",
+            "Search by article number, description, or any field:",
             placeholder="Enter search term...",
             key="all_prices_search"
         )
     
     with col2:
-        if has_category:
-            category_options = ["All"] + sorted(prices_data['CATEG.'].dropna().unique().tolist())
+        if has_category and category_col:
+            category_options = ["All"] + sorted(prices_data[category_col].dropna().unique().tolist())
             category_filter = st.selectbox("Category:", category_options, key="all_prices_category")
         else:
             category_filter = "All"
             st.selectbox("Category:", ["No category data"], key="all_prices_category", disabled=True)
     
     with col3:
-        if has_price:
-            price_range_min = float(prices_data['NEW EXW'].min()) if not prices_data['NEW EXW'].isna().all() else 0
-            price_range_max = float(prices_data['NEW EXW'].max()) if not prices_data['NEW EXW'].isna().all() else 1000
+        if has_price and price_col:
+            price_range_min = float(prices_data['price_clean'].min()) if 'price_clean' in prices_data.columns and not prices_data['price_clean'].isna().all() else 0
+            price_range_max = float(prices_data['price_clean'].max()) if 'price_clean' in prices_data.columns and not prices_data['price_clean'].isna().all() else 1000
             price_range = st.slider(
                 "Price Range:",
                 min_value=price_range_min,
@@ -1639,24 +1677,24 @@ def all_prices_tab():
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            if has_subcategory:
-                subcategory_options = ["All"] + sorted(prices_data['SUB CATEG.'].dropna().unique().tolist())
+            if has_subcategory and subcategory_col:
+                subcategory_options = ["All"] + sorted(prices_data[subcategory_col].dropna().unique().tolist())
                 subcategory_filter = st.selectbox("Sub Category:", subcategory_options, key="all_prices_subcategory")
             else:
                 subcategory_filter = "All"
                 st.selectbox("Sub Category:", ["No subcategory data"], key="all_prices_subcategory", disabled=True)
         
         with col2:
-            if has_subsubcategory:
-                subsubcategory_options = ["All"] + sorted(prices_data['SUB. SUB.'].dropna().unique().tolist())
+            if has_subsubcategory and subsubcategory_col:
+                subsubcategory_options = ["All"] + sorted(prices_data[subsubcategory_col].dropna().unique().tolist())
                 subsubcategory_filter = st.selectbox("Sub Sub Category:", subsubcategory_options, key="all_prices_subsubcategory")
             else:
                 subsubcategory_filter = "All"
                 st.selectbox("Sub Sub Category:", ["No sub-subcategory data"], key="all_prices_subsubcategory", disabled=True)
         
         with col3:
-            if 'UOM' in prices_data.columns:
-                uom_options = ["All"] + sorted(prices_data['UOM'].dropna().unique().tolist())
+            if uom_col:
+                uom_options = ["All"] + sorted(prices_data[uom_col].dropna().unique().tolist())
                 uom_filter = st.selectbox("Unit of Measure:", uom_options, key="all_prices_uom")
             else:
                 uom_filter = "All"
@@ -1669,36 +1707,57 @@ def all_prices_tab():
     
     # Apply text search
     if search_term:
-        search_columns = []
-        for col in filtered_data.columns:
-            search_columns.append(col)
+        # Find which columns to search in
+        search_in_columns = []
         
-        mask = filtered_data.astype(str).apply(
-            lambda x: x.str.contains(search_term, case=False, na=False)
-        ).any(axis=1)
+        # Always search in article column if available
+        if article_col:
+            search_in_columns.append(article_col)
+        
+        # Always search in description column if available
+        if description_col:
+            search_in_columns.append(description_col)
+        
+        # Also search in other text columns
+        text_columns = [col for col in filtered_data.columns if filtered_data[col].dtype == 'object']
+        for col in text_columns:
+            if col not in search_in_columns:
+                search_in_columns.append(col)
+        
+        # Debug: Show which columns are being searched
+        if len(filtered_data) > 0:
+            st.caption(f"Searching in columns: {', '.join(search_in_columns)}")
+        
+        # Create search mask
+        mask = pd.Series([False] * len(filtered_data))
+        for col in search_in_columns:
+            if col in filtered_data.columns:
+                col_mask = filtered_data[col].astype(str).str.contains(search_term, case=False, na=False)
+                mask = mask | col_mask
+        
         filtered_data = filtered_data[mask]
     
     # Apply category filter
-    if has_category and category_filter != "All":
-        filtered_data = filtered_data[filtered_data['CATEG.'] == category_filter]
+    if has_category and category_filter != "All" and category_col:
+        filtered_data = filtered_data[filtered_data[category_col] == category_filter]
     
     # Apply subcategory filter
-    if has_subcategory and subcategory_filter != "All":
-        filtered_data = filtered_data[filtered_data['SUB CATEG.'] == subcategory_filter]
+    if has_subcategory and subcategory_filter != "All" and subcategory_col:
+        filtered_data = filtered_data[filtered_data[subcategory_col] == subcategory_filter]
     
     # Apply subsubcategory filter
-    if has_subsubcategory and subsubcategory_filter != "All":
-        filtered_data = filtered_data[filtered_data['SUB. SUB.'] == subsubcategory_filter]
+    if has_subsubcategory and subsubcategory_filter != "All" and subsubcategory_col:
+        filtered_data = filtered_data[filtered_data[subsubcategory_col] == subsubcategory_filter]
     
     # Apply UOM filter
-    if 'UOM' in filtered_data.columns and uom_filter != "All":
-        filtered_data = filtered_data[filtered_data['UOM'] == uom_filter]
+    if uom_col and uom_filter != "All":
+        filtered_data = filtered_data[filtered_data[uom_col] == uom_filter]
     
     # Apply price range filter
-    if has_price:
+    if has_price and price_col and 'price_clean' in filtered_data.columns:
         filtered_data = filtered_data[
-            (filtered_data['NEW EXW'] >= price_range[0]) & 
-            (filtered_data['NEW EXW'] <= price_range[1])
+            (filtered_data['price_clean'] >= price_range[0]) & 
+            (filtered_data['price_clean'] <= price_range[1])
         ]
     
     # ============================================
@@ -1707,41 +1766,66 @@ def all_prices_tab():
     st.subheader(f"📋 Items Found: {len(filtered_data)}")
     
     if not filtered_data.empty:
+        # Show first few rows for debugging
+        if search_term:
+            st.caption(f"First 5 matching items for '{search_term}':")
+            preview_cols = []
+            if article_col:
+                preview_cols.append(article_col)
+            if description_col:
+                preview_cols.append(description_col)
+            if category_col:
+                preview_cols.append(category_col)
+            if price_col:
+                preview_cols.append(price_col)
+            
+            if preview_cols:
+                preview_data = filtered_data[preview_cols].head(5)
+                st.dataframe(preview_data, use_container_width=True)
+        
         # Display results as cards
         for idx, item in filtered_data.iterrows():
-            with st.expander(f"{item.get('ART#', 'N/A')} - {item.get('DESCRIPTION', 'N/A')}", expanded=False):
+            # Get values with fallbacks
+            article_value = item.get(article_col, 'N/A') if article_col else 'N/A'
+            description_value = item.get(description_col, 'N/A') if description_col else 'N/A'
+            category_value = item.get(category_col, 'N/A') if category_col else 'N/A'
+            subcategory_value = item.get(subcategory_col, 'N/A') if subcategory_col else 'N/A'
+            subsubcategory_value = item.get(subsubcategory_col, 'N/A') if subsubcategory_col else 'N/A'
+            price_value = item.get('price_clean', item.get(price_col, 'N/A')) if price_col else 'N/A'
+            uom_value = item.get(uom_col, 'N/A') if uom_col else 'N/A'
+            weight_value = item.get(weight_col, 'N/A') if weight_col else 'N/A'
+            
+            with st.expander(f"{article_value} - {description_value}", expanded=False):
                 
                 # Create a nice card display
                 st.markdown(f"""
                 <div class="all-prices-card">
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
                         <div>
-                            <h3 style="margin:0; color: #7C3AED;">{item.get('ART#', 'N/A')}</h3>
-                            <p style="margin:0; font-weight: bold; color: #1E293B;">{item.get('DESCRIPTION', 'N/A')}</p>
+                            <h3 style="margin:0; color: #7C3AED;">{article_value}</h3>
+                            <p style="margin:0; font-weight: bold; color: #1E293B;">{description_value}</p>
                         </div>
                         <div style="text-align: right;">
-                            {f"<h2 style='margin:0; color: #059669;'>${item.get('NEW EXW', 'N/A'):.2f}</h2>" if has_price and pd.notna(item.get('NEW EXW')) else "<p style='margin:0; color: #6B7280;'>Price: N/A</p>"}
-                            {f"<p style='margin:0; color: #6B7280;'>Unit Weight: {item.get('UNT WGT', 'N/A')}</p>" if 'UNT WGT' in item and pd.notna(item.get('UNT WGT')) else ""}
-                            {f"<p style='margin:0; color: #6B7280;'>UOM: {item.get('UOM', 'N/A')}</p>" if 'UOM' in item and pd.notna(item.get('UOM')) else ""}
+                            {f"<h2 style='margin:0; color: #059669;'>${float(price_value):.2f}</h2>" if has_price and pd.notna(price_value) and str(price_value) != 'N/A' and str(price_value) != '' else "<p style='margin:0; color: #6B7280;'>Price: N/A</p>"}
+                            {f"<p style='margin:0; color: #6B7280;'>Unit Weight: {weight_value}</p>" if weight_value and str(weight_value) != 'N/A' else ""}
+                            {f"<p style='margin:0; color: #6B7280;'>UOM: {uom_value}</p>" if uom_value and str(uom_value) != 'N/A' else ""}
                         </div>
                     </div>
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; background: rgba(124, 58, 237, 0.1); padding: 0.75rem; border-radius: 6px;">
                         <div>
                             <p style="margin:0; font-size: 0.8em; color: #6B7280;">Category</p>
-                            <p style="margin:0; font-weight: bold;">{item.get('CATEG.', 'N/A')}</p>
+                            <p style="margin:0; font-weight: bold;">{category_value}</p>
                         </div>
                         <div>
                             <p style="margin:0; font-size: 0.8em; color: #6B7280;">Sub Category</p>
-                            <p style="margin:0; font-weight: bold;">{item.get('SUB CATEG.', 'N/A')}</p>
+                            <p style="margin:0; font-weight: bold;">{subcategory_value}</p>
                         </div>
                         <div>
                             <p style="margin:0; font-size: 0.8em; color: #6B7280;">Sub Sub Category</p>
-                            <p style="margin:0; font-weight: bold;">{item.get('SUB. SUB.', 'N/A')}</p>
+                            <p style="margin:0; font-weight: bold;">{subsubcategory_value}</p>
                         </div>
                     </div>
-                    
-                    {f"<div style='margin-top: 1rem;'><p style='margin:0; font-size: 0.8em; color: #6B7280;'>#</p><p style='margin:0;'>{item.get('#', 'N/A')}</p></div>" if '#' in item and pd.notna(item.get('#')) else ""}
                 </div>
                 """, unsafe_allow_html=True)
         
@@ -1757,30 +1841,30 @@ def all_prices_tab():
                 st.metric("Filtered Items", len(filtered_data))
             
             with col2:
-                if has_price and 'NEW EXW' in filtered_data.columns:
-                    filtered_avg_price = filtered_data['NEW EXW'].mean()
-                    st.metric("Avg Price", f"${filtered_avg_price:.2f}")
+                if has_price and 'price_clean' in filtered_data.columns:
+                    filtered_avg_price = filtered_data['price_clean'].mean()
+                    st.metric("Avg Price", f"${filtered_avg_price:.2f}" if not pd.isna(filtered_avg_price) else "N/A")
                 else:
                     st.metric("Avg Price", "N/A")
             
             with col3:
-                if has_price and 'NEW EXW' in filtered_data.columns:
-                    filtered_min_price = filtered_data['NEW EXW'].min()
-                    st.metric("Min Price", f"${filtered_min_price:.2f}")
+                if has_price and 'price_clean' in filtered_data.columns:
+                    filtered_min_price = filtered_data['price_clean'].min()
+                    st.metric("Min Price", f"${filtered_min_price:.2f}" if not pd.isna(filtered_min_price) else "N/A")
                 else:
                     st.metric("Min Price", "N/A")
             
             with col4:
-                if has_price and 'NEW EXW' in filtered_data.columns:
-                    filtered_max_price = filtered_data['NEW EXW'].max()
-                    st.metric("Max Price", f"${filtered_max_price:.2f}")
+                if has_price and 'price_clean' in filtered_data.columns:
+                    filtered_max_price = filtered_data['price_clean'].max()
+                    st.metric("Max Price", f"${filtered_max_price:.2f}" if not pd.isna(filtered_max_price) else "N/A")
                 else:
                     st.metric("Max Price", "N/A")
             
             # Category distribution if available
-            if has_category and len(filtered_data) > 0:
+            if has_category and category_col and len(filtered_data) > 0:
                 st.subheader("📊 Category Distribution")
-                category_counts = filtered_data['CATEG.'].value_counts().head(10)
+                category_counts = filtered_data[category_col].value_counts().head(10)
                 
                 col1, col2 = st.columns([2, 1])
                 
@@ -1844,13 +1928,13 @@ Category Filter: {category_filter}
 Price Range: ${price_range[0]:.2f} - ${price_range[1]:.2f}
 
 Statistics:
-• Average Price: ${filtered_data['NEW EXW'].mean():.2f if has_price and 'NEW EXW' in filtered_data.columns else 'N/A'}
-• Minimum Price: ${filtered_data['NEW EXW'].min():.2f if has_price and 'NEW EXW' in filtered_data.columns else 'N/A'}
-• Maximum Price: ${filtered_data['NEW EXW'].max():.2f if has_price and 'NEW EXW' in filtered_data.columns else 'N/A'}
+• Average Price: ${filtered_data['price_clean'].mean():.2f if has_price and 'price_clean' in filtered_data.columns else 'N/A'}
+• Minimum Price: ${filtered_data['price_clean'].min():.2f if has_price and 'price_clean' in filtered_data.columns else 'N/A'}
+• Maximum Price: ${filtered_data['price_clean'].max():.2f if has_price and 'price_clean' in filtered_data.columns else 'N/A'}
 
 Top Items by Price:
-{chr(10).join([f"• {row.get('ART#', 'N/A')} - {row.get('DESCRIPTION', 'N/A')}: ${row.get('NEW EXW', 'N/A'):.2f}" 
-               for _, row in filtered_data.nlargest(10, 'NEW EXW').iterrows()]) if has_price else 'No price data available'}
+{chr(10).join([f"• {row.get(article_col, 'N/A')} - {row.get(description_col, 'N/A')}: ${row.get('price_clean', 'N/A'):.2f}" 
+               for _, row in filtered_data.nlargest(10, 'price_clean').iterrows()]) if has_price and 'price_clean' in filtered_data.columns else 'No price data available'}
 
 Export Generated by: {st.session_state.username}
             """
@@ -1866,13 +1950,48 @@ Export Generated by: {st.session_state.username}
     
     else:
         st.info("No items match your search criteria. Try broadening your search filters.")
+        
+        # Show debug info when no results found
+        if search_term:
+            st.warning("**Debug Info:**")
+            st.write(f"Search term: '{search_term}'")
+            st.write(f"Total items in dataset: {len(prices_data)}")
+            
+            # Show sample of article numbers for reference
+            if article_col:
+                sample_articles = prices_data[article_col].dropna().unique()[:10]
+                st.write(f"Sample article numbers: {', '.join(map(str, sample_articles))}")
+            
+            # Show what a typical search would find
+            if article_col:
+                st.write("**Testing search manually:**")
+                test_results = prices_data[prices_data[article_col].astype(str).str.contains(search_term, case=False, na=False)]
+                st.write(f"Direct search in {article_col} column found: {len(test_results)} items")
+                
+            if description_col:
+                test_results_desc = prices_data[prices_data[description_col].astype(str).str.contains(search_term, case=False, na=False)]
+                st.write(f"Direct search in {description_col} column found: {len(test_results_desc)} items")
     
     # ============================================
     # DATA PREVIEW (RAW DATA)
     # ============================================
     with st.expander("👀 View Raw Data Preview", expanded=False):
+        # Show column mapping
+        st.write("**Column Mapping:**")
+        col_mapping = {
+            "Article Column": article_col or "Not found",
+            "Description Column": description_col or "Not found", 
+            "Category Column": category_col or "Not found",
+            "Price Column": price_col or "Not found",
+            "UOM Column": uom_col or "Not found",
+            "Weight Column": weight_col or "Not found"
+        }
+        st.write(col_mapping)
+        
+        # Show actual data
+        st.write("**First 10 rows of data:**")
         st.dataframe(
-            filtered_data,
+            prices_data.head(10),
             use_container_width=True,
             hide_index=True
         )
@@ -1906,6 +2025,7 @@ Export Generated by: {st.session_state.username}
         - Export data for offline analysis
         - Combine filters for precise results
         - Check raw data preview for complete information
+        - If search doesn't work, check the "Debug Info" section
         """)
 
 # ============================================
