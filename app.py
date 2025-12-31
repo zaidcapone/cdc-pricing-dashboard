@@ -3022,15 +3022,6 @@ def prices_tab():
         salesmen = ["All"] + sorted(prices_data['Salesman'].dropna().unique().tolist())
         selected_salesman = st.selectbox("Filter by Salesman:", salesmen, key="price_salesman_filter")
     
-    with col3:
-        min_price = float(prices_data['Price'].min())
-        max_price = float(prices_data['Price'].max())
-        price_range = st.slider(
-            "Price Range:",
-            min_value=min_price,
-            max_value=max_price,
-            value=(min_price, max_price),
-            key="price_range_filter"
         )
     
     # NEW: Specific search options
@@ -3075,9 +3066,7 @@ def prices_tab():
     if selected_salesman != "All":
         filtered_data = filtered_data[filtered_data['Salesman'] == selected_salesman]
     
-    filtered_data = filtered_data[
-        (filtered_data['Price'] >= price_range[0]) & 
-        (filtered_data['Price'] <= price_range[1])
+
     ]
     
     if article_search:
