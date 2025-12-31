@@ -2,7 +2,7 @@
 # MULTI-CLIENT PRICING DASHBOARD
 # ============================================
 # Author: Zaid F. Al-Shami
-# Version: 3.0 (with Visual Analytics)
+# Version: 3.1 (with Visual Analytics and All Prices Tab)
 # Last Updated: 8 Dec 2025
 # ============================================
 # IMPORTANT NOTES:
@@ -10,6 +10,7 @@
 # 2. All data is cached for 5 minutes to improve performance
 # 3. Supports multiple clients: CDC, CoteDivoire, CakeArt, SweetHouse, Cameron
 # 4. Features: Smart Search, Price Intelligence, Order Management, Visual Analytics
+# 5. NEW: Added "All Prices" tab for General_prices sheet
 # ============================================
 
 import streamlit as st
@@ -403,12 +404,6 @@ st.markdown("""
         border-radius: 8px;
         border: 1px solid #0EA5E9;
     }
-        .decision-selector {
-        background: #F0F9FF;
-        padding: 1rem;
-        border-radius: 8px;
-        border: 1px solid #0EA5E9;
-    }
     /* NEW: Item Analysis specific styling */
     .item-analysis-header {
         background: linear-gradient(135deg, #1E40AF, #1E3A8A);
@@ -438,8 +433,37 @@ st.markdown("""
         border: 2px solid #0EA5E9;
         margin: 1rem 0;
     }
+    /* NEW: All Prices specific styling */
+    .all-prices-header {
+        background: linear-gradient(135deg, #7C3AED, #6D28D9);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+    .all-prices-card {
+        background: linear-gradient(135deg, #F0F9FF, #E0F2FE);
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 2px solid #7C3AED;
+        margin: 1rem 0;
+    }
+    .all-prices-stat-card {
+        background: white;
+        padding: 1rem;
+        border-radius: 10px;
+        border: 2px solid #7C3AED;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .all-prices-stat-number {
+        font-size: 1.8em;
+        font-weight: bold;
+        color: #7C3AED;
+        margin: 0;
+    }
 </style>
-""", unsafe_allow_html=True)  # ← ONLY ONE CLOSING TAG HERE
+""", unsafe_allow_html=True)
 
 # Configuration
 API_KEY = "AIzaSyA3P-ZpLjDdVtGB82_1kaWuO7lNbKDj9HU"
@@ -514,6 +538,7 @@ CLIENT_SHEETS = {
 # Sheet names
 PRODUCT_CATALOG_SHEET = "FullProductList"
 PRICES_SHEET = "Prices"
+GENERAL_PRICES_SHEET = "General_prices"  # NEW: Sheet name for all prices
 
 # ============================================
 # FEATURE 1: SMART SEARCH WITH AI SUGGESTIONS
@@ -1016,6 +1041,48 @@ def load_prices_data():
         st.error(f"Error loading prices data: {str(e)}")
         return pd.DataFrame()
 
+@st.cache_data(ttl=600)
+def load_general_prices_data():
+    """NEW: Load General_prices data from Google Sheets - CACHED"""
+    try:
+        prices_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{GENERAL_PRICES_SHEET}!A:Z?key={API_KEY}"
+        response = requests.get(prices_url)
+        
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if values and len(values) > 0:
+                # Get headers (first row)
+                headers = values[0]
+                
+                # Get all data rows (skip header)
+                rows = values[1:] if len(values) > 1 else []
+                
+                # Create DataFrame
+                df = pd.DataFrame(rows, columns=headers)
+                
+                # Clean up column names (remove extra spaces)
+                df.columns = [str(col).strip() for col in df.columns]
+                
+                # Convert numeric columns
+                if 'NEW EXW' in df.columns:
+                    df['NEW EXW'] = pd.to_numeric(df['NEW EXW'], errors='coerce')
+                
+                if 'UNT WGT' in df.columns:
+                    df['UNT WGT'] = pd.to_numeric(df['UNT WGT'], errors='coerce')
+                
+                # Fill empty strings with NaN
+                df = df.replace('', pd.NA)
+                
+                return df
+                
+        return pd.DataFrame()
+        
+    except Exception as e:
+        st.error(f"Error loading general prices data: {str(e)}")
+        return pd.DataFrame()
+
 @st.cache_data(ttl=300)
 def load_ceo_special_prices(client="CDC"):
     """Load CEO special prices from Google Sheets for specific client - CACHED"""
@@ -1297,7 +1364,8 @@ def main_dashboard():
                 "📦 PALLETIZING",
                 "🔴 PRICE MATCHING",
                 "📈 VISUAL ANALYTICS",
-                "📊 ITEM ANALYSIS"  # NEW TAB ADDED HERE
+                "📊 ITEM ANALYSIS",  # NEW TAB ADDED HERE
+                "📊 ALL PRICES"  # NEW TAB ADDED HERE
             ]
         else:
             tabs = [
@@ -1315,6 +1383,7 @@ def main_dashboard():
             tabs.append("🔴 PRICE MATCHING")
             tabs.append("📈 VISUAL ANALYTICS")
             tabs.append("📊 ITEM ANALYSIS")  # NEW TAB ADDED FOR ALL USERS
+            tabs.append("📊 ALL PRICES")  # NEW TAB ADDED FOR ALL USERS
         
         # Display tabs as clickable buttons
         for tab in tabs:
@@ -1349,7 +1418,8 @@ def main_dashboard():
             "⭐ **NEW**: Save favorite searches!",
             "📁 **NEW**: Bulk article search available!",
             "🔴 **NEW**: Price Matching Tool available for all clients!",
-            "📈 **NEW**: Visual Analytics Dashboard added!"  # NEW ANNOUNCEMENT
+            "📈 **NEW**: Visual Analytics Dashboard added!",
+            "📊 **NEW**: All Prices tab added! View General_prices sheet data!"  # NEW ANNOUNCEMENT
         ]
         
         for announcement in announcements:
@@ -1426,20 +1496,425 @@ def main_dashboard():
         price_matching_tab()
     elif st.session_state.active_tab == "📈 VISUAL ANALYTICS":
         visual_analytics_tab()
-    elif st.session_state.active_tab == "📊 ITEM ANALYSIS":  # NEW TAB HANDLER
-        item_analysis_tab()  # NEW FUNCTION
+    elif st.session_state.active_tab == "📊 ITEM ANALYSIS":
+        item_analysis_tab()
+    elif st.session_state.active_tab == "📊 ALL PRICES":  # NEW TAB HANDLER
+        all_prices_tab()  # NEW FUNCTION
     
     # Logout button at bottom
     st.markdown("---")
     logout_button()
 
 # ============================================
-# NEW VISUAL ANALYTICS TAB FUNCTION
+# NEW ALL PRICES TAB FUNCTION
+# ============================================
+
+def all_prices_tab():
+    """
+    NEW: All Prices Tab - Displays data from General_prices sheet
+    Shows complete pricing information with filtering and search capabilities
+    """
+    st.markdown("""
+    <div class="all-prices-header">
+        <h2 style="margin:0;">📊 All Items Price Database</h2>
+        <p style="margin:0; opacity:0.9;">Complete Item Catalog • Pricing Information • Category-wise Analysis</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Load general prices data
+    with st.spinner("📥 Loading all prices data from General_prices sheet..."):
+        prices_data = load_general_prices_data()
+    
+    if prices_data.empty:
+        st.warning("""
+        ⚠️ **General_prices data not found or empty!**
+        
+        **To get started:**
+        1. Go to your Google Sheet
+        2. Add a new tab called **'General_prices'**
+        3. Use these exact headers:
+           - # (Number)
+           - CATEG. (Category)
+           - SUB CATEG. (Sub Category)
+           - SUB. SUB. (Sub Sub Category)
+           - DESCRIPTION
+           - ART# (Article Number)
+           - UOM (Unit of Measure)
+           - UNT WGT (Unit Weight)
+           - NEW EXW (New EXW Price)
+        """)
+        return
+    
+    st.success(f"✅ Loaded {len(prices_data)} items from General_prices sheet")
+    
+    # ============================================
+    # DATA OVERVIEW
+    # ============================================
+    st.subheader("📊 Data Overview")
+    
+    # Calculate statistics
+    total_items = len(prices_data)
+    
+    # Check if expected columns exist
+    has_category = 'CATEG.' in prices_data.columns
+    has_subcategory = 'SUB CATEG.' in prices_data.columns
+    has_subsubcategory = 'SUB. SUB.' in prices_data.columns
+    has_price = 'NEW EXW' in prices_data.columns
+    
+    if has_category:
+        categories = prices_data['CATEG.'].nunique()
+    else:
+        categories = 0
+    
+    if has_subcategory:
+        subcategories = prices_data['SUB CATEG.'].nunique()
+    else:
+        subcategories = 0
+    
+    if has_price:
+        avg_price = prices_data['NEW EXW'].mean()
+        min_price = prices_data['NEW EXW'].min()
+        max_price = prices_data['NEW EXW'].max()
+    else:
+        avg_price = min_price = max_price = 0
+    
+    # Display statistics
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("Total Items", total_items)
+    
+    with col2:
+        st.metric("Categories", categories if has_category else "N/A")
+    
+    with col3:
+        st.metric("Sub Categories", subcategories if has_subcategory else "N/A")
+    
+    with col4:
+        if has_price:
+            st.metric("Avg Price", f"${avg_price:.2f}")
+        else:
+            st.metric("Avg Price", "N/A")
+    
+    # ============================================
+    # SEARCH AND FILTER SECTION
+    # ============================================
+    st.subheader("🔍 Search & Filter Items")
+    
+    # Search options in columns
+    col1, col2, col3 = st.columns([2, 1, 1])
+    
+    with col1:
+        search_term = st.text_input(
+            "Search by article, description, or any field:",
+            placeholder="Enter search term...",
+            key="all_prices_search"
+        )
+    
+    with col2:
+        if has_category:
+            category_options = ["All"] + sorted(prices_data['CATEG.'].dropna().unique().tolist())
+            category_filter = st.selectbox("Category:", category_options, key="all_prices_category")
+        else:
+            category_filter = "All"
+            st.selectbox("Category:", ["No category data"], key="all_prices_category", disabled=True)
+    
+    with col3:
+        if has_price:
+            price_range_min = float(prices_data['NEW EXW'].min()) if not prices_data['NEW EXW'].isna().all() else 0
+            price_range_max = float(prices_data['NEW EXW'].max()) if not prices_data['NEW EXW'].isna().all() else 1000
+            price_range = st.slider(
+                "Price Range:",
+                min_value=price_range_min,
+                max_value=price_range_max,
+                value=(price_range_min, price_range_max),
+                key="all_prices_price_range"
+            )
+        else:
+            price_range = (0, 1000)
+            st.slider("Price Range:", 0, 1000, (0, 1000), key="all_prices_price_range", disabled=True)
+    
+    # Advanced search options in expander
+    with st.expander("🔧 Advanced Search Options", expanded=False):
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if has_subcategory:
+                subcategory_options = ["All"] + sorted(prices_data['SUB CATEG.'].dropna().unique().tolist())
+                subcategory_filter = st.selectbox("Sub Category:", subcategory_options, key="all_prices_subcategory")
+            else:
+                subcategory_filter = "All"
+                st.selectbox("Sub Category:", ["No subcategory data"], key="all_prices_subcategory", disabled=True)
+        
+        with col2:
+            if has_subsubcategory:
+                subsubcategory_options = ["All"] + sorted(prices_data['SUB. SUB.'].dropna().unique().tolist())
+                subsubcategory_filter = st.selectbox("Sub Sub Category:", subsubcategory_options, key="all_prices_subsubcategory")
+            else:
+                subsubcategory_filter = "All"
+                st.selectbox("Sub Sub Category:", ["No sub-subcategory data"], key="all_prices_subsubcategory", disabled=True)
+        
+        with col3:
+            if 'UOM' in prices_data.columns:
+                uom_options = ["All"] + sorted(prices_data['UOM'].dropna().unique().tolist())
+                uom_filter = st.selectbox("Unit of Measure:", uom_options, key="all_prices_uom")
+            else:
+                uom_filter = "All"
+                st.selectbox("Unit of Measure:", ["No UOM data"], key="all_prices_uom", disabled=True)
+    
+    # ============================================
+    # APPLY FILTERS
+    # ============================================
+    filtered_data = prices_data.copy()
+    
+    # Apply text search
+    if search_term:
+        search_columns = []
+        for col in filtered_data.columns:
+            search_columns.append(col)
+        
+        mask = filtered_data.astype(str).apply(
+            lambda x: x.str.contains(search_term, case=False, na=False)
+        ).any(axis=1)
+        filtered_data = filtered_data[mask]
+    
+    # Apply category filter
+    if has_category and category_filter != "All":
+        filtered_data = filtered_data[filtered_data['CATEG.'] == category_filter]
+    
+    # Apply subcategory filter
+    if has_subcategory and subcategory_filter != "All":
+        filtered_data = filtered_data[filtered_data['SUB CATEG.'] == subcategory_filter]
+    
+    # Apply subsubcategory filter
+    if has_subsubcategory and subsubcategory_filter != "All":
+        filtered_data = filtered_data[filtered_data['SUB. SUB.'] == subsubcategory_filter]
+    
+    # Apply UOM filter
+    if 'UOM' in filtered_data.columns and uom_filter != "All":
+        filtered_data = filtered_data[filtered_data['UOM'] == uom_filter]
+    
+    # Apply price range filter
+    if has_price:
+        filtered_data = filtered_data[
+            (filtered_data['NEW EXW'] >= price_range[0]) & 
+            (filtered_data['NEW EXW'] <= price_range[1])
+        ]
+    
+    # ============================================
+    # DISPLAY RESULTS
+    # ============================================
+    st.subheader(f"📋 Items Found: {len(filtered_data)}")
+    
+    if not filtered_data.empty:
+        # Display results as cards
+        for idx, item in filtered_data.iterrows():
+            with st.expander(f"{item.get('ART#', 'N/A')} - {item.get('DESCRIPTION', 'N/A')}", expanded=False):
+                
+                # Create a nice card display
+                st.markdown(f"""
+                <div class="all-prices-card">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div>
+                            <h3 style="margin:0; color: #7C3AED;">{item.get('ART#', 'N/A')}</h3>
+                            <p style="margin:0; font-weight: bold; color: #1E293B;">{item.get('DESCRIPTION', 'N/A')}</p>
+                        </div>
+                        <div style="text-align: right;">
+                            {f"<h2 style='margin:0; color: #059669;'>${item.get('NEW EXW', 'N/A'):.2f}</h2>" if has_price and pd.notna(item.get('NEW EXW')) else "<p style='margin:0; color: #6B7280;'>Price: N/A</p>"}
+                            {f"<p style='margin:0; color: #6B7280;'>Unit Weight: {item.get('UNT WGT', 'N/A')}</p>" if 'UNT WGT' in item and pd.notna(item.get('UNT WGT')) else ""}
+                            {f"<p style='margin:0; color: #6B7280;'>UOM: {item.get('UOM', 'N/A')}</p>" if 'UOM' in item and pd.notna(item.get('UOM')) else ""}
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; background: rgba(124, 58, 237, 0.1); padding: 0.75rem; border-radius: 6px;">
+                        <div>
+                            <p style="margin:0; font-size: 0.8em; color: #6B7280;">Category</p>
+                            <p style="margin:0; font-weight: bold;">{item.get('CATEG.', 'N/A')}</p>
+                        </div>
+                        <div>
+                            <p style="margin:0; font-size: 0.8em; color: #6B7280;">Sub Category</p>
+                            <p style="margin:0; font-weight: bold;">{item.get('SUB CATEG.', 'N/A')}</p>
+                        </div>
+                        <div>
+                            <p style="margin:0; font-size: 0.8em; color: #6B7280;">Sub Sub Category</p>
+                            <p style="margin:0; font-weight: bold;">{item.get('SUB. SUB.', 'N/A')}</p>
+                        </div>
+                    </div>
+                    
+                    {f"<div style='margin-top: 1rem;'><p style='margin:0; font-size: 0.8em; color: #6B7280;'>#</p><p style='margin:0;'>{item.get('#', 'N/A')}</p></div>" if '#' in item and pd.notna(item.get('#')) else ""}
+                </div>
+                """, unsafe_allow_html=True)
+        
+        # ============================================
+        # SUMMARY STATISTICS FOR FILTERED DATA
+        # ============================================
+        st.subheader("📈 Filtered Data Statistics")
+        
+        if len(filtered_data) > 0:
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("Filtered Items", len(filtered_data))
+            
+            with col2:
+                if has_price and 'NEW EXW' in filtered_data.columns:
+                    filtered_avg_price = filtered_data['NEW EXW'].mean()
+                    st.metric("Avg Price", f"${filtered_avg_price:.2f}")
+                else:
+                    st.metric("Avg Price", "N/A")
+            
+            with col3:
+                if has_price and 'NEW EXW' in filtered_data.columns:
+                    filtered_min_price = filtered_data['NEW EXW'].min()
+                    st.metric("Min Price", f"${filtered_min_price:.2f}")
+                else:
+                    st.metric("Min Price", "N/A")
+            
+            with col4:
+                if has_price and 'NEW EXW' in filtered_data.columns:
+                    filtered_max_price = filtered_data['NEW EXW'].max()
+                    st.metric("Max Price", f"${filtered_max_price:.2f}")
+                else:
+                    st.metric("Max Price", "N/A")
+            
+            # Category distribution if available
+            if has_category and len(filtered_data) > 0:
+                st.subheader("📊 Category Distribution")
+                category_counts = filtered_data['CATEG.'].value_counts().head(10)
+                
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    st.bar_chart(category_counts)
+                
+                with col2:
+                    st.write("**Top Categories:**")
+                    for category, count in category_counts.head(5).items():
+                        st.write(f"• {category}: {count}")
+        
+        # ============================================
+        # EXPORT FUNCTIONALITY
+        # ============================================
+        st.markdown("---")
+        st.subheader("📤 Export Data")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            # Download CSV
+            csv = filtered_data.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv,
+                file_name=f"all_prices_export_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="all_prices_csv"
+            )
+        
+        with col2:
+            # Download Excel
+            try:
+                output = BytesIO()
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    filtered_data.to_excel(writer, index=False, sheet_name='All_Prices')
+                excel_data = output.getvalue()
+                
+                st.download_button(
+                    label="📊 Download Excel",
+                    data=excel_data,
+                    file_name=f"all_prices_export_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                    mime="application/vnd.ms-excel",
+                    use_container_width=True,
+                    key="all_prices_excel"
+                )
+            except:
+                st.info("📊 Excel export requires openpyxl")
+        
+        with col3:
+            # Generate summary report
+            summary_text = f"""
+All Prices Export - General_prices Sheet
+========================================
+
+Export Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Total Items: {len(filtered_data)}
+Search Term: "{search_term}"
+Category Filter: {category_filter}
+Price Range: ${price_range[0]:.2f} - ${price_range[1]:.2f}
+
+Statistics:
+• Average Price: ${filtered_data['NEW EXW'].mean():.2f if has_price and 'NEW EXW' in filtered_data.columns else 'N/A'}
+• Minimum Price: ${filtered_data['NEW EXW'].min():.2f if has_price and 'NEW EXW' in filtered_data.columns else 'N/A'}
+• Maximum Price: ${filtered_data['NEW EXW'].max():.2f if has_price and 'NEW EXW' in filtered_data.columns else 'N/A'}
+
+Top Items by Price:
+{chr(10).join([f"• {row.get('ART#', 'N/A')} - {row.get('DESCRIPTION', 'N/A')}: ${row.get('NEW EXW', 'N/A'):.2f}" 
+               for _, row in filtered_data.nlargest(10, 'NEW EXW').iterrows()]) if has_price else 'No price data available'}
+
+Export Generated by: {st.session_state.username}
+            """
+            
+            st.download_button(
+                label="📄 Download Summary",
+                data=summary_text,
+                file_name=f"all_prices_summary_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True,
+                key="all_prices_summary"
+            )
+    
+    else:
+        st.info("No items match your search criteria. Try broadening your search filters.")
+    
+    # ============================================
+    # DATA PREVIEW (RAW DATA)
+    # ============================================
+    with st.expander("👀 View Raw Data Preview", expanded=False):
+        st.dataframe(
+            filtered_data,
+            use_container_width=True,
+            hide_index=True
+        )
+    
+    # ============================================
+    # QUICK TIPS
+    # ============================================
+    with st.expander("💡 How to use this section", expanded=False):
+        st.markdown("""
+        **📊 All Prices Database Guide:**
+        
+        1. **Search Items** - Use the search box to find items by article number, description, or any field
+        2. **Filter by Category** - Narrow down results by main category
+        3. **Price Range Filter** - Set minimum and maximum price limits
+        4. **Advanced Filters** - Use the expander for sub-category and UOM filters
+        5. **Export Data** - Download filtered results in CSV, Excel, or summary format
+        
+        **Available Columns:**
+        - **#**: Item number
+        - **CATEG.**: Main category
+        - **SUB CATEG.**: Sub category
+        - **SUB. SUB.**: Sub sub category
+        - **DESCRIPTION**: Item description
+        - **ART#**: Article number
+        - **UOM**: Unit of measure
+        - **UNT WGT**: Unit weight
+        - **NEW EXW**: New EXW price
+        
+        **Pro Tips:**
+        - Use wildcards in search (e.g., "choc*" for chocolate, chocolates, etc.)
+        - Export data for offline analysis
+        - Combine filters for precise results
+        - Check raw data preview for complete information
+        """)
+
+# ============================================
+# VISUAL ANALYTICS TAB FUNCTION
 # ============================================
 
 def visual_analytics_tab():
     """
-    NEW: Visual Analytics Tab with Interactive Charts
+    Visual Analytics Tab with Interactive Charts
     This tab provides graphical analysis of sales data, price trends, and product performance
     """
     st.markdown("""
@@ -1841,12 +2316,12 @@ RECOMMENDATIONS:
         """)
 
 # ============================================
-# NEW ITEM ANALYSIS TAB FUNCTION
+# ITEM ANALYSIS TAB FUNCTION
 # ============================================
 
 def item_analysis_tab():
     """
-    NEW: Advanced Item Analysis Tab
+    Advanced Item Analysis Tab
     Compare item performance between months and years with growth percentages
     """
     st.markdown("""
@@ -2477,11 +2952,6 @@ RECOMMENDATIONS:
         - Monitor growth trends for inventory planning
         - Compare multiple items to identify best sellers
         """)
-
-# ============================================
-# END OF NEW FUNCTION
-# ============================================
-
 
 # ============================================
 # ORIGINAL TAB FUNCTIONS (REMAIN UNCHANGED)
@@ -4804,7 +5274,7 @@ def load_palletizing_data(client):
         return pd.DataFrame()
 
 # ============================================
-# NEW PRICE MATCHING TAB FUNCTION
+# PRICE MATCHING TAB FUNCTION
 # ============================================
 
 def price_matching_tab():
