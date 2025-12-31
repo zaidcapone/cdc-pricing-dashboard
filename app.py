@@ -1526,6 +1526,20 @@ def all_prices_tab():
     
     if prices_data.empty:
         st.error("❌ No data found in General_prices sheet!")
+        st.info("""
+        Please check:
+        1. You have a tab called 'General_prices'
+        2. It has these headers in Row 1:
+           - #
+           - CATEG.
+           - SUB CATEG.
+           - SUB. SUB.
+           - DESCRIPTION
+           - ART#
+           - UOM
+           - UNT WGT
+           - NEW EXW
+        """)
         return
     
     # Show how many items loaded
@@ -1566,10 +1580,16 @@ def all_prices_tab():
             # Format the display
             display_df = results[display_cols].copy()
             
-            # Format price column
+            # Format price column if it exists
             if 'NEW EXW' in display_df.columns:
-                display_df['NEW EXW'] = display_df['NEW EXW'].apply(lambda x: f"${float(x):.2f}" if pd.notna(x) else "N/A")
+                try:
+                    display_df['NEW EXW'] = display_df['NEW EXW'].apply(
+                        lambda x: f"${float(x):.2f}" if pd.notna(x) and str(x).strip() != '' else "N/A"
+                    )
+                except:
+                    display_df['NEW EXW'] = display_df['NEW EXW'].astype(str)
             
+            # Show the table
             st.dataframe(
                 display_df,
                 use_container_width=True,
@@ -1589,8 +1609,11 @@ def all_prices_tab():
             
             # Show sample of what's available
             with st.expander("📋 View sample items"):
-                sample = prices_data[['ART#', 'DESCRIPTION']].head(10)
-                st.dataframe(sample, use_container_width=True, hide_index=True)
+                sample_cols = ['ART#', 'DESCRIPTION']
+                sample_cols = [col for col in sample_cols if col in prices_data.columns]
+                if sample_cols:
+                    sample = prices_data[sample_cols].head(10)
+                    st.dataframe(sample, use_container_width=True, hide_index=True)
     else:
         st.info("👆 Enter a search term above to find items")
         
@@ -1599,10 +1622,19 @@ def all_prices_tab():
         with col1:
             st.metric("Total Items", len(prices_data))
         with col2:
-            st.metric("Categories", prices_data['CATEG.'].nunique() if 'CATEG.' in prices_data.columns else 0)
+            if 'CATEG.' in prices_data.columns:
+                st.metric("Categories", prices_data['CATEG.'].nunique())
+            else:
+                st.metric("Categories", "N/A")
         with col3:
-            avg_price = prices_data['NEW EXW'].mean() if 'NEW EXW' in prices_data.columns else 0
-            st.metric("Avg Price", f"${avg_price:.2f}" if not pd.isna(avg_price) else "N/A")
+            if 'NEW EXW' in prices_data.columns:
+                try:
+                    avg_price = pd.to_numeric(prices_data['NEW EXW'], errors='coerce').mean()
+                    st.metric("Avg Price", f"${avg_price:.2f}" if not pd.isna(avg_price) else "N/A")
+                except:
+                    st.metric("Avg Price", "N/A")
+            else:
+                st.metric("Avg Price", "N/A")
         
         # ============================================
         # SECTION 5: EXPORT VISUAL REPORT
