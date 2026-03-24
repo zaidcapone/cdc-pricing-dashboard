@@ -859,10 +859,25 @@ def load_sheet_data(sheet_name, start_row=0):
             values = data.get('values', [])
             
             if len(values) > start_row:
+                # Get headers from first row
                 headers = values[start_row]
+                
+                # Get data rows
                 rows = values[start_row + 1:] if len(values) > start_row + 1 else []
                 
-                df = pd.DataFrame(rows, columns=headers)
+                # Pad rows to match header length
+                max_cols = len(headers)
+                padded_rows = []
+                for row in rows:
+                    # If row has fewer columns, pad with empty strings
+                    if len(row) < max_cols:
+                        padded_row = row + [''] * (max_cols - len(row))
+                    else:
+                        padded_row = row[:max_cols]  # Trim if more columns
+                    padded_rows.append(padded_row)
+                
+                # Create DataFrame
+                df = pd.DataFrame(padded_rows, columns=headers)
                 df = df.replace('', pd.NA)
                 return df
                 
