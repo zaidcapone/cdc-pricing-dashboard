@@ -483,8 +483,7 @@ USERS = {
 # Client data sheets mapping
 CLIENT_SHEETS = {
     "CDC": {
-        "backaldrin": "Backaldrin_CDC",
-        "bateel": "Bateel_CDC", 
+
         "ceo_special": "CDC_CEO_Special_Prices",
         "new_orders": "New_client_orders",
         "paid_orders": "Paid_Orders",
