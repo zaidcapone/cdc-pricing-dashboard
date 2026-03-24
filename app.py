@@ -871,6 +871,16 @@ def load_sheet_data(sheet_name, start_row=0):
         st.error(f"Error loading {sheet_name}: {str(e)}")
         return pd.DataFrame()
 
+def get_all_clients_from_master():
+    """Get list of all unique clients from Clients_CoC sheet"""
+    try:
+        master_df = load_sheet_data("Clients_CoC")
+        if not master_df.empty and 'Client' in master_df.columns:
+            return sorted(master_df['Client'].dropna().unique().tolist())
+        return []
+    except:
+        return []
+
 @st.cache_data(ttl=300)
 def get_google_sheets_data(client="CDC"):
     """Load client data from Clients_CoC master sheet"""
