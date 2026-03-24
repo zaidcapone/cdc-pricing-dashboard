@@ -861,20 +861,21 @@ def load_sheet_data(sheet_name, start_row=0):
             if len(values) > start_row:
                 # Get headers from first row
                 headers = values[start_row]
+                headers_count = len(headers)
                 
                 # Get data rows
                 rows = values[start_row + 1:] if len(values) > start_row + 1 else []
                 
-                # Pad rows to match header length
-                max_cols = len(headers)
+                # FORCE all rows to have exactly headers_count columns
                 padded_rows = []
                 for row in rows:
                     # If row has fewer columns, pad with empty strings
-                    if len(row) < max_cols:
-                        padded_row = row + [''] * (max_cols - len(row))
-                    else:
-                        padded_row = row[:max_cols]  # Trim if more columns
-                    padded_rows.append(padded_row)
+                    if len(row) < headers_count:
+                        row = row + [''] * (headers_count - len(row))
+                    # If row has more columns, trim to headers_count
+                    elif len(row) > headers_count:
+                        row = row[:headers_count]
+                    padded_rows.append(row)
                 
                 # Create DataFrame
                 df = pd.DataFrame(padded_rows, columns=headers)
