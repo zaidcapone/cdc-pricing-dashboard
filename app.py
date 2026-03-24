@@ -874,48 +874,56 @@ def load_sheet_data(sheet_name, start_row=0):
 
 @st.cache_data(ttl=300)
 def get_google_sheets_data(client="CDC"):
-    """Optimized version - loads both suppliers in one call and returns proper structure - CACHED"""
+    """Load client data from Clients_CoC master sheet"""
     try:
-        backaldrin_sheet = f"Backaldrin_{client}"
-        bateel_sheet = f"Bateel_{client}"
+        # Load master sheet
+        master_df = load_sheet_data("Clients_CoC")
         
-        backaldrin_df = load_sheet_data(backaldrin_sheet)
-        bateel_df = load_sheet_data(bateel_sheet)
+        if master_df.empty:
+            st.warning("⚠️ Clients_CoC sheet is empty or not found")
+            return {"Backaldrin": {}, "Bateel": {}}
+        
+        # Filter by client
+        client_df = master_df[master_df['Client'] == client].copy()
+        
+        if client_df.empty:
+            st.warning(f"⚠️ No data found for client: {client}")
+            return {"Backaldrin": {}, "Bateel": {}}
+        
+        # Process Backaldrin data
+        backaldrin_df = client_df[client_df['Supplier'] == 'Backaldrin']
+        bateel_df = client_df[client_df['Supplier'] == 'Bateel']
         
         def convert_df_to_dict(df):
-            """Simple converter that builds the expected structure"""
+            """Convert dataframe to article dictionary structure"""
             result = {}
             
             if df.empty:
                 return result
             
-            # Helper function to find columns
-            def get_column(df, possible_names):
-                for name in possible_names:
-                    if name in df.columns:
-                        return name
-                return None
+            # Check required columns
+            article_col = 'Article_Number'
+            product_col = 'Product_Name'
+            price_col = 'Price_per_kg'
+            order_col = 'Order_Number'
+            date_col = 'Order_Date'
+            year_col = 'Year'
+            hs_code_col = 'HS_Code'
+            packaging_col = 'Packaging'
+            quantity_col = 'Quantity'
+            weight_col = 'Total_Weight'
+            total_price_col = 'Total_Price'
+            status_col = 'Status'
+            notes_col = 'Notes'
             
-            # Find columns using lowercase priority first
-            article_column = get_column(df, ['article_number', 'Article_Number', 'article', 'Article'])
-            product_column = get_column(df, ['product_name', 'Product_Name', 'Product', 'product'])
-            price_column = get_column(df, ['price_per_', 'price_per_kg', 'Price_per_', 'Price_per_kg', 'Price', 'price'])
-            order_column = get_column(df, ['order_number', 'Order_Number', 'Order', 'order'])
-            date_column = get_column(df, ['order_date', 'Order_Date', 'Date', 'date'])
-            year_column = get_column(df, ['year', 'Year', 'order_year', 'Order_Year'])
-            hs_code_column = get_column(df, ['hs_code', 'HS_Code', 'hs code', 'HS Code'])
-            packaging_column = get_column(df, ['packaging', 'Packaging', 'packing', 'Packing'])
-            quantity_column = get_column(df, ['quantity', 'Quantity', 'qty', 'Qty'])
-            weight_column = get_column(df, ['total_weight', 'Total_Weight', 'weight', 'Weight'])
-            total_price_column = get_column(df, ['total_price', 'Total_Price', 'total', 'Total'])
-
-            if not article_column:
-                st.error(f"❌ Missing article number column! Available columns: {list(df.columns)}")
+            # Check if required columns exist
+            if article_col not in df.columns:
+                st.error(f"❌ Missing column: {article_col}. Available: {list(df.columns)}")
                 return result
-
+            
             for _, row in df.iterrows():
-                article = str(row.get(article_column, '')).strip()
-                if not article:
+                article = str(row.get(article_col, '')).strip()
+                if not article or article == 'nan':
                     continue
                     
                 if article not in result:
@@ -925,30 +933,35 @@ def get_google_sheets_data(client="CDC"):
                         'orders': []
                     }
                 
-                product_name = str(row.get(product_column, '')).strip() if product_column else ''
-                if product_name and product_name not in result[article]['names']:
+                # Product name
+                product_name = str(row.get(product_col, '')).strip()
+                if product_name and product_name != 'nan' and product_name not in result[article]['names']:
                     result[article]['names'].append(product_name)
                 
-                price_str = str(row.get(price_column, '')).strip() if price_column else ''
-                if price_str:
+                # Price
+                price_str = str(row.get(price_col, '')).strip()
+                if price_str and price_str != 'nan':
                     try:
                         price_float = float(price_str)
                         result[article]['prices'].append(price_float)
                     except:
                         pass
                 
+                # Order details
                 order_details = {
-                    'order_no': str(row.get(order_column, '')).strip() if order_column else '',
-                    'date': str(row.get(date_column, '')).strip() if date_column else '',
-                    'year': str(row.get(year_column, '')).strip() if year_column else '',
+                    'order_no': str(row.get(order_col, '')).strip() if order_col in df else '',
+                    'date': str(row.get(date_col, '')).strip() if date_col in df else '',
+                    'year': str(row.get(year_col, '')).strip() if year_col in df else '',
                     'product_name': product_name,
                     'article': article,
-                    'hs_code': str(row.get(hs_code_column, '')).strip() if hs_code_column else '',
-                    'packaging': str(row.get(packaging_column, '')).strip() if packaging_column else '',
-                    'quantity': str(row.get(quantity_column, '')).strip() if quantity_column else '',
-                    'total_weight': str(row.get(weight_column, '')).strip() if weight_column else '',
-                    'price': price_str,
-                    'total_price': str(row.get(total_price_column, '')).strip() if total_price_column else ''
+                    'hs_code': str(row.get(hs_code_col, '')).strip() if hs_code_col in df else '',
+                    'packaging': str(row.get(packaging_col, '')).strip() if packaging_col in df else '',
+                    'quantity': str(row.get(quantity_col, '')).strip() if quantity_col in df else '',
+                    'total_weight': str(row.get(weight_col, '')).strip() if weight_col in df else '',
+                    'price': str(row.get(price_col, '')).strip() if price_col in df else '',
+                    'total_price': str(row.get(total_price_col, '')).strip() if total_price_col in df else '',
+                    'status': str(row.get(status_col, '')).strip() if status_col in df else '',
+                    'notes': str(row.get(notes_col, '')).strip() if notes_col in df else ''
                 }
                 result[article]['orders'].append(order_details)
             
