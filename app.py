@@ -914,6 +914,18 @@ def get_google_sheets_data(client="CDC"):
         if client_df.empty:
             st.warning(f"⚠️ No data found for client: {client}")
             return {"Backaldrin": {}, "Bateel": {}}
+
+        # Filter by client
+client_df = master_df[master_df['Client'] == client].copy()
+
+# DEBUG - Remove after testing
+st.write(f"🔍 Debug: Total rows for {client}: {len(client_df)}")
+st.write(f"🔍 Debug: Articles found: {client_df['Article_Number'].unique().tolist()}")
+# END DEBUG
+
+if client_df.empty:
+    st.warning(f"⚠️ No data found for client: {client}")
+    return {"Backaldrin": {}, "Bateel": {}}
         
         # Process Backaldrin data
         backaldrin_df = client_df[client_df['Supplier'] == 'Backaldrin']
