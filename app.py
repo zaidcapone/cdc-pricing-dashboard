@@ -913,7 +913,7 @@ def get_google_sheets_data(client="CDC"):
             # Check required columns
             article_col = 'Article_Number'
             product_col = 'Product_Name'
-            price_col = 'Price_per_kg'
+            price_col = 'Price'
             order_col = 'Order_Number'
             date_col = 'Order_Date'
             year_col = 'Year'
