@@ -911,11 +911,7 @@ def get_google_sheets_data(client="CDC"):
         # Filter by client
         client_df = master_df[master_df['Client'] == client].copy()
         
-        # DEBUG - Remove after testing
-        st.write(f"🔍 Debug: Total rows for {client}: {len(client_df)}")
-        if not client_df.empty and 'Article_Number' in client_df.columns:
-            st.write(f"🔍 Debug: Articles found: {client_df['Article_Number'].unique().tolist()}")
-        # END DEBUG
+
         
         if client_df.empty:
             st.warning(f"⚠️ No data found for client: {client}")
