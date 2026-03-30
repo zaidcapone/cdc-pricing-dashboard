@@ -2,15 +2,15 @@
 # MULTI-CLIENT PRICING DASHBOARD
 # ============================================
 # Author: Zaid F. Al-Shami
-# Version: 3.1 (with Visual Analytics and All Prices Tab)
-# Last Updated: 8 Dec 2025
+# Version: 3.2 (with Client's Orders Tab)
+# Last Updated: 30 March 2026
 # ============================================
 # IMPORTANT NOTES:
 # 1. This dashboard connects to Google Sheets for real-time data
 # 2. All data is cached for 5 minutes to improve performance
-# 3. Supports multiple clients: CDC, CoteDivoire, CakeArt, SweetHouse, Cameron
+# 3. Supports multiple clients: CDC, CoteDivoire, CakeArt, SweetHouse, Cameron, Qzine, MEPT
 # 4. Features: Smart Search, Price Intelligence, Order Management, Visual Analytics
-# 5. NEW: Added "All Prices" tab for General_prices sheet
+# 5. NEW: Added "Client's Orders" tab - Fetches data from Clients_CoC sheet
 # ============================================
 
 import streamlit as st
@@ -64,7 +64,6 @@ st.markdown("""
         border-radius: 10px;
         margin-bottom: 1rem;
     }
-    /* NEW: Visual Analytics header */
     .visual-header {
         background: linear-gradient(135deg, #0EA5E9, #0284C7);
         color: white;
@@ -81,6 +80,13 @@ st.markdown("""
     }
     .price-matching-header {
         background: linear-gradient(135deg, #DC2626, #B91C1C);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+    .clients-orders-header {
+        background: linear-gradient(135deg, #0891B2, #0E7C8C);
         color: white;
         padding: 1.5rem;
         border-radius: 10px;
@@ -293,7 +299,6 @@ st.markdown("""
         color: #6B7280;
         margin-left: 0.5rem;
     }
-    /* Sidebar tabs styling */
     .sidebar-tab {
         padding: 0.75rem 1rem;
         margin: 0.25rem 0;
@@ -311,7 +316,6 @@ st.markdown("""
         color: white;
         border-left: 4px solid #FEF3C7;
     }
-    /* Header styling */
     .top-header {
         display: flex;
         justify-content: space-between;
@@ -341,7 +345,6 @@ st.markdown("""
     .icon-button:hover {
         background: #E5E7EB;
     }
-    /* Favorites modal */
     .favorites-modal {
         position: fixed;
         top: 50%;
@@ -365,7 +368,6 @@ st.markdown("""
         background: rgba(0,0,0,0.5);
         z-index: 999;
     }
-    /* Price matching specific */
     .validation-card {
         background: white;
         padding: 1.5rem;
@@ -404,7 +406,6 @@ st.markdown("""
         border-radius: 8px;
         border: 1px solid #0EA5E9;
     }
-    /* NEW: Item Analysis specific styling */
     .item-analysis-header {
         background: linear-gradient(135deg, #1E40AF, #1E3A8A);
         color: white;
@@ -433,7 +434,6 @@ st.markdown("""
         border: 2px solid #0EA5E9;
         margin: 1rem 0;
     }
-    /* NEW: All Prices specific styling */
     .all-prices-header {
         background: linear-gradient(135deg, #7C3AED, #6D28D9);
         color: white;
@@ -483,7 +483,6 @@ USERS = {
 # Client data sheets mapping
 CLIENT_SHEETS = {
     "CDC": {
-
         "ceo_special": "CDC_CEO_Special_Prices",
         "new_orders": "New_client_orders",
         "paid_orders": "Paid_Orders",
@@ -517,17 +516,16 @@ CLIENT_SHEETS = {
         "new_orders": "New_client_orders",
         "palletizing": "Palletizing_Data"
     },
-    # NEW CLIENTS ADDED HERE
     "Qzine": {
         "backaldrin": "Backaldrin_Qzine",
-        "bateel": "Bateel_Qzine",  # If you have Bateel sheet for Qzine
+        "bateel": "Bateel_Qzine",
         "ceo_special": "Qzine_CEO_Special_Prices",
         "new_orders": "New_client_orders",
         "palletizing": "Palletizing_Data"
     },
     "MEPT": {
         "backaldrin": "Backaldrin_MEPT",
-        "bateel": "Bateel_MEPT",  # If you have Bateel sheet for MEPT
+        "bateel": "Bateel_MEPT",
         "ceo_special": "MEPT_CEO_Special_Prices",
         "new_orders": "New_client_orders",
         "palletizing": "Palletizing_Data"
@@ -537,7 +535,7 @@ CLIENT_SHEETS = {
 # Sheet names
 PRODUCT_CATALOG_SHEET = "FullProductList"
 PRICES_SHEET = "Prices"
-GENERAL_PRICES_SHEET = "General_prices"  # NEW: Sheet name for all prices
+GENERAL_PRICES_SHEET = "General_prices"
 
 # ============================================
 # FEATURE 1: SMART SEARCH WITH AI SUGGESTIONS
@@ -910,8 +908,6 @@ def get_google_sheets_data(client="CDC"):
         
         # Filter by client
         client_df = master_df[master_df['Client'] == client].copy()
-        
-
         
         if client_df.empty:
             st.warning(f"⚠️ No data found for client: {client}")
@@ -1405,8 +1401,9 @@ def main_dashboard():
                 "📦 PALLETIZING",
                 "🔴 PRICE MATCHING",
                 "📈 VISUAL ANALYTICS",
-                "📊 ITEM ANALYSIS",  # NEW TAB ADDED HERE
-                "📊 ALL PRICES"  # NEW TAB ADDED HERE
+                "📊 ITEM ANALYSIS",
+                "📊 ALL PRICES",
+                "📋 CLIENT'S ORDERS"  # NEW TAB ADDED HERE
             ]
         else:
             tabs = [
@@ -1417,14 +1414,14 @@ def main_dashboard():
                 "⭐ CEO SPECIAL PRICES",
                 "💰 PRICE INTELLIGENCE",
                 "📦 PRODUCT CATALOG",
-                "📊 ORDERS MANAGEMENT"
+                "📊 ORDERS MANAGEMENT",
+                "📦 PALLETIZING",
+                "🔴 PRICE MATCHING",
+                "📈 VISUAL ANALYTICS",
+                "📊 ITEM ANALYSIS",
+                "📊 ALL PRICES",
+                "📋 CLIENT'S ORDERS"  # NEW TAB ADDED HERE
             ]
-            if st.session_state.username in ["zaid", "Rotana", "Khalid"]:
-                tabs.append("📦 PALLETIZING")
-            tabs.append("🔴 PRICE MATCHING")
-            tabs.append("📈 VISUAL ANALYTICS")
-            tabs.append("📊 ITEM ANALYSIS")  # NEW TAB ADDED FOR ALL USERS
-            tabs.append("📊 ALL PRICES")  # NEW TAB ADDED FOR ALL USERS
         
         # Display tabs as clickable buttons
         for tab in tabs:
@@ -1460,7 +1457,8 @@ def main_dashboard():
             "📁 **NEW**: Bulk article search available!",
             "🔴 **NEW**: Price Matching Tool available for all clients!",
             "📈 **NEW**: Visual Analytics Dashboard added!",
-            "📊 **NEW**: All Prices tab added! View General_prices sheet data!"  # NEW ANNOUNCEMENT
+            "📊 **NEW**: All Prices tab added! View General_prices sheet data!",
+            "📋 **NEW**: Client's Orders tab added! Search orders directly from Clients_CoC sheet!"  # NEW ANNOUNCEMENT
         ]
         
         for announcement in announcements:
@@ -1539,15 +1537,459 @@ def main_dashboard():
         visual_analytics_tab()
     elif st.session_state.active_tab == "📊 ITEM ANALYSIS":
         item_analysis_tab()
-    elif st.session_state.active_tab == "📊 ALL PRICES":  # NEW TAB HANDLER
-        all_prices_tab()  # NEW FUNCTION
+    elif st.session_state.active_tab == "📊 ALL PRICES":
+        all_prices_tab()
+    elif st.session_state.active_tab == "📋 CLIENT'S ORDERS":  # NEW TAB HANDLER
+        clients_orders_tab()  # NEW FUNCTION
     
     # Logout button at bottom
     st.markdown("---")
     logout_button()
 
 # ============================================
-# NEW ALL PRICES TAB FUNCTION
+# NEW CLIENT'S ORDERS TAB FUNCTION
+# ============================================
+
+def clients_orders_tab():
+    """
+    NEW: Client's Orders Tab - Fetches data directly from Clients_CoC sheet
+    Allows client selection and search by article number, product name, or HS code
+    """
+    st.markdown("""
+    <div class="clients-orders-header">
+        <h2 style="margin:0;">📋 Client's Orders</h2>
+        <p style="margin:0; opacity:0.9;">Direct Access to Clients_CoC Sheet • Search by Article, Product Name, or HS Code</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Get all clients from the master sheet
+    all_clients = get_all_clients_from_master()
+    
+    if not all_clients:
+        st.warning("""
+        ⚠️ **No clients found in Clients_CoC sheet!**
+        
+        **To get started:**
+        1. Go to your Google Sheet
+        2. Add a tab called **'Clients_CoC'**
+        3. Use these exact headers:
+           - Client
+           - Supplier
+           - Article_Number
+           - Product_Name
+           - Price
+           - Order_Number
+           - Order_Date
+           - Year
+           - HS_Code
+           - Packaging
+           - Quantity
+           - Total_Weight
+           - Total_Price
+           - Status
+           - Notes
+        """)
+        return
+    
+    st.success(f"✅ Found {len(all_clients)} clients in Clients_CoC sheet")
+    
+    # Client selection
+    client = st.selectbox(
+        "Select Client:",
+        all_clients,
+        key="clients_orders_client_select"
+    )
+    
+    # Load client data using the existing get_google_sheets_data function
+    with st.spinner(f"📥 Loading orders data for {client}..."):
+        DATA = get_google_sheets_data(client)
+    
+    if not DATA.get("Backaldrin") and not DATA.get("Bateel"):
+        st.error(f"❌ No data found for {client} in Clients_CoC sheet")
+        return
+    
+    st.success(f"✅ Connected to {client} data")
+    
+    # Supplier selection
+    supplier = st.radio(
+        "Select Supplier:",
+        ["Backaldrin", "Bateel"],
+        horizontal=True,
+        key="clients_orders_supplier"
+    )
+    
+    # ============================================
+    # SEARCH SECTION
+    # ============================================
+    st.subheader("🔍 Search Orders")
+    
+    search_col1, search_col2, search_col3 = st.columns([2, 1, 1])
+    
+    with search_col1:
+        search_term = st.text_input(
+            "Search by Article Number, Product Name, or HS Code:",
+            placeholder="e.g., 1-366, Chocolate Chips, 1901200000...",
+            key="clients_orders_search"
+        )
+    
+    with search_col2:
+        search_type = st.selectbox(
+            "Search Type:",
+            ["All", "Article Number", "Product Name", "HS Code"],
+            key="clients_orders_search_type"
+        )
+    
+    with search_col3:
+        if st.button("🔍 Search", type="primary", use_container_width=True, key="clients_orders_search_btn"):
+            if search_term:
+                add_to_search_history(search_term, client, supplier)
+    
+    # Initialize session state for search results
+    if 'clients_orders_results' not in st.session_state:
+        st.session_state.clients_orders_results = None
+    
+    # Get supplier data
+    supplier_data = DATA.get(supplier, {})
+    
+    # Perform search if search term exists
+    if search_term:
+        search_results = []
+        search_lower = search_term.lower()
+        
+        for article_num, article_data in supplier_data.items():
+            match_found = False
+            match_type = ""
+            
+            # Search by article number
+            if search_type in ["All", "Article Number"]:
+                if search_lower in article_num.lower():
+                    match_found = True
+                    match_type = "Article Number"
+            
+            # Search by product name
+            if not match_found and search_type in ["All", "Product Name"]:
+                for name in article_data.get('names', []):
+                    if search_lower in str(name).lower():
+                        match_found = True
+                        match_type = "Product Name"
+                        break
+            
+            # Search by HS code
+            if not match_found and search_type in ["All", "HS Code"]:
+                for order in article_data.get('orders', []):
+                    hs_code = str(order.get('hs_code', '')).lower()
+                    if search_lower in hs_code:
+                        match_found = True
+                        match_type = "HS Code"
+                        break
+            
+            if match_found and article_data.get('orders'):
+                # Get the latest product name
+                product_name = ""
+                if article_data.get('names'):
+                    product_name = article_data['names'][0]
+                
+                # Count orders and get price range
+                prices = article_data.get('prices', [])
+                min_price = min(prices) if prices else None
+                max_price = max(prices) if prices else None
+                
+                search_results.append({
+                    'article': article_num,
+                    'product_name': product_name,
+                    'match_type': match_type,
+                    'orders_count': len(article_data.get('orders', [])),
+                    'price_count': len(prices),
+                    'min_price': min_price,
+                    'max_price': max_price,
+                    'has_orders': True,
+                    'article_data': article_data
+                })
+        
+        if search_results:
+            st.success(f"✅ Found {len(search_results)} matching items for '{search_term}'")
+            st.session_state.clients_orders_results = {
+                'client': client,
+                'supplier': supplier,
+                'search_term': search_term,
+                'results': search_results
+            }
+        else:
+            st.warning(f"❌ No results found for '{search_term}' in {client} - {supplier}")
+    
+    # Display results if they exist
+    if st.session_state.clients_orders_results and st.session_state.clients_orders_results.get('client') == client:
+        results_data = st.session_state.clients_orders_results
+        search_results = results_data.get('results', [])
+        
+        # Display results overview
+        st.subheader(f"📊 Search Results for '{results_data['search_term']}'")
+        
+        # Quick stats
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Items Found", len(search_results))
+        with col2:
+            total_orders = sum(r['orders_count'] for r in search_results)
+            st.metric("Total Orders", total_orders)
+        with col3:
+            # Get all prices from all results
+            all_prices = []
+            for r in search_results:
+                if r['min_price']:
+                    all_prices.append(r['min_price'])
+                if r['max_price']:
+                    all_prices.append(r['max_price'])
+            if all_prices:
+                st.metric("Price Range", f"${min(all_prices):.2f} - ${max(all_prices):.2f}")
+            else:
+                st.metric("Price Range", "N/A")
+        
+        # Display each result in an expander
+        for result in search_results:
+            article_num = result['article']
+            article_data = result['article_data']
+            
+            with st.expander(f"📦 {article_num} - {result['product_name']} | {result['orders_count']} orders | Found by: {result['match_type']}", expanded=False):
+                
+                # Article information
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    st.markdown("**📋 Article Details**")
+                    st.write(f"**Article Number:** {article_num}")
+                    st.write(f"**Product Name:** {result['product_name']}")
+                    
+                    if result['min_price'] and result['max_price']:
+                        st.write(f"**Price Range:** ${result['min_price']:.2f} - ${result['max_price']:.2f}/kg")
+                        st.write(f"**Total Price Records:** {result['price_count']}")
+                
+                with col2:
+                    st.markdown("**📊 Statistics**")
+                    st.write(f"**Total Orders:** {result['orders_count']}")
+                    if result['min_price'] and result['max_price']:
+                        avg_price = (result['min_price'] + result['max_price']) / 2
+                        st.write(f"**Average Price:** ${avg_price:.2f}/kg")
+                
+                # Order history
+                st.markdown("---")
+                st.subheader("📜 Order History")
+                
+                # Get orders sorted by date (newest first)
+                orders = article_data.get('orders', [])
+                
+                # Sort orders by date if possible
+                try:
+                    orders_with_dates = []
+                    for order in orders:
+                        date_str = order.get('date', '')
+                        if date_str:
+                            for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d']:
+                                try:
+                                    parsed_date = datetime.strptime(date_str, fmt)
+                                    orders_with_dates.append((parsed_date, order))
+                                    break
+                                except:
+                                    continue
+                        else:
+                            orders_with_dates.append((None, order))
+                    
+                    # Sort by date descending (newest first)
+                    orders_with_dates.sort(key=lambda x: x[0] if x[0] else datetime.min, reverse=True)
+                    orders = [order for _, order in orders_with_dates]
+                except:
+                    pass
+                
+                # Display orders
+                for idx, order in enumerate(orders):
+                    # Format price for display
+                    price_display = order.get('price', 'N/A')
+                    try:
+                        price_value = float(str(price_display).replace('$', '').replace(',', '').strip())
+                        price_display = f"${price_value:.2f}"
+                    except:
+                        price_display = f"${price_display}" if price_display != 'N/A' else 'N/A'
+                    
+                    # Create order card
+                    st.markdown(f"""
+                    <div class="price-box" style="margin-bottom: 1rem;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div>
+                                <div style="margin-bottom: 0.5rem;">
+                                    <strong>📦 Order:</strong> {order.get('order_no', 'N/A')}
+                                </div>
+                                <div style="margin-bottom: 0.5rem;">
+                                    <strong>📅 Date:</strong> {order.get('date', 'N/A')}
+                                </div>
+                                {f'<div style="margin-bottom: 0.5rem;"><strong>📅 Year:</strong> {order.get("year", "N/A")}</div>' if order.get('year') else ''}
+                                {f'<div style="margin-bottom: 0.5rem;"><strong>🏷️ HS Code:</strong> {order.get("hs_code", "N/A")}</div>' if order.get('hs_code') else ''}
+                            </div>
+                            <div>
+                                {f'<div style="margin-bottom: 0.5rem;"><strong>📦 Packaging:</strong> {order.get("packaging", "N/A")}</div>' if order.get('packaging') else ''}
+                                {f'<div style="margin-bottom: 0.5rem;"><strong>🔢 Quantity:</strong> {order.get("quantity", "N/A")}</div>' if order.get('quantity') else ''}
+                                {f'<div style="margin-bottom: 0.5rem;"><strong>⚖️ Weight:</strong> {order.get("total_weight", "N/A")} kg</div>' if order.get('total_weight') else ''}
+                                {f'<div style="margin-bottom: 0.5rem;"><strong>💰 Total Price:</strong> {order.get("total_price", "N/A")}</div>' if order.get('total_price') else ''}
+                            </div>
+                        </div>
+                        <div style="text-align: center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.2);">
+                            <div style="font-size: 1.2em; font-weight: bold; color: #FEF3C7;">
+                                Price: {price_display}/kg
+                            </div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+        
+        # Export Section
+        st.markdown('<div class="export-section">', unsafe_allow_html=True)
+        st.subheader("📤 Export Search Results")
+        
+        # Prepare export data
+        export_data = []
+        for result in search_results:
+            article_data = result['article_data']
+            for order in article_data.get('orders', []):
+                export_data.append({
+                    'Client': client,
+                    'Supplier': supplier,
+                    'Article_Number': result['article'],
+                    'Product_Name': result['product_name'],
+                    'Order_Number': order.get('order_no', ''),
+                    'Order_Date': order.get('date', ''),
+                    'Year': order.get('year', ''),
+                    'HS_Code': order.get('hs_code', ''),
+                    'Packaging': order.get('packaging', ''),
+                    'Quantity': order.get('quantity', ''),
+                    'Total_Weight_kg': order.get('total_weight', ''),
+                    'Price_per_kg': order.get('price', ''),
+                    'Total_Price': order.get('total_price', ''),
+                    'Status': order.get('status', ''),
+                    'Notes': order.get('notes', ''),
+                    'Search_Term': results_data['search_term'],
+                    'Search_Type': search_type,
+                    'Export_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                })
+        
+        if export_data:
+            export_df = pd.DataFrame(export_data)
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                csv = export_df.to_csv(index=False)
+                st.download_button(
+                    label="📥 Download CSV",
+                    data=csv,
+                    file_name=f"{client}_orders_{results_data['search_term']}_{datetime.now().strftime('%Y%m%d')}.csv",
+                    mime="text/csv",
+                    use_container_width=True,
+                    key="clients_orders_csv"
+                )
+            
+            with col2:
+                try:
+                    output = BytesIO()
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        export_df.to_excel(writer, index=False, sheet_name='Client_Orders')
+                    excel_data = output.getvalue()
+                    
+                    st.download_button(
+                        label="📊 Download Excel",
+                        data=excel_data,
+                        file_name=f"{client}_orders_{results_data['search_term']}_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                        mime="application/vnd.ms-excel",
+                        use_container_width=True,
+                        key="clients_orders_excel"
+                    )
+                except:
+                    st.info("📊 Excel export requires openpyxl package")
+            
+            with col3:
+                # Generate summary report
+                summary_text = f"""
+CLIENT'S ORDERS REPORT
+======================
+
+Client: {client}
+Supplier: {supplier}
+Search Term: "{results_data['search_term']}"
+Search Type: {search_type}
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+SUMMARY:
+• Items Found: {len(search_results)}
+• Total Orders: {len(export_data)}
+• Unique Articles: {export_df['Article_Number'].nunique()}
+• Date Range: {export_df['Order_Date'].min() if export_df['Order_Date'].notna().any() else 'N/A'} to {export_df['Order_Date'].max() if export_df['Order_Date'].notna().any() else 'N/A'}
+
+ITEMS FOUND:
+{chr(10).join([f"• {r['article']} - {r['product_name']}: {r['orders_count']} orders" for r in search_results])}
+
+ORDER DETAILS:
+{chr(10).join([f"• {row['Order_Number']} - {row['Article_Number']} - {row['Price_per_kg']}/kg ({row['Order_Date']})" for _, row in export_df.head(20).iterrows()])}
+
+{'... and ' + str(len(export_df) - 20) + ' more orders' if len(export_df) > 20 else ''}
+                """
+                
+                st.download_button(
+                    label="📄 Download Summary",
+                    data=summary_text,
+                    file_name=f"{client}_orders_summary_{results_data['search_term']}_{datetime.now().strftime('%Y%m%d')}.txt",
+                    mime="text/plain",
+                    use_container_width=True,
+                    key="clients_orders_summary"
+                )
+            
+            # Preview data
+            with st.expander("👀 Preview Export Data", expanded=False):
+                st.dataframe(export_df, use_container_width=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    elif not search_term:
+        # Show example when no search is performed
+        st.info("""
+        ### 🔍 How to use this tab:
+        
+        1. **Select a client** from the dropdown list
+        2. **Choose a supplier** (Backaldrin or Bateel)
+        3. **Enter a search term** (article number, product name, or HS code)
+        4. **Click Search** to view all historical orders
+        
+        **Examples:**
+        - Try searching for article number: `1-366`
+        - Try searching for product name: `Chocolate`
+        - Try searching for HS code: `190120`
+        
+        The results will show all orders matching your search criteria, including:
+        - Order number and date
+        - Price history
+        - Quantity and weight details
+        - HS code and packaging information
+        """)
+        
+        # Show sample data if available
+        if all_clients:
+            st.subheader("📋 Available Clients")
+            st.write(f"**Clients with data:** {', '.join(all_clients)}")
+            
+            # Show first few rows from the first client as preview
+            first_client = all_clients[0]
+            with st.expander(f"🔍 Preview data for {first_client} (first 5 orders)", expanded=False):
+                try:
+                    preview_data = get_google_sheets_data(first_client)
+                    if preview_data.get("Backaldrin"):
+                        preview_articles = list(preview_data["Backaldrin"].keys())[:3]
+                        for article in preview_articles:
+                            article_data = preview_data["Backaldrin"][article]
+                            if article_data.get('orders'):
+                                st.write(f"**Article:** {article}")
+                                for order in article_data['orders'][:2]:
+                                    st.write(f"  - Order: {order.get('order_no', 'N/A')} | Date: {order.get('date', 'N/A')} | Price: {order.get('price', 'N/A')}/kg")
+                except:
+                    pass
+
+# ============================================
+# ALL PRICES TAB FUNCTION (Kept from original)
 # ============================================
 
 def all_prices_tab():
@@ -1950,14 +2392,11 @@ Export Generated by: {st.session_state.username}
         """)
 
 # ============================================
-# VISUAL ANALYTICS TAB FUNCTION
+# VISUAL ANALYTICS TAB FUNCTION (Kept from original)
 # ============================================
 
 def visual_analytics_tab():
-    """
-    Visual Analytics Tab with Interactive Charts
-    This tab provides graphical analysis of sales data, price trends, and product performance
-    """
+    """Visual Analytics Tab with Interactive Charts"""
     st.markdown("""
     <div class="visual-header">
         <h2 style="margin:0;">📈 Visual Analytics Dashboard</h2>
@@ -2357,7 +2796,7 @@ RECOMMENDATIONS:
         """)
 
 # ============================================
-# ITEM ANALYSIS TAB FUNCTION
+# ITEM ANALYSIS TAB FUNCTION (Kept from original)
 # ============================================
 
 def item_analysis_tab():
@@ -2366,13 +2805,7 @@ def item_analysis_tab():
     Compare item performance between months and years with growth percentages
     """
     st.markdown("""
-    <div style="
-        background: linear-gradient(135deg, #1E40AF, #1E3A8A);
-        color: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin-bottom: 1rem;
-    ">
+    <div class="item-analysis-header">
         <h2 style="margin:0;">📊 Advanced Item Analysis</h2>
         <p style="margin:0; opacity:0.9;">Monthly Comparison • Year-over-Year Growth • Item Performance Tracking</p>
     </div>
@@ -2995,7 +3428,7 @@ RECOMMENDATIONS:
         """)
 
 # ============================================
-# ORIGINAL TAB FUNCTIONS (REMAIN UNCHANGED)
+# ORIGINAL TAB FUNCTIONS (Kept from original)
 # ============================================
 
 def clients_tab():
@@ -3013,7 +3446,7 @@ def clients_tab():
         cdc_dashboard(client)
 
 def cdc_dashboard(client):
-    """Client pricing dashboard with FOUR NEW FEATURES"""
+    """Client pricing dashboard with smart features"""
     
     # Initialize session state
     if 'search_results' not in st.session_state:
@@ -3229,7 +3662,7 @@ def create_export_data(article_data, article, supplier, client):
     return pd.DataFrame(export_data)
 
 def display_from_session_state(data, client):
-    """Display search results with NEW CARD DESIGN AND FAVORITES FEATURE"""
+    """Display search results with card design and favorites feature"""
     results = st.session_state.search_results
     article = results["article"]
     supplier = results["supplier"]
