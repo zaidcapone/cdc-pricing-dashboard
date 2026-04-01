@@ -1400,13 +1400,8 @@ def main_dashboard():
                     st.session_state.active_tab = "CLIENTS"
                     st.rerun()
     
-    # Main content area based on active tab
-    st.markdown(f"""
-    <div class="main-header">
-        <h1>Backaldrin Arab Jordan Dashboard</h1>
-        <h3>{st.session_state.active_tab}</h3>
-    </div>
-    """, unsafe_allow_html=True)
+    # REMOVED: Main header box with "Backaldrin Arab Jordan Dashboard"
+    # The tab content will now start directly with its own header
     
     # Display the active tab content
     if st.session_state.active_tab == "🏢 CLIENTS":
