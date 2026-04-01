@@ -1438,13 +1438,14 @@ def main_dashboard():
 
 def clients_orders_tab():
     """
-    NEW: Client's Orders Tab - Fetches data directly from Clients_CoC sheet
+    Client's Orders Tab - Fetches data directly from Clients_CoC sheet
     Allows client selection and search by article number, product name, or HS code
+    NEW: Added Year filter for better search precision
     """
     st.markdown("""
     <div class="clients-orders-header">
         <h2 style="margin:0;">📋 Client's Orders</h2>
-        <p style="margin:0; opacity:0.9;">Direct Access to Clients_CoC Sheet • Search by Article, Product Name, or HS Code</p>
+        <p style="margin:0; opacity:0.9;">Direct Access to Clients_CoC Sheet • Search by Article, Product Name, HS Code, or Year</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -1505,11 +1506,12 @@ def clients_orders_tab():
     )
     
     # ============================================
-    # SEARCH SECTION
+    # SEARCH SECTION WITH YEAR FILTER
     # ============================================
     st.subheader("🔍 Search Orders")
     
-    search_col1, search_col2, search_col3 = st.columns([2, 1, 1])
+    # Create 4 columns for search inputs (increased from 3 to 4)
+    search_col1, search_col2, search_col3, search_col4 = st.columns([2, 1, 1, 1])
     
     with search_col1:
         search_term = st.text_input(
@@ -1526,9 +1528,29 @@ def clients_orders_tab():
         )
     
     with search_col3:
+        # NEW: Year filter dropdown
+        # First, get all available years from the data
+        all_years = set()
+        supplier_data = DATA.get(supplier, {})
+        for article_num, article_data in supplier_data.items():
+            for order in article_data.get('orders', []):
+                year = order.get('year', '')
+                if year and year != '' and year != 'nan':
+                    all_years.add(str(year))
+        
+        # Sort years descending (newest first)
+        year_options = ["All Years"] + sorted(list(all_years), reverse=True)
+        
+        selected_year = st.selectbox(
+            "Filter by Year:",
+            year_options,
+            key="clients_orders_year_filter"
+        )
+    
+    with search_col4:
         if st.button("🔍 Search", type="primary", use_container_width=True, key="clients_orders_search_btn"):
-            if search_term:
-                add_to_search_history(search_term, client, supplier)
+            if search_term or selected_year != "All Years":
+                add_to_search_history(search_term if search_term else f"Year: {selected_year}", client, supplier)
     
     # Initialize session state for search results
     if 'clients_orders_results' not in st.session_state:
@@ -1537,31 +1559,31 @@ def clients_orders_tab():
     # Get supplier data
     supplier_data = DATA.get(supplier, {})
     
-    # Perform search if search term exists
-    if search_term:
+    # Perform search if search term exists OR year filter is active
+    if search_term or selected_year != "All Years":
         search_results = []
-        search_lower = search_term.lower()
+        search_lower = search_term.lower() if search_term else ""
         
         for article_num, article_data in supplier_data.items():
             match_found = False
             match_type = ""
             
-            # Search by article number
-            if search_type in ["All", "Article Number"]:
+            # Search by article number (only if search_term exists)
+            if search_term and search_type in ["All", "Article Number"]:
                 if search_lower in article_num.lower():
                     match_found = True
                     match_type = "Article Number"
             
-            # Search by product name
-            if not match_found and search_type in ["All", "Product Name"]:
+            # Search by product name (only if search_term exists)
+            if not match_found and search_term and search_type in ["All", "Product Name"]:
                 for name in article_data.get('names', []):
                     if search_lower in str(name).lower():
                         match_found = True
                         match_type = "Product Name"
                         break
             
-            # Search by HS code
-            if not match_found and search_type in ["All", "HS Code"]:
+            # Search by HS code (only if search_term exists)
+            if not match_found and search_term and search_type in ["All", "HS Code"]:
                 for order in article_data.get('orders', []):
                     hs_code = str(order.get('hs_code', '')).lower()
                     if search_lower in hs_code:
@@ -1569,47 +1591,110 @@ def clients_orders_tab():
                         match_type = "HS Code"
                         break
             
+            # If no search term, we still need to check if we should include this article based on year filter
+            if not search_term and selected_year != "All Years":
+                # We'll include if any order matches the year filter
+                for order in article_data.get('orders', []):
+                    order_year = str(order.get('year', ''))
+                    if order_year == selected_year:
+                        match_found = True
+                        match_type = f"Year {selected_year}"
+                        break
+            
+            # If we already have a match from search, but year filter is active, filter further
+            if match_found and selected_year != "All Years":
+                # Check if any order matches the selected year
+                year_match_found = False
+                for order in article_data.get('orders', []):
+                    order_year = str(order.get('year', ''))
+                    if order_year == selected_year:
+                        year_match_found = True
+                        break
+                
+                if not year_match_found:
+                    match_found = False
+            
             if match_found and article_data.get('orders'):
                 # Get the latest product name
                 product_name = ""
                 if article_data.get('names'):
                     product_name = article_data['names'][0]
                 
-                # Count orders and get price range
-                prices = article_data.get('prices', [])
+                # Filter orders by year if year filter is active
+                filtered_orders = article_data.get('orders', [])
+                if selected_year != "All Years":
+                    filtered_orders = [
+                        order for order in filtered_orders 
+                        if str(order.get('year', '')) == selected_year
+                    ]
+                
+                # Count orders and get price range from filtered orders
+                prices = []
+                for order in filtered_orders:
+                    price_str = order.get('price', '')
+                    if price_str:
+                        try:
+                            price_val = float(str(price_str).replace('$', '').replace(',', '').strip())
+                            prices.append(price_val)
+                        except:
+                            pass
+                
                 min_price = min(prices) if prices else None
                 max_price = max(prices) if prices else None
+                
+                # Store filtered article data with filtered orders
+                filtered_article_data = article_data.copy()
+                filtered_article_data['orders'] = filtered_orders
+                filtered_article_data['prices'] = prices
                 
                 search_results.append({
                     'article': article_num,
                     'product_name': product_name,
                     'match_type': match_type,
-                    'orders_count': len(article_data.get('orders', [])),
+                    'orders_count': len(filtered_orders),
                     'price_count': len(prices),
                     'min_price': min_price,
                     'max_price': max_price,
                     'has_orders': True,
-                    'article_data': article_data
+                    'article_data': filtered_article_data
                 })
         
         if search_results:
-            st.success(f"✅ Found {len(search_results)} matching items for '{search_term}'")
+            st.success(f"✅ Found {len(search_results)} matching items")
+            if search_term and selected_year != "All Years":
+                st.info(f"🔍 Searching for: '{search_term}' | 📅 Year: {selected_year}")
+            elif search_term:
+                st.info(f"🔍 Searching for: '{search_term}'")
+            elif selected_year != "All Years":
+                st.info(f"📅 Showing all orders from year: {selected_year}")
+            
             st.session_state.clients_orders_results = {
                 'client': client,
                 'supplier': supplier,
-                'search_term': search_term,
+                'search_term': search_term if search_term else f"All items - Year: {selected_year}",
+                'selected_year': selected_year,
                 'results': search_results
             }
         else:
-            st.warning(f"❌ No results found for '{search_term}' in {client} - {supplier}")
+            st.warning(f"❌ No results found")
+            if search_term and selected_year != "All Years":
+                st.info(f"No orders found for '{search_term}' in {client} - {supplier} for year {selected_year}")
+            elif search_term:
+                st.info(f"No orders found for '{search_term}' in {client} - {supplier}")
+            elif selected_year != "All Years":
+                st.info(f"No orders found for year {selected_year} in {client} - {supplier}")
     
     # Display results if they exist
     if st.session_state.clients_orders_results and st.session_state.clients_orders_results.get('client') == client:
         results_data = st.session_state.clients_orders_results
         search_results = results_data.get('results', [])
         
-        # Display results overview
-        st.subheader(f"📊 Search Results for '{results_data['search_term']}'")
+        # Display results overview with year info
+        st.subheader(f"📊 Search Results")
+        
+        # Show filter info if year was selected
+        if results_data.get('selected_year') and results_data.get('selected_year') != "All Years":
+            st.info(f"📅 Filtered by Year: {results_data['selected_year']}")
         
         # Quick stats
         col1, col2, col3 = st.columns(3)
@@ -1696,7 +1781,10 @@ def clients_orders_tab():
                     except:
                         price_display = f"${price_display}" if price_display != 'N/A' else 'N/A'
                     
-                    # Create order card
+                    # Create order card with year badge
+                    order_year = order.get('year', '')
+                    year_badge = f" | 📅 Year: {order_year}" if order_year else ""
+                    
                     st.markdown(f"""
                     <div class="price-box" style="margin-bottom: 1rem;">
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -1705,9 +1793,8 @@ def clients_orders_tab():
                                     <strong>📦 Order:</strong> {order.get('order_no', 'N/A')}
                                 </div>
                                 <div style="margin-bottom: 0.5rem;">
-                                    <strong>📅 Date:</strong> {order.get('date', 'N/A')}
+                                    <strong>📅 Date:</strong> {order.get('date', 'N/A')}{year_badge}
                                 </div>
-                                {f'<div style="margin-bottom: 0.5rem;"><strong>📅 Year:</strong> {order.get("year", "N/A")}</div>' if order.get('year') else ''}
                                 {f'<div style="margin-bottom: 0.5rem;"><strong>🏷️ HS Code:</strong> {order.get("hs_code", "N/A")}</div>' if order.get('hs_code') else ''}
                             </div>
                             <div>
@@ -1752,6 +1839,7 @@ def clients_orders_tab():
                     'Notes': order.get('notes', ''),
                     'Search_Term': results_data['search_term'],
                     'Search_Type': search_type,
+                    'Year_Filter': results_data.get('selected_year', 'All Years'),
                     'Export_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 })
         
@@ -1762,10 +1850,17 @@ def clients_orders_tab():
             
             with col1:
                 csv = export_df.to_csv(index=False)
+                file_name = f"{client}_orders"
+                if search_term:
+                    file_name += f"_{results_data['search_term'].replace(' ', '_')}"
+                if results_data.get('selected_year') and results_data['selected_year'] != "All Years":
+                    file_name += f"_{results_data['selected_year']}"
+                file_name += f"_{datetime.now().strftime('%Y%m%d')}.csv"
+                
                 st.download_button(
                     label="📥 Download CSV",
                     data=csv,
-                    file_name=f"{client}_orders_{results_data['search_term']}_{datetime.now().strftime('%Y%m%d')}.csv",
+                    file_name=file_name,
                     mime="text/csv",
                     use_container_width=True,
                     key="clients_orders_csv"
@@ -1781,7 +1876,7 @@ def clients_orders_tab():
                     st.download_button(
                         label="📊 Download Excel",
                         data=excel_data,
-                        file_name=f"{client}_orders_{results_data['search_term']}_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                        file_name=f"{client}_orders_{datetime.now().strftime('%Y%m%d')}.xlsx",
                         mime="application/vnd.ms-excel",
                         use_container_width=True,
                         key="clients_orders_excel"
@@ -1790,7 +1885,7 @@ def clients_orders_tab():
                     st.info("📊 Excel export requires openpyxl package")
             
             with col3:
-                # Generate summary report
+                # Generate summary report with year info
                 summary_text = f"""
 CLIENT'S ORDERS REPORT
 ======================
@@ -1799,19 +1894,21 @@ Client: {client}
 Supplier: {supplier}
 Search Term: "{results_data['search_term']}"
 Search Type: {search_type}
+Year Filter: {results_data.get('selected_year', 'All Years')}
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
 
 SUMMARY:
 • Items Found: {len(search_results)}
 • Total Orders: {len(export_data)}
 • Unique Articles: {export_df['Article_Number'].nunique()}
+• Years Included: {', '.join(sorted(export_df['Year'].dropna().unique())) if not export_df['Year'].isna().all() else 'N/A'}
 • Date Range: {export_df['Order_Date'].min() if export_df['Order_Date'].notna().any() else 'N/A'} to {export_df['Order_Date'].max() if export_df['Order_Date'].notna().any() else 'N/A'}
 
 ITEMS FOUND:
 {chr(10).join([f"• {r['article']} - {r['product_name']}: {r['orders_count']} orders" for r in search_results])}
 
 ORDER DETAILS:
-{chr(10).join([f"• {row['Order_Number']} - {row['Article_Number']} - {row['Price_per_kg']}/kg ({row['Order_Date']})" for _, row in export_df.head(20).iterrows()])}
+{chr(10).join([f"• {row['Order_Number']} - {row['Article_Number']} - {row['Price_per_kg']}/kg ({row['Order_Date']}) - Year: {row['Year']}" for _, row in export_df.head(20).iterrows()])}
 
 {'... and ' + str(len(export_df) - 20) + ' more orders' if len(export_df) > 20 else ''}
                 """
@@ -1819,7 +1916,7 @@ ORDER DETAILS:
                 st.download_button(
                     label="📄 Download Summary",
                     data=summary_text,
-                    file_name=f"{client}_orders_summary_{results_data['search_term']}_{datetime.now().strftime('%Y%m%d')}.txt",
+                    file_name=f"{client}_orders_summary_{datetime.now().strftime('%Y%m%d')}.txt",
                     mime="text/plain",
                     use_container_width=True,
                     key="clients_orders_summary"
@@ -1831,20 +1928,22 @@ ORDER DETAILS:
         
         st.markdown('</div>', unsafe_allow_html=True)
     
-    elif not search_term:
-        # Show example when no search is performed
+    elif not search_term and selected_year == "All Years":
+        # Show example when no search is performed and no year filter
         st.info("""
         ### 🔍 How to use this tab:
         
         1. **Select a client** from the dropdown list
         2. **Choose a supplier** (Backaldrin or Bateel)
-        3. **Enter a search term** (article number, product name, or HS code)
+        3. **Enter a search term** (article number, product name, or HS code) OR **select a year** to filter orders
         4. **Click Search** to view all historical orders
         
         **Examples:**
         - Try searching for article number: `1-366`
         - Try searching for product name: `Chocolate`
         - Try searching for HS code: `190120`
+        - Try selecting a year: `2025` to see all orders from that year
+        - Combine search with year filter for more precise results
         
         The results will show all orders matching your search criteria, including:
         - Order number and date
@@ -1858,6 +1957,20 @@ ORDER DETAILS:
             st.subheader("📋 Available Clients")
             st.write(f"**Clients with data:** {', '.join(all_clients)}")
             
+            # Show available years for the selected client
+            if client and supplier:
+                supplier_data = DATA.get(supplier, {})
+                available_years = set()
+                for article_num, article_data in supplier_data.items():
+                    for order in article_data.get('orders', []):
+                        year = order.get('year', '')
+                        if year and year != '' and year != 'nan':
+                            available_years.add(str(year))
+                
+                if available_years:
+                    st.subheader("📅 Available Years in Data")
+                    st.write(f"**Years with orders:** {', '.join(sorted(available_years, reverse=True))}")
+            
             # Show first few rows from the first client as preview
             first_client = all_clients[0]
             with st.expander(f"🔍 Preview data for {first_client} (first 5 orders)", expanded=False):
@@ -1870,7 +1983,8 @@ ORDER DETAILS:
                             if article_data.get('orders'):
                                 st.write(f"**Article:** {article}")
                                 for order in article_data['orders'][:2]:
-                                    st.write(f"  - Order: {order.get('order_no', 'N/A')} | Date: {order.get('date', 'N/A')} | Price: {order.get('price', 'N/A')}/kg")
+                                    year_info = f" | Year: {order.get('year', 'N/A')}" if order.get('year') else ""
+                                    st.write(f"  - Order: {order.get('order_no', 'N/A')} | Date: {order.get('date', 'N/A')}{year_info} | Price: {order.get('price', 'N/A')}/kg")
                 except:
                     pass
 
