@@ -1300,6 +1300,8 @@ def main_dashboard():
             "📦 PALLETIZING",
             "📊 ALL PRICES",
             "📋 CLIENT'S ORDERS"
+                "🎁 SAMPLES REQUEST"  # ADD THIS LINE
+
         ]
         
         # Display tabs as clickable buttons
@@ -1409,6 +1411,8 @@ def main_dashboard():
         all_prices_tab()
     elif st.session_state.active_tab == "📋 CLIENT'S ORDERS":
         clients_orders_tab()
+        elif st.session_state.active_tab == "🎁 SAMPLES REQUEST":
+    samples_request_tab()
     
     # Logout button at bottom
     st.markdown("---")
@@ -3704,6 +3708,490 @@ def quick_pallet_calculator():
     with st.expander("📊 Bulk Analysis from Google Sheets (Optional)"):
         st.info("For bulk analysis of your existing Palletizing_Data sheet, use the main data import features.")
         st.write("The Quick Calculator above is designed for instant pallet calculations!")
+
+# ============================================
+# SAMPLES REQUEST TAB FUNCTION
+# ============================================
+
+def samples_request_tab():
+    """
+    Samples Request Tab - Allows users to submit sample requests
+    Includes form with request details and multiple sample items
+    """
+    st.markdown("""
+    <div class="clients-orders-header" style="background: linear-gradient(135deg, #DC2626, #B91C1C);">
+        <h2 style="margin:0;">🎁 Samples Request</h2>
+        <p style="margin:0; opacity:0.9;">Request Product Samples • Fill out the form below</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Initialize session state for sample items
+    if 'sample_items' not in st.session_state:
+        st.session_state.sample_items = []
+    
+    if 'sample_form_submitted' not in st.session_state:
+        st.session_state.sample_form_submitted = False
+    
+    # Load product catalog for suggestions
+    catalog_data = load_product_catalog()
+    
+    # Create two columns for the form layout
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("📋 Request Information")
+        
+        with st.container():
+            # Request Date
+            request_date = st.date_input(
+                "📅 Request Date",
+                value=datetime.now().date(),
+                key="sample_request_date"
+            )
+            
+            # Samples ETA
+            samples_eta = st.date_input(
+                "⏰ Samples ETA",
+                value=datetime.now().date(),
+                key="sample_eta"
+            )
+            
+            # Requested By
+            requested_by = st.text_input(
+                "👤 Requested By",
+                placeholder="Enter your full name",
+                key="sample_requested_by"
+            )
+            
+            # Department
+            department = st.selectbox(
+                "🏢 Department",
+                options=["Sales", "Marketing", "R&D", "Production", "Quality Control", "Procurement", "Other"],
+                key="sample_department"
+            )
+            
+            # Custom department if "Other" is selected
+            if department == "Other":
+                department = st.text_input(
+                    "Please specify department",
+                    placeholder="Enter department name",
+                    key="sample_department_other"
+                )
+    
+    with col2:
+        st.subheader("📍 Delivery Information")
+        
+        with st.container():
+            # Requester Title
+            requester_title = st.selectbox(
+                "💼 Requester Title",
+                options=["Manager", "Supervisor", "Specialist", "Coordinator", "Director", "Executive", "Other"],
+                key="sample_requester_title"
+            )
+            
+            if requester_title == "Other":
+                requester_title = st.text_input(
+                    "Please specify title",
+                    placeholder="Enter your title",
+                    key="sample_title_other"
+                )
+            
+            # Going to (Recipient Name)
+            going_to = st.text_input(
+                "👥 Going To (Recipient Name)",
+                placeholder="Enter recipient name",
+                key="sample_going_to"
+            )
+            
+            # Address
+            address = st.text_area(
+                "📍 Address",
+                placeholder="Enter complete delivery address",
+                height=100,
+                key="sample_address"
+            )
+            
+            # Delivery method
+            delivery_method = st.selectbox(
+                "🚚 Delivery Method",
+                options=["Courier", "Pickup", "Mail", "Express Delivery", "Freight", "Other"],
+                key="sample_delivery_method"
+            )
+            
+            if delivery_method == "Other":
+                delivery_method = st.text_input(
+                    "Please specify delivery method",
+                    placeholder="Enter delivery method",
+                    key="sample_delivery_other"
+                )
+    
+    # ============================================
+    # SAMPLES ITEMS SECTION
+    # ============================================
+    st.markdown("---")
+    st.subheader("📦 Sample Items")
+    st.info("Add the products you want to request as samples")
+    
+    # Function to add a sample item
+    def add_sample_item():
+        """Add current sample item to the list"""
+        article_num = st.session_state.get('sample_article', '')
+        product_name = st.session_state.get('sample_product', '')
+        item_type = st.session_state.get('sample_item_type', '')
+        pack_type = st.session_state.get('sample_pack_type', '')
+        unit_weight = st.session_state.get('sample_unit_weight', 0.0)
+        quantity = st.session_state.get('sample_quantity', 1)
+        logo_requirement = st.session_state.get('sample_logo', 'No')
+        
+        if article_num and product_name:
+            st.session_state.sample_items.append({
+                'article_number': article_num,
+                'product_name': product_name,
+                'item_type': item_type,
+                'pack_type': pack_type,
+                'unit_weight': unit_weight,
+                'quantity': quantity,
+                'logo_requirement': logo_requirement
+            })
+            # Clear the input fields after adding
+            st.session_state.sample_article = ''
+            st.session_state.sample_product = ''
+            st.session_state.sample_item_type = ''
+            st.session_state.sample_pack_type = ''
+            st.session_state.sample_unit_weight = 0.0
+            st.session_state.sample_quantity = 1
+            st.session_state.sample_logo = 'No'
+            st.success(f"✅ Added: {article_num} - {product_name}")
+        else:
+            st.error("❌ Please enter at least Article Number and Product Name")
+    
+    # Sample item input form
+    with st.form(key="sample_item_form", clear_on_submit=False):
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            # Article Number with autocomplete suggestions
+            article_input = st.text_input(
+                "🔢 Article Number *",
+                placeholder="e.g., 1-366, 1-367...",
+                key="sample_article"
+            )
+            
+            # Show suggestions if catalog data is available
+            if article_input and len(article_input) >= 2 and not catalog_data.empty:
+                matching_articles = catalog_data[
+                    catalog_data['Article_Number'].astype(str).str.contains(article_input, case=False, na=False)
+                ].head(5)
+                
+                if not matching_articles.empty:
+                    st.caption("💡 Suggestions:")
+                    for _, row in matching_articles.iterrows():
+                        if st.button(f"📦 {row['Article_Number']}", key=f"suggest_{row['Article_Number']}"):
+                            st.session_state.sample_article = row['Article_Number']
+                            st.session_state.sample_product = row.get('Product_Name', '')
+                            st.rerun()
+            
+            # Product Name
+            product_name = st.text_input(
+                "📝 Product Name *",
+                placeholder="Enter product name",
+                key="sample_product"
+            )
+            
+            # Item Type
+            item_type = st.selectbox(
+                "🏷️ Item Type",
+                options=["Raw Material", "Packaging", "Finished Good", "Semi-Finished", "Auxiliary Material", "Other"],
+                key="sample_item_type"
+            )
+        
+        with col2:
+            # Pack Type
+            pack_type = st.selectbox(
+                "📦 Pack Type",
+                options=["Bag", "Box", "Carton", "Drum", "Pallet", "Roll", "Tin", "Other"],
+                key="sample_pack_type"
+            )
+            
+            # Unit Weight
+            unit_weight = st.number_input(
+                "⚖️ Unit Weight (kg)",
+                min_value=0.0,
+                step=0.1,
+                format="%.2f",
+                key="sample_unit_weight"
+            )
+            
+            # Quantity
+            quantity = st.number_input(
+                "🔢 Total Quantity",
+                min_value=1,
+                step=1,
+                value=1,
+                key="sample_quantity"
+            )
+        
+        with col3:
+            # Logo Requirement
+            logo_requirement = st.radio(
+                "🎨 Logo Required?",
+                options=["No", "Yes - Standard", "Yes - Custom"],
+                key="sample_logo",
+                horizontal=True
+            )
+            
+            # Additional notes field
+            st.markdown("---")
+            item_notes = st.text_area(
+                "📝 Item Notes (Optional)",
+                placeholder="Any special requirements for this sample...",
+                key="sample_item_notes"
+            )
+        
+        # Add item button
+        submitted = st.form_submit_button("➕ Add Sample Item", use_container_width=True)
+        if submitted:
+            add_sample_item()
+
+# Add this to your samples_request_tab() function after the submission section
+
+# Print button for the summary
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    if st.button("🖨️ Print / Save as PDF", use_container_width=True, type="primary"):
+        st.markdown("""
+        <script>
+        window.print();
+        </script>
+        """, unsafe_allow_html=True)
+        st.info("Click Print in your browser dialog to save as PDF")
+        
+    # ============================================
+    # DISPLAY ADDED ITEMS
+    # ============================================
+    if st.session_state.sample_items:
+        st.subheader(f"📋 Sample Items Added ({len(st.session_state.sample_items)})")
+        
+        # Display items in a table format
+        items_df = pd.DataFrame(st.session_state.sample_items)
+        
+        # Add action buttons for each row
+        for idx, item in enumerate(st.session_state.sample_items):
+            col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([2, 2, 1.5, 1.5, 1.5, 1, 1, 0.5])
+            
+            with col1:
+                st.write(item['article_number'])
+            with col2:
+                st.write(item['product_name'][:30] + "..." if len(item['product_name']) > 30 else item['product_name'])
+            with col3:
+                st.write(item['item_type'])
+            with col4:
+                st.write(item['pack_type'])
+            with col5:
+                st.write(f"{item['unit_weight']} kg" if item['unit_weight'] > 0 else "N/A")
+            with col6:
+                st.write(item['quantity'])
+            with col7:
+                st.write(item['logo_requirement'])
+            with col8:
+                if st.button("🗑️", key=f"remove_{idx}"):
+                    st.session_state.sample_items.pop(idx)
+                    st.rerun()
+        
+        # Summary statistics
+        st.markdown("---")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            total_items = len(st.session_state.sample_items)
+            st.metric("Total Sample Items", total_items)
+        with col2:
+            total_quantity = sum(item['quantity'] for item in st.session_state.sample_items)
+            st.metric("Total Quantity", total_quantity)
+        with col3:
+            unique_articles = len(set(item['article_number'] for item in st.session_state.sample_items))
+            st.metric("Unique Articles", unique_articles)
+        
+        # Clear all button
+        if st.button("🗑️ Clear All Items", use_container_width=True, type="secondary"):
+            st.session_state.sample_items = []
+            st.rerun()
+    
+    # ============================================
+    # SUBMIT REQUEST
+    # ============================================
+    st.markdown("---")
+    
+    # Additional request notes
+    request_notes = st.text_area(
+        "📝 Additional Request Notes (Optional)",
+        placeholder="Any additional information about this sample request...",
+        height=100,
+        key="sample_request_notes"
+    )
+    
+    # Submit button
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("📤 SUBMIT SAMPLES REQUEST", use_container_width=True, type="primary"):
+            # Validate required fields
+            errors = []
+            
+            if not requested_by:
+                errors.append("❌ Requested By is required")
+            if not going_to:
+                errors.append("❌ Going To (Recipient Name) is required")
+            if not address:
+                errors.append("❌ Address is required")
+            if not st.session_state.sample_items:
+                errors.append("❌ At least one sample item is required")
+            
+            if errors:
+                for error in errors:
+                    st.error(error)
+            else:
+                # Prepare the request data
+                request_data = {
+                    'request_date': request_date.strftime("%Y-%m-%d"),
+                    'samples_eta': samples_eta.strftime("%Y-%m-%d"),
+                    'requested_by': requested_by,
+                    'department': department,
+                    'requester_title': requester_title,
+                    'going_to': going_to,
+                    'address': address,
+                    'delivery_method': delivery_method,
+                    'request_notes': request_notes,
+                    'sample_items': st.session_state.sample_items,
+                    'submitted_by': st.session_state.username,
+                    'submission_time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }
+                
+                # Store in session state for confirmation
+                st.session_state.last_sample_request = request_data
+                st.session_state.sample_form_submitted = True
+                
+                # Display success message
+                st.balloons()
+                st.success("✅ Samples request submitted successfully!")
+                
+                # Show summary
+                st.subheader("📋 Request Summary")
+                
+                # Create summary display
+                summary_col1, summary_col2 = st.columns(2)
+                
+                with summary_col1:
+                    st.markdown(f"""
+                    **Request Information:**
+                    - **Request Date:** {request_date.strftime("%Y-%m-%d")}
+                    - **Samples ETA:** {samples_eta.strftime("%Y-%m-%d")}
+                    - **Requested By:** {requested_by}
+                    - **Department:** {department}
+                    - **Requester Title:** {requester_title}
+                    """)
+                
+                with summary_col2:
+                    st.markdown(f"""
+                    **Delivery Information:**
+                    - **Going To:** {going_to}
+                    - **Address:** {address}
+                    - **Delivery Method:** {delivery_method}
+                    """)
+                
+                st.subheader("Sample Items Summary:")
+                summary_df = pd.DataFrame(st.session_state.sample_items)
+                st.dataframe(summary_df, use_container_width=True)
+                
+                # Option to reset form
+                if st.button("🔄 Start New Request", use_container_width=True):
+                    # Reset all session state variables
+                    st.session_state.sample_items = []
+                    st.session_state.sample_form_submitted = False
+                    for key in list(st.session_state.keys()):
+                        if key.startswith('sample_'):
+                            del st.session_state[key]
+                    st.rerun()
+    
+    # ============================================
+    # HELPER SECTION - Product Search
+    # ============================================
+    with st.expander("🔍 Quick Product Search (Find Article Numbers)", expanded=False):
+        st.info("Use this search to find article numbers and product details from the catalog")
+        
+        if not catalog_data.empty:
+            search_col1, search_col2 = st.columns([3, 1])
+            with search_col1:
+                quick_search = st.text_input("Search products:", key="sample_quick_search")
+            with search_col2:
+                search_field = st.selectbox("Search in:", ["Article Number", "Product Name"], key="sample_search_field")
+            
+            if quick_search:
+                if search_field == "Article Number":
+                    results = catalog_data[
+                        catalog_data['Article_Number'].astype(str).str.contains(quick_search, case=False, na=False)
+                    ]
+                else:
+                    results = catalog_data[
+                        catalog_data['Product_Name'].astype(str).str.contains(quick_search, case=False, na=False)
+                    ]
+                
+                if not results.empty:
+                    st.write(f"Found {len(results)} results:")
+                    for _, row in results.head(10).iterrows():
+                        col1, col2, col3 = st.columns([2, 3, 1])
+                        with col1:
+                            st.write(f"**{row['Article_Number']}**")
+                        with col2:
+                            st.write(row.get('Product_Name', 'N/A'))
+                        with col3:
+                            if st.button("Select", key=f"select_{row['Article_Number']}"):
+                                st.session_state.sample_article = row['Article_Number']
+                                st.session_state.sample_product = row.get('Product_Name', '')
+                                st.rerun()
+                else:
+                    st.warning("No products found")
+        else:
+            st.warning("Product catalog not available. Please check your Google Sheets connection.")
+    
+    # ============================================
+    # REQUEST HISTORY (Optional)
+    # ============================================
+    with st.expander("📜 View My Recent Requests", expanded=False):
+        st.info("This section will show your recent sample requests (requires backend storage)")
+        
+        # You can add logic here to load and display previous requests
+        # from a database or Google Sheets
+        st.write("""
+        **Recent requests will appear here once connected to a database.**
+        
+        To enable request history:
+        1. Create a 'Sample_Requests' sheet in your Google Sheets
+        2. Add columns for all request fields
+        3. The system will automatically save submissions
+        """)
+    
+    # Instructions
+    with st.expander("ℹ️ How to Use This Form", expanded=False):
+        st.markdown("""
+        **📋 Samples Request Guide:**
+        
+        1. **Fill Request Information** - Date, ETA, requester details
+        2. **Enter Delivery Information** - Recipient, address, delivery method
+        3. **Add Sample Items** - Use the form to add products (minimum 1 item)
+        4. **Review Added Items** - Check the list of added samples
+        5. **Submit Request** - Click submit to send your request
+        
+        **Tips:**
+        - Use the Quick Product Search to find article numbers
+        - You can add multiple sample items before submitting
+        - Remove items using the 🗑️ button next to each item
+        - All fields marked with * are required
+        """)
+
+# ============================================
+# UPDATE THE TABS LIST IN MAIN_DASHBOARD
+# ============================================
+# Add this to your tabs list in the main_dashboard() function
+# Add "🎁 SAMPLES REQUEST" to the tabs list
 
 # ============================================
 # MAIN EXECUTION
