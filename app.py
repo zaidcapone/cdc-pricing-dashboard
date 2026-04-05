@@ -1,21 +1,9 @@
 # ============================================
-# MULTI-CLIENT PRICING DASHBOARD
+# MULTI-CLIENT PRICING DASHBOARD - PROFESSIONAL EDITION
 # ============================================
 # Author: Zaid F. Al-Shami
-# Version: 4.0 (Samples Request Tab Added, Export Removed)
-# Last Updated: 02 April 2026
-# ============================================
-# FEATURES INCLUDED:
-# 1. CLIENTS Tab - Smart Search, Price History, Favorites
-# 2. PRICES Tab - All Customers Prices Database
-# 3. ETD SHEET Tab - Order Tracking Dashboard
-# 4. CEO SPECIAL PRICES Tab - VIP Client Rates
-# 5. PRICE INTELLIGENCE Tab - Cross-Client Comparison
-# 6. PRODUCT CATALOG Tab - Complete Product Database
-# 7. PALLETIZING Tab - Quick Pallet Calculator
-# 8. ALL PRICES Tab - General Prices Database
-# 9. CLIENT'S ORDERS Tab - Order Search from Clients_CoC
-# 10. SAMPLES REQUEST Tab - Request Product Samples (NEW!)
+# Version: 5.0 (Professional UI Redesign)
+# Last Updated: 05 April 2026
 # ============================================
 
 import streamlit as st
@@ -26,478 +14,340 @@ from datetime import datetime
 from io import BytesIO
 import re
 
-# Page config
+# ============================================
+# PAGE CONFIG
+# ============================================
 st.set_page_config(
-    page_title="Multi-Client Dashboard", 
+    page_title="Multi-Client Dashboard",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for main dashboard
+# ============================================
+# PROFESSIONAL CSS
+# ============================================
 st.markdown("""
 <style>
-    .main-header {
-        background: linear-gradient(135deg, #991B1B, #7F1D1D);
-        color: white;
-        padding: 2rem;
+    /* ===== GLOBAL STYLES ===== */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
+    .main {
+        padding: 0rem 1rem;
+    }
+    
+    /* Modern Scrollbar */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #f1f1f1;
         border-radius: 10px;
-        text-align: center;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 10px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+    
+    /* ===== HEADER STYLES ===== */
+    .dashboard-header {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        padding: 1.5rem 2rem;
+        border-radius: 16px;
         margin-bottom: 2rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     }
-    .cdc-header {
-        background: linear-gradient(135deg, #991B1B, #7F1D1D);
+    
+    .dashboard-title {
+        font-size: 1.75rem;
+        font-weight: 700;
         color: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin-bottom: 1rem;
-    }
-    .ceo-header {
-        background: linear-gradient(135deg, #D97706, #B45309);
-        color: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin-bottom: 1rem;
-    }
-    .intelligence-header {
-        background: linear-gradient(135deg, #059669, #047857);
-        color: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin-bottom: 1rem;
-    }
-    .visual-header {
-        background: linear-gradient(135deg, #0EA5E9, #0284C7);
-        color: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin-bottom: 1rem;
-    }
-    .palletizing-header {
-        background: linear-gradient(135deg, #7C3AED, #6D28D9);
-        color: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin-bottom: 1rem;
-    }
-    .price-matching-header {
-        background: linear-gradient(135deg, #DC2626, #B91C1C);
-        color: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin-bottom: 1rem;
-    }
-    .clients-orders-header {
-        background: linear-gradient(135deg, #0891B2, #0E7C8C);
-        color: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin-bottom: 1rem;
-    }
-    .price-card {
-        background: linear-gradient(135deg, #FEE2E2, #FECACA);
-        padding: 1.5rem;
-        border-radius: 8px;
-        border-left: 5px solid #991B1B;
-        margin: 0.5rem 0;
-        color: #1F2937;
-        font-weight: 500;
-    }
-    .special-price-card {
-        background: linear-gradient(135deg, #FEF3C7, #FDE68A);
-        padding: 1.5rem;
-        border-radius: 8px;
-        border-left: 5px solid #D97706;
-        margin: 0.5rem 0;
-        color: #1F2937;
-        font-weight: 500;
-        border: 2px solid #D97706;
-    }
-    .stat-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        border: 2px solid #991B1B;
-        text-align: center;
-        color: #1F2937;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .intelligence-stat-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        border: 2px solid #059669;
-        text-align: center;
-        color: #1F2937;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .pallet-stat-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        border: 2px solid #7C3AED;
-        text-align: center;
-        color: #1F2937;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .stat-number {
-        font-size: 2em;
-        font-weight: bold;
-        color: #991B1B;
         margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
     }
-    .intelligence-stat-number {
-        font-size: 2em;
-        font-weight: bold;
-        color: #059669;
-        margin: 0;
+    
+    .dashboard-subtitle {
+        color: #94a3b8;
+        margin: 0.5rem 0 0 0;
+        font-size: 0.9rem;
     }
-    .pallet-stat-number {
-        font-size: 2em;
-        font-weight: bold;
-        color: #7C3AED;
-        margin: 0;
-    }
-    .price-box {
-        background: #991B1B;
-        color: white;
-        padding: 1rem;
-        border-radius: 8px;
-        text-align: center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        margin: 0.5rem 0;
-    }
-    .intelligence-price-box {
-        background: #059669;
-        color: white;
-        padding: 1rem;
-        border-radius: 8px;
-        text-align: center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        margin: 0.5rem 0;
-    }
-    .special-price-box {
-        background: #D97706;
-        color: white;
-        padding: 1rem;
-        border-radius: 8px;
-        text-align: center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        margin: 0.5rem 0;
-        border: 2px solid #B45309;
-    }
-    .order-info {
-        background: #F3F4F6;
-        padding: 0.5rem;
-        border-radius: 5px;
-        margin: 0.25rem 0;
-        font-size: 0.8em;
-        color: #6B7280;
-    }
-    .ceo-section {
-        background: #FFFBEB;
-        padding: 1.5rem;
-        border-radius: 10px;
-        border: 2px solid #D97706;
-        margin: 1rem 0;
-    }
-    .intelligence-section {
-        background: #ECFDF5;
-        padding: 1.5rem;
-        border-radius: 10px;
-        border: 2px solid #059669;
-        margin: 1rem 0;
-    }
-    .palletizing-section {
-        background: #FAF5FF;
-        padding: 1.5rem;
-        border-radius: 10px;
-        border: 2px solid #7C3AED;
-        margin: 1rem 0;
-    }
-    .price-matching-section {
-        background: #FEF2F2;
-        padding: 1.5rem;
-        border-radius: 10px;
-        border: 2px solid #DC2626;
-        margin: 1rem 0;
-    }
-    .login-container {
-        max-width: 400px;
-        margin: 100px auto;
-        padding: 2rem;
+    
+    /* ===== CARD STYLES ===== */
+    .modern-card {
         background: white;
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        border: 2px solid #991B1B;
-    }
-    .orders-header {
-        background: linear-gradient(135deg, #7C3AED, #6D28D9);
-        color: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin-bottom: 1rem;
-    }
-    .product-catalog-header {
-        background: linear-gradient(135deg, #0EA5E9, #0284C7);
-        color: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin-bottom: 1rem;
-    }
-    .new-orders-header {
-        background: linear-gradient(135deg, #DC2626, #B91C1C);
-        color: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin-bottom: 1rem;
-    }
-    .prices-header {
-        background: linear-gradient(135deg, #0EA5E9, #0284C7);
-        color: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin-bottom: 1rem;
-    }
-    .search-suggestion {
-        padding: 0.5rem 1rem;
-        cursor: pointer;
-        border-bottom: 1px solid #E5E7EB;
-    }
-    .search-suggestion:hover {
-        background-color: #F3F4F6;
-    }
-    .history-item {
-        padding: 0.5rem;
-        margin: 0.25rem 0;
-        background: #F9FAFB;
-        border-radius: 6px;
-        cursor: pointer;
-    }
-    .history-item:hover {
-        background: #F3F4F6;
-    }
-    .favorite-badge {
-        background: linear-gradient(135deg, #FEF3C7, #FDE68A);
-        color: #92400E;
-        padding: 0.25rem 0.75rem;
         border-radius: 12px;
+        padding: 1.25rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+        transition: all 0.2s ease;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 1rem;
+    }
+    
+    .modern-card:hover {
+        box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+        transform: translateY(-2px);
+    }
+    
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 16px;
+        padding: 1.25rem;
+        color: white;
+        text-align: center;
+        transition: transform 0.2s;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-3px);
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0.5rem 0;
+    }
+    
+    .stat-label {
+        font-size: 0.85rem;
+        opacity: 0.9;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    /* ===== SECTION HEADERS ===== */
+    .section-header {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 1.5rem 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .subsection-header {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #475569;
+        margin: 1rem 0 0.75rem 0;
+    }
+    
+    /* ===== PRICE CARDS ===== */
+    .price-card-primary {
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+        border-left: 4px solid #dc2626;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .price-card-secondary {
+        background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        border-left: 4px solid #f59e0b;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .price-card-info {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border-left: 4px solid #3b82f6;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .price-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1e293b;
+    }
+    
+    /* ===== TABLE STYLES ===== */
+    .dataframe-container {
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+    }
+    
+    /* ===== BADGES ===== */
+    .badge-success {
+        background: #d1fae5;
+        color: #065f46;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
         font-size: 0.75rem;
         font-weight: 600;
         display: inline-flex;
         align-items: center;
-        gap: 4px;
-        border: 1px solid #FBBF24;
-    }
-    .time-ago {
-        font-size: 0.75rem;
-        color: #6B7280;
-        margin-left: 0.5rem;
-    }
-    .sidebar-tab {
-        padding: 0.75rem 1rem;
-        margin: 0.25rem 0;
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        font-weight: 500;
-        border-left: 4px solid transparent;
-    }
-    .sidebar-tab:hover {
-        background-color: #F3F4F6;
-    }
-    .sidebar-tab.active {
-        background-color: #991B1B;
-        color: white;
-        border-left: 4px solid #FEF3C7;
-    }
-    .top-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 1rem 0;
-        margin-bottom: 1.5rem;
-        border-bottom: 2px solid #E5E7EB;
-    }
-    .user-info {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-    .header-icons {
-        display: flex;
-        gap: 0.5rem;
-        align-items: center;
-    }
-    .icon-button {
-        padding: 0.5rem;
-        border-radius: 6px;
-        background: #F3F4F6;
-        border: none;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-    .icon-button:hover {
-        background: #E5E7EB;
-    }
-    .favorites-modal {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: white;
-        padding: 2rem;
-        border-radius: 12px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-        z-index: 1000;
-        min-width: 400px;
-        max-height: 70vh;
-        overflow-y: auto;
-    }
-    .modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.5);
-        z-index: 999;
-    }
-    .validation-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 8px;
-        border: 2px solid #DC2626;
-        margin: 1rem 0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .match-badge {
-        background: #D1FAE5;
-        color: #065F46;
-        padding: 0.25rem 0.75rem;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-    .mismatch-badge {
-        background: #FEF3C7;
-        color: #92400E;
-        padding: 0.25rem 0.75rem;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-    .no-history-badge {
-        background: #FEE2E2;
-        color: #991B1B;
-        padding: 0.25rem 0.75rem;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 600;
-    }
-    .decision-selector {
-        background: #F0F9FF;
-        padding: 1rem;
-        border-radius: 8px;
-        border: 1px solid #0EA5E9;
-    }
-    .item-analysis-header {
-        background: linear-gradient(135deg, #1E40AF, #1E3A8A);
-        color: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin-bottom: 1rem;
-    }
-    .item-stat-card {
-        background: white;
-        padding: 1rem;
-        border-radius: 10px;
-        border: 2px solid #1E40AF;
-        text-align: center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .item-stat-number {
-        font-size: 1.8em;
-        font-weight: bold;
-        color: #1E40AF;
-        margin: 0;
-    }
-    .comparison-card {
-        background: linear-gradient(135deg, #F0F9FF, #E0F2FE);
-        padding: 1.5rem;
-        border-radius: 10px;
-        border: 2px solid #0EA5E9;
-        margin: 1rem 0;
-    }
-    .all-prices-header {
-        background: linear-gradient(135deg, #7C3AED, #6D28D9);
-        color: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        margin-bottom: 1rem;
-    }
-    .all-prices-card {
-        background: linear-gradient(135deg, #F0F9FF, #E0F2FE);
-        padding: 1.5rem;
-        border-radius: 10px;
-        border: 2px solid #7C3AED;
-        margin: 1rem 0;
-    }
-    .all-prices-stat-card {
-        background: white;
-        padding: 1rem;
-        border-radius: 10px;
-        border: 2px solid #7C3AED;
-        text-align: center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .all-prices-stat-number {
-        font-size: 1.8em;
-        font-weight: bold;
-        color: #7C3AED;
-        margin: 0;
+        gap: 0.25rem;
     }
     
-    /* Print Styles for Samples Request */
+    .badge-warning {
+        background: #fed7aa;
+        color: #9a3412;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .badge-danger {
+        background: #fee2e2;
+        color: #991b1b;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .badge-info {
+        background: #dbeafe;
+        color: #1e40af;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    /* ===== BUTTONS ===== */
+    .stButton > button {
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    /* ===== EXPANDER ===== */
+    .streamlit-expanderHeader {
+        background: #f8fafc;
+        border-radius: 8px;
+        font-weight: 500;
+        border: 1px solid #e2e8f0;
+    }
+    
+    /* ===== METRICS ===== */
+    [data-testid="stMetricValue"] {
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+    
+    /* ===== TABS ===== */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 1rem;
+        background: #f8fafc;
+        padding: 0.5rem;
+        border-radius: 12px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background: white;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    /* ===== LOGIN CONTAINER ===== */
+    .login-wrapper {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .login-card {
+        background: white;
+        border-radius: 24px;
+        padding: 2.5rem;
+        width: 100%;
+        max-width: 420px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    }
+    
+    .login-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-align: center;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* ===== SIDEBAR ===== */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+        border-right: 1px solid #e2e8f0;
+    }
+    
+    /* ===== FOOTER ===== */
+    .dashboard-footer {
+        text-align: center;
+        padding: 1.5rem;
+        color: #94a3b8;
+        font-size: 0.8rem;
+        border-top: 1px solid #e2e8f0;
+        margin-top: 2rem;
+    }
+    
+    /* ===== ANNOUNCEMENTS ===== */
+    .announcement-item {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        padding: 0.75rem;
+        border-radius: 10px;
+        border-left: 3px solid #0ea5e9;
+        margin: 0.5rem 0;
+        font-size: 0.8rem;
+        color: #0c4a6e;
+    }
+    
+    /* ===== DIVIDERS ===== */
+    .custom-divider {
+        height: 1px;
+        background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+        margin: 1rem 0;
+    }
+    
+    /* Print Styles */
     @media print {
-        .stSidebar, 
-        .st-emotion-cache-1v0mbdj,
-        .st-emotion-cache-6qob1r,
-        header,
-        footer,
-        .stButton button,
-        .st-emotion-cache-1kyxreq,
-        .st-emotion-cache-ocqkz7 {
+        .stSidebar, header, footer, .stButton button {
             display: none !important;
         }
-        
-        .main-header, 
-        .clients-orders-header,
-        .st-emotion-cache-1r4qj8v {
-            print-color-adjust: exact;
-            -webkit-print-color-adjust: exact;
-        }
-        
-        .price-box, .special-price-card, .stat-card {
+        .modern-card, .stat-card {
             break-inside: avoid;
-            page-break-inside: avoid;
             print-color-adjust: exact;
-            -webkit-print-color-adjust: exact;
-        }
-        
-        @page {
-            margin: 2cm;
-            size: A4;
-        }
-        
-        table, .stDataFrame {
-            break-inside: avoid;
-            page-break-inside: avoid;
         }
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Configuration
+# ============================================
+# CONFIGURATION
+# ============================================
 API_KEY = "AIzaSyA3P-ZpLjDdVtGB82_1kaWuO7lNbKDj9HU"
 CDC_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"
 
@@ -562,7 +412,7 @@ PRICES_SHEET = "Prices"
 GENERAL_PRICES_SHEET = "General_prices"
 
 # ============================================
-# FEATURE 1: SMART SEARCH WITH AI SUGGESTIONS
+# HELPER FUNCTIONS (Preserved from original)
 # ============================================
 
 def get_smart_suggestions(search_term, supplier_data, search_type="all"):
@@ -577,16 +427,13 @@ def get_smart_suggestions(search_term, supplier_data, search_type="all"):
         score = 0
         match_type = ""
         
-        # Article number exact match (highest priority)
         if search_lower == article_num.lower():
             score = 100
             match_type = "exact_article"
-        # Article number partial match
         elif search_lower in article_num.lower():
             score = 80
             match_type = "partial_article"
         
-        # Product name matching
         for name in article_data.get('names', []):
             name_lower = str(name).lower()
             if search_lower == name_lower:
@@ -596,14 +443,12 @@ def get_smart_suggestions(search_term, supplier_data, search_type="all"):
                 score = max(score, 70)
                 match_type = "partial_product"
         
-        # HS Code matching
         for order in article_data.get('orders', []):
             hs_code = str(order.get('hs_code', '')).lower()
             if search_lower in hs_code:
                 score = max(score, 60)
                 match_type = "hs_code"
         
-        # Add suggestion if score is above threshold
         if score >= 50:
             best_name = ""
             if article_data.get('names'):
@@ -624,10 +469,7 @@ def get_smart_suggestions(search_term, supplier_data, search_type="all"):
                 "has_prices": len(article_data.get('prices', [])) > 0
             })
     
-    # Sort by score (highest first) and remove duplicates
     suggestions.sort(key=lambda x: x["score"], reverse=True)
-    
-    # Remove duplicates based on article number
     unique_suggestions = []
     seen_articles = set()
     for sugg in suggestions:
@@ -636,10 +478,6 @@ def get_smart_suggestions(search_term, supplier_data, search_type="all"):
             seen_articles.add(sugg["article"])
     
     return unique_suggestions[:10]
-
-# ============================================
-# FEATURE 2: SEARCH HISTORY
-# ============================================
 
 def initialize_search_history():
     """Initialize search history in session state"""
@@ -652,7 +490,6 @@ def add_to_search_history(search_term, client, supplier, article_num=None):
     """Add a search to the history"""
     initialize_search_history()
     
-    # Remove duplicates (keep only latest)
     st.session_state.search_history = [
         h for h in st.session_state.search_history 
         if not (h.get('search_term') == search_term and 
@@ -660,7 +497,6 @@ def add_to_search_history(search_term, client, supplier, article_num=None):
                 h.get('supplier') == supplier)
     ]
     
-    # Add new entry
     history_entry = {
         'timestamp': datetime.now(),
         'search_term': search_term,
@@ -672,7 +508,6 @@ def add_to_search_history(search_term, client, supplier, article_num=None):
     
     st.session_state.search_history.insert(0, history_entry)
     
-    # Keep only last N items
     if len(st.session_state.search_history) > st.session_state.max_history_items:
         st.session_state.search_history = st.session_state.search_history[:st.session_state.max_history_items]
 
@@ -697,57 +532,6 @@ def format_time_ago(timestamp):
     else:
         return "Just now"
 
-def display_search_history_sidebar():
-    """Display search history in sidebar"""
-    if not st.session_state.get('search_history'):
-        return
-    
-    st.sidebar.markdown("### 🔍 Recent Searches")
-    
-    for i, history_item in enumerate(st.session_state.search_history[:5]):
-        time_ago = format_time_ago(history_item['timestamp'])
-        
-        display_text = f"{history_item['search_term']}"
-        if history_item.get('article_num'):
-            display_text += f" → {history_item['article_num']}"
-        
-        is_favorite = False
-        if 'favorite_searches' in st.session_state:
-            for fav in st.session_state.favorite_searches:
-                if (fav.get('search_term') == history_item['search_term'] and 
-                    fav.get('client') == history_item['client'] and 
-                    fav.get('supplier') == history_item['supplier']):
-                    is_favorite = True
-                    break
-        
-        col1, col2 = st.sidebar.columns([4, 1])
-        with col1:
-            if st.sidebar.button(
-                display_text, 
-                key=f"hist_sidebar_{i}",
-                use_container_width=True,
-                help=f"{history_item['client']} • {history_item['supplier']} • {time_ago}"
-            ):
-                st.session_state[f"{history_item['client']}_article"] = history_item['search_term']
-                st.session_state[f"{history_item['client']}_supplier"] = history_item['supplier']
-                st.session_state.search_results = {
-                    "article": history_item.get('article_num', history_item['search_term']),
-                    "supplier": history_item['supplier'],
-                    "client": history_item['client']
-                }
-                st.rerun()
-        with col2:
-            if is_favorite:
-                st.sidebar.markdown("⭐")
-    
-    if len(st.session_state.search_history) > 5:
-        if st.sidebar.button("View All History", use_container_width=True):
-            st.session_state.show_full_history = True
-
-# ============================================
-# FEATURE 3: SAVED SEARCHES/FAVORITES
-# ============================================
-
 def initialize_favorites():
     """Initialize favorites in session state"""
     if 'favorite_searches' not in st.session_state:
@@ -761,14 +545,12 @@ def save_search_to_favorites(search_term, client, supplier, article_num=None):
     """Save a search to favorites"""
     initialize_favorites()
     
-    # Check if already favorited
     for fav in st.session_state.favorite_searches:
         if (fav.get('search_term') == search_term and 
             fav.get('client') == client and 
             fav.get('supplier') == supplier):
             return False
     
-    # Add to favorites
     favorite_entry = {
         'timestamp': datetime.now(),
         'search_term': search_term,
@@ -805,13 +587,11 @@ def is_search_favorited(search_term, client, supplier):
 def display_favorites_modal():
     """Display favorites in a modal"""
     if st.session_state.get('show_favorites_modal'):
-        # Create modal overlay
         st.markdown('<div class="modal-overlay"></div>', unsafe_allow_html=True)
         
-        # Create modal content
         st.markdown("""
-        <div class="favorites-modal">
-    <h2 style="margin-top: 0; color: #991B1B;">&#9733; Favorite Searches</h2>
+        <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); z-index: 1000; min-width: 400px; max-height: 70vh; overflow-y: auto;">
+            <h2 style="margin-top: 0; color: #1e293b;">⭐ Favorite Searches</h2>
         """, unsafe_allow_html=True)
         
         if not st.session_state.get('favorite_searches'):
@@ -856,16 +636,12 @@ def display_favorites_modal():
                 st.session_state.show_favorites_modal = False
                 st.rerun()
         with col2:
-            if st.button("Clear All Favorites", use_container_width=True, type="secondary"):
+            if st.button("Clear All Favorites", use_container_width=True):
                 st.session_state.favorite_searches = []
                 st.success("All favorites cleared!")
                 st.rerun()
         
         st.markdown('</div>', unsafe_allow_html=True)
-
-# ============================================
-# CACHED FUNCTIONS
-# ============================================
 
 @st.cache_data(ttl=300)
 def load_sheet_data(sheet_name, start_row=0):
@@ -881,25 +657,18 @@ def load_sheet_data(sheet_name, start_row=0):
             values = data.get('values', [])
             
             if len(values) > start_row:
-                # Get headers from first row
                 headers = values[start_row]
                 headers_count = len(headers)
-                
-                # Get data rows
                 rows = values[start_row + 1:] if len(values) > start_row + 1 else []
                 
-                # FORCE all rows to have exactly headers_count columns
                 padded_rows = []
                 for row in rows:
-                    # If row has fewer columns, pad with empty strings
                     if len(row) < headers_count:
                         row = row + [''] * (headers_count - len(row))
-                    # If row has more columns, trim to headers_count
                     elif len(row) > headers_count:
                         row = row[:headers_count]
                     padded_rows.append(row)
                 
-                # Create DataFrame
                 df = pd.DataFrame(padded_rows, columns=headers)
                 df = df.replace('', pd.NA)
                 return df
@@ -923,32 +692,27 @@ def get_all_clients_from_master():
 def get_google_sheets_data(client="CDC"):
     """Load client data from Clients_CoC master sheet"""
     try:
-        # Load master sheet
         master_df = load_sheet_data("Clients_CoC")
         
         if master_df.empty:
             st.warning("⚠️ Clients_CoC sheet is empty or not found")
             return {"Backaldrin": {}, "Bateel": {}}
         
-        # Filter by client
         client_df = master_df[master_df['Client'] == client].copy()
         
         if client_df.empty:
             st.warning(f"⚠️ No data found for client: {client}")
             return {"Backaldrin": {}, "Bateel": {}}
         
-        # Process Backaldrin data
         backaldrin_df = client_df[client_df['Supplier'] == 'Backaldrin']
         bateel_df = client_df[client_df['Supplier'] == 'Bateel']
         
         def convert_df_to_dict(df):
-            """Convert dataframe to article dictionary structure"""
             result = {}
             
             if df.empty:
                 return result
             
-            # Column names
             article_col = 'Article_Number'
             product_col = 'Product_Name'
             price_col = 'Price'
@@ -963,7 +727,6 @@ def get_google_sheets_data(client="CDC"):
             status_col = 'Status'
             notes_col = 'Notes'
             
-            # Check if required columns exist
             if article_col not in df.columns:
                 st.error(f"❌ Missing column: {article_col}. Available: {list(df.columns)}")
                 return result
@@ -980,12 +743,10 @@ def get_google_sheets_data(client="CDC"):
                         'orders': []
                     }
                 
-                # Product name
                 product_name = str(row.get(product_col, '')).strip()
                 if product_name and product_name != 'nan' and product_name not in result[article]['names']:
                     result[article]['names'].append(product_name)
                 
-                # Price
                 price_str = str(row.get(price_col, '')).strip()
                 if price_str and price_str != 'nan':
                     try:
@@ -994,7 +755,6 @@ def get_google_sheets_data(client="CDC"):
                     except:
                         pass
                 
-                # Order details
                 order_details = {
                     'order_no': str(row.get(order_col, '')).strip() if order_col in df else '',
                     'date': str(row.get(date_col, '')).strip() if date_col in df else '',
@@ -1023,10 +783,9 @@ def get_google_sheets_data(client="CDC"):
         st.error(f"Error loading data for {client}: {str(e)}")
         return {"Backaldrin": {}, "Bateel": {}}
     
-
 @st.cache_data(ttl=600)
 def load_product_catalog():
-    """Load product catalog from Google Sheets - FLEXIBLE VERSION - CACHED"""
+    """Load product catalog from Google Sheets - CACHED"""
     try:
         sheet_name = PRODUCT_CATALOG_SHEET
         catalog_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
@@ -1104,7 +863,7 @@ def load_prices_data():
 
 @st.cache_data(ttl=600)
 def load_general_prices_data():
-    """NEW: Load General_prices data from Google Sheets - CACHED"""
+    """Load General_prices data from Google Sheets - CACHED"""
     try:
         prices_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{GENERAL_PRICES_SHEET}!A:Z?key={API_KEY}"
         response = requests.get(prices_url)
@@ -1114,28 +873,19 @@ def load_general_prices_data():
             values = data.get('values', [])
             
             if values and len(values) > 0:
-                # Get headers (first row)
                 headers = values[0]
-                
-                # Get all data rows (skip header)
                 rows = values[1:] if len(values) > 1 else []
                 
-                # Create DataFrame
                 df = pd.DataFrame(rows, columns=headers)
-                
-                # Clean up column names (remove extra spaces)
                 df.columns = [str(col).strip() for col in df.columns]
                 
-                # Convert numeric columns
                 if 'NEW EXW' in df.columns:
                     df['NEW EXW'] = pd.to_numeric(df['NEW EXW'], errors='coerce')
                 
                 if 'UNT WGT' in df.columns:
                     df['UNT WGT'] = pd.to_numeric(df['UNT WGT'], errors='coerce')
                 
-                # Fill empty strings with NaN
                 df = df.replace('', pd.NA)
-                
                 return df
                 
         return pd.DataFrame()
@@ -1236,74 +986,90 @@ def check_login():
     if 'user_clients' not in st.session_state:
         st.session_state.user_clients = []
     if 'active_tab' not in st.session_state:
-        st.session_state.active_tab = "CLIENTS"
+        st.session_state.active_tab = "🏢 CLIENTS"
     
     return st.session_state.logged_in
 
 def login_page():
     """Login page"""
     st.markdown("""
-    <div class="login-container">
-        <h2 style="text-align: center; color: #991B1B;">🔐 Multi-Client Dashboard</h2>
-        <p style="text-align: center; color: #6B7280;">Please login to continue</p>
+    <div class="login-wrapper">
+        <div class="login-card">
+            <div class="login-title">📊 Multi-Client Dashboard</div>
+            <p style="text-align: center; color: #64748b; margin-bottom: 1.5rem;">Sign in to access your dashboard</p>
     """, unsafe_allow_html=True)
     
     with st.form("login_form"):
-        username = st.text_input("👤 Username")
-        password = st.text_input("🔒 Password", type="password")
-        submit = st.form_submit_button("🚀 Login", use_container_width=True)
+        username = st.text_input("Username", placeholder="Enter your username")
+        password = st.text_input("Password", type="password", placeholder="Enter your password")
+        submit = st.form_submit_button("Sign In", use_container_width=True)
         
         if submit:
             if username in USERS and USERS[username]["password"] == password:
                 st.session_state.logged_in = True
                 st.session_state.username = username
                 st.session_state.user_clients = USERS[username]["clients"]
-                st.success(f"✅ Welcome back, {username}!")
+                st.success(f"Welcome back, {username}!")
                 st.rerun()
             else:
-                st.error("❌ Invalid username or password")
+                st.error("Invalid username or password")
     
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div></div>', unsafe_allow_html=True)
 
 def logout_button():
-    """Logout button in header"""
-    if st.button("🚪 Logout", key="logout_header"):
+    """Logout button"""
+    if st.button("Logout", key="logout_header", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.username = ""
         st.session_state.user_clients = []
         st.rerun()
 
+# ============================================
+# MAIN DASHBOARD
+# ============================================
 def main_dashboard():
-    """Main dashboard with tabs in sidebar"""
+    """Main dashboard with professional UI"""
     
-    # Top Header
-    col1, col2 = st.columns([3, 1])
+    # Header
+    st.markdown(f"""
+    <div class="dashboard-header">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <div class="dashboard-title">
+                    <span>📊</span> Multi-Client Command Center
+                </div>
+                <div class="dashboard-subtitle">
+                    Real-time pricing intelligence • Order tracking • Client analytics
+                </div>
+            </div>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <span class="badge-info">👤 {st.session_state.username}</span>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Action Buttons Row
+    col1, col2, col3, col4 = st.columns([1, 1, 1, 3])
     with col1:
-        st.markdown(f"### 👤 Welcome, {st.session_state.username}")
+        if st.button("⭐ Favorites", use_container_width=True):
+            st.session_state.show_favorites_modal = True
     with col2:
-        # Header icons
-        icon_col1, icon_col2, icon_col3 = st.columns(3)
-        with icon_col1:
-            if st.button("⭐", key="favorites_icon", help="Favorites"):
-                st.session_state.show_favorites_modal = True
-        with icon_col2:
-            if st.button("🔄", key="refresh_icon", help="Refresh"):
-                st.cache_data.clear()
-                st.rerun()
-        with icon_col3:
-            if st.button("🗑️", key="clear_cache_icon", help="Clear Cache"):
-                st.cache_data.clear()
-                st.success("✅ Cache cleared!")
-                st.rerun()
+        if st.button("🔄 Refresh", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
+    with col3:
+        if st.button("🗑️ Clear Cache", use_container_width=True):
+            st.cache_data.clear()
+            st.success("Cache cleared!")
+            st.rerun()
     
-    # Favorites Modal
     display_favorites_modal()
     
-    # Sidebar with tabs
+    # Sidebar Navigation
     with st.sidebar:
         st.markdown("### 📋 Navigation")
         
-        # Define tabs
         tabs = [
             "🏢 CLIENTS",
             "💰 PRICES", 
@@ -1317,12 +1083,9 @@ def main_dashboard():
             "🎁 SAMPLES REQUEST"
         ]
         
-        # Display tabs as clickable buttons
         for tab in tabs:
-            is_active = st.session_state.get('active_tab', 'CLIENTS') == tab
-            button_label = tab
-            if is_active:
-                button_label = f"▶️ {tab}"
+            is_active = st.session_state.get('active_tab', '🏢 CLIENTS') == tab
+            button_label = f"▶️ {tab}" if is_active else tab
             
             if st.button(
                 button_label,
@@ -1335,54 +1098,34 @@ def main_dashboard():
         
         st.markdown("---")
         
-        # General Announcements
-        st.markdown("### 📢 Announcements")
-        
+        # Announcements
+        st.markdown("### 📢 Updates")
         announcements = [
-            "🎁 **NEW**: Samples Request tab added!",
+            "🎁 Samples Request tab added!",
             "🚨 ETD is officially working!",
-            "📦 Working on palletizing",
-            "⭐ **SPECIAL OFFER**",
-            "🔔 **REMINDER**: Check ETD regularly",
-            "📊 **NEW FEATURE**: HS Code search available",
-            "🤖 Smart Search with AI suggestions!",
             "⭐ Save favorite searches!",
-            "📊 All Prices tab added!",
-            "📋 Client's Orders tab added!"
+            "📊 All Prices tab added!"
         ]
         
         for announcement in announcements:
-            st.markdown(f"""
-            <div style="
-                background: linear-gradient(135deg, #F0F9FF, #E0F2FE);
-                padding: 0.8rem;
-                border-radius: 8px;
-                border-left: 4px solid #0EA5E9;
-                margin: 0.5rem 0;
-                font-size: 0.9em;
-                color: #1E293B;
-            ">
-                {announcement}
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f'<div class="announcement-item">{announcement}</div>', unsafe_allow_html=True)
         
-        # Search History
+        # Recent Searches
         if st.session_state.get('search_history'):
             st.markdown("---")
-            st.markdown("### 🔍 Recent Searches")
+            st.markdown("### 🔍 Recent")
             
             for i, history_item in enumerate(st.session_state.search_history[:3]):
                 time_ago = format_time_ago(history_item['timestamp'])
-                
                 display_text = f"{history_item['search_term']}"
                 if history_item.get('article_num'):
                     display_text += f" → {history_item['article_num']}"
                 
                 if st.button(
-                    f"{display_text[:30]}...",
+                    f"{display_text[:35]}",
                     key=f"hist_{i}",
                     use_container_width=True,
-                    help=f"{history_item['client']} • {history_item['supplier']} • {time_ago}"
+                    help=f"{history_item['client']} • {time_ago}"
                 ):
                     st.session_state[f"{history_item['client']}_article"] = history_item['search_term']
                     st.session_state[f"{history_item['client']}_supplier"] = history_item['supplier']
@@ -1391,14 +1134,13 @@ def main_dashboard():
                         "supplier": history_item['supplier'],
                         "client": history_item['client']
                     }
-                    st.session_state.active_tab = "CLIENTS"
+                    st.session_state.active_tab = "🏢 CLIENTS"
                     st.rerun()
     
-    # Main content area based on active tab - REMOVED the Backaldrin header box
-    # Only show the tab name as a simple header
-    st.markdown(f"## {st.session_state.active_tab}")
+    # Main Content
+    st.markdown(f"<div class='section-header'>{st.session_state.active_tab}</div>", unsafe_allow_html=True)
     
-    # Display the active tab content
+    # Tab Content
     if st.session_state.active_tab == "🏢 CLIENTS":
         clients_tab()
     elif st.session_state.active_tab == "💰 PRICES":
@@ -1420,136 +1162,64 @@ def main_dashboard():
     elif st.session_state.active_tab == "🎁 SAMPLES REQUEST":
         samples_request_tab()
     
-    # Logout button at bottom
-    st.markdown("---")
-    logout_button()
-
-# ============================================
-# SAMPLES REQUEST TAB FUNCTION
-# ============================================
-
-def samples_request_tab():
-    """
-    Samples Request Tab - Allows users to submit sample requests
-    Includes form with request details and multiple sample items
-    """
-    st.markdown("""
-    <div class="clients-orders-header" style="background: linear-gradient(135deg, #DC2626, #B91C1C);">
-        <h2 style="margin:0;">🎁 Samples Request</h2>
-        <p style="margin:0; opacity:0.9;">Request Product Samples • Fill out the form below</p>
+    # Footer
+    st.markdown(f"""
+    <div class="dashboard-footer">
+        Multi-Client Dashboard v5.0 | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
     </div>
     """, unsafe_allow_html=True)
     
-    # Initialize session state for sample items
+    logout_button()
+
+# ============================================
+# SAMPLES REQUEST TAB
+# ============================================
+
+def samples_request_tab():
+    """Samples Request Tab"""
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #dc2626, #b91c1c); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
+        <h2 style="margin:0; color: white;">🎁 Samples Request</h2>
+        <p style="margin:0; opacity:0.9; color: white;">Request product samples • Fill out the form below</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
     if 'sample_items' not in st.session_state:
         st.session_state.sample_items = []
-    
     if 'sample_form_submitted' not in st.session_state:
         st.session_state.sample_form_submitted = False
     
-    # Load product catalog for suggestions
     catalog_data = load_product_catalog()
     
-    # Create two columns for the form layout
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("📋 Request Information")
+        st.markdown("<div class='subsection-header'>📋 Request Information</div>", unsafe_allow_html=True)
         
-        with st.container():
-            # Request Date
-            request_date = st.date_input(
-                "📅 Request Date",
-                value=datetime.now().date(),
-                key="sample_request_date"
-            )
-            
-            # Samples ETA
-            samples_eta = st.date_input(
-                "⏰ Samples ETA",
-                value=datetime.now().date(),
-                key="sample_eta"
-            )
-            
-            # Requested By
-            requested_by = st.text_input(
-                "👤 Requested By",
-                placeholder="Enter your full name",
-                key="sample_requested_by"
-            )
-            
-            # Department
-            department = st.selectbox(
-                "🏢 Department",
-                options=["Sales", "Marketing", "R&D", "Production", "Quality Control", "Procurement", "Other"],
-                key="sample_department"
-            )
-            
-            # Custom department if "Other" is selected
-            if department == "Other":
-                department = st.text_input(
-                    "Please specify department",
-                    placeholder="Enter department name",
-                    key="sample_department_other"
-                )
+        request_date = st.date_input("Request Date", value=datetime.now().date(), key="sample_request_date")
+        samples_eta = st.date_input("Samples ETA", value=datetime.now().date(), key="sample_eta")
+        requested_by = st.text_input("Requested By", placeholder="Enter your full name", key="sample_requested_by")
+        department = st.selectbox("Department", ["Sales", "Marketing", "R&D", "Production", "Quality Control", "Procurement", "Other"], key="sample_department")
+        if department == "Other":
+            department = st.text_input("Please specify department", placeholder="Enter department name", key="sample_department_other")
     
     with col2:
-        st.subheader("📍 Delivery Information")
+        st.markdown("<div class='subsection-header'>📍 Delivery Information</div>", unsafe_allow_html=True)
         
-        with st.container():
-            # Requester Title
-            requester_title = st.selectbox(
-                "💼 Requester Title",
-                options=["Manager", "Supervisor", "Specialist", "Coordinator", "Director", "Executive", "Other"],
-                key="sample_requester_title"
-            )
-            
-            if requester_title == "Other":
-                requester_title = st.text_input(
-                    "Please specify title",
-                    placeholder="Enter your title",
-                    key="sample_title_other"
-                )
-            
-            # Going to (Recipient Name)
-            going_to = st.text_input(
-                "👥 Going To (Recipient Name)",
-                placeholder="Enter recipient name",
-                key="sample_going_to"
-            )
-            
-            # Address
-            address = st.text_area(
-                "📍 Address",
-                placeholder="Enter complete delivery address",
-                height=100,
-                key="sample_address"
-            )
-            
-            # Delivery method
-            delivery_method = st.selectbox(
-                "🚚 Delivery Method",
-                options=["Courier", "Pickup", "Mail", "Express Delivery", "Freight", "Other"],
-                key="sample_delivery_method"
-            )
-            
-            if delivery_method == "Other":
-                delivery_method = st.text_input(
-                    "Please specify delivery method",
-                    placeholder="Enter delivery method",
-                    key="sample_delivery_other"
-                )
+        requester_title = st.selectbox("Requester Title", ["Manager", "Supervisor", "Specialist", "Coordinator", "Director", "Executive", "Other"], key="sample_requester_title")
+        if requester_title == "Other":
+            requester_title = st.text_input("Please specify title", placeholder="Enter your title", key="sample_title_other")
+        
+        going_to = st.text_input("Recipient Name", placeholder="Enter recipient name", key="sample_going_to")
+        address = st.text_area("Address", placeholder="Enter complete delivery address", height=80, key="sample_address")
+        delivery_method = st.selectbox("Delivery Method", ["Courier", "Pickup", "Mail", "Express Delivery", "Freight", "Other"], key="sample_delivery_method")
+        if delivery_method == "Other":
+            delivery_method = st.text_input("Please specify delivery method", placeholder="Enter delivery method", key="sample_delivery_other")
     
-    # ============================================
-    # SAMPLES ITEMS SECTION
-    # ============================================
     st.markdown("---")
-    st.subheader("📦 Sample Items")
-    st.info("Add the products you want to request as samples")
+    st.markdown("<div class='subsection-header'>📦 Sample Items</div>", unsafe_allow_html=True)
     
-    # Function to add a sample item
     def add_sample_item():
-        """Add current sample item to the list"""
         article_num = st.session_state.get('sample_article', '')
         product_name = st.session_state.get('sample_product', '')
         item_type = st.session_state.get('sample_item_type', '')
@@ -1568,7 +1238,6 @@ def samples_request_tab():
                 'quantity': quantity,
                 'logo_requirement': logo_requirement
             })
-            # Clear the input fields after adding
             st.session_state.sample_article = ''
             st.session_state.sample_product = ''
             st.session_state.sample_item_type = ''
@@ -1576,434 +1245,175 @@ def samples_request_tab():
             st.session_state.sample_unit_weight = 0.0
             st.session_state.sample_quantity = 1
             st.session_state.sample_logo = 'No'
-            st.success(f"✅ Added: {article_num} - {product_name}")
+            st.success(f"Added: {article_num} - {product_name}")
         else:
-            st.error("❌ Please enter at least Article Number and Product Name")
+            st.error("Please enter at least Article Number and Product Name")
     
-    # Sample item input form
     with st.form(key="sample_item_form", clear_on_submit=False):
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            # Article Number with autocomplete suggestions
-            article_input = st.text_input(
-                "🔢 Article Number *",
-                placeholder="e.g., 1-366, 1-367...",
-                key="sample_article"
-            )
-            
-            # Show suggestions if catalog data is available
+            article_input = st.text_input("Article Number *", placeholder="e.g., 1-366, 1-367...", key="sample_article")
             if article_input and len(article_input) >= 2 and not catalog_data.empty:
                 matching_articles = catalog_data[
                     catalog_data['Article_Number'].astype(str).str.contains(article_input, case=False, na=False)
                 ].head(5)
-                
                 if not matching_articles.empty:
-                    st.caption("💡 Suggestions:")
+                    st.caption("Suggestions:")
                     for _, row in matching_articles.iterrows():
                         if st.button(f"📦 {row['Article_Number']}", key=f"suggest_{row['Article_Number']}"):
                             st.session_state.sample_article = row['Article_Number']
                             st.session_state.sample_product = row.get('Product_Name', '')
                             st.rerun()
             
-            # Product Name
-            product_name = st.text_input(
-                "📝 Product Name *",
-                placeholder="Enter product name",
-                key="sample_product"
-            )
-            
-            # Item Type
-            item_type = st.selectbox(
-                "🏷️ Item Type",
-                options=["Raw Material", "Packaging", "Finished Good", "Semi-Finished", "Auxiliary Material", "Other"],
-                key="sample_item_type"
-            )
+            product_name = st.text_input("Product Name *", placeholder="Enter product name", key="sample_product")
+            item_type = st.selectbox("Item Type", ["Raw Material", "Packaging", "Finished Good", "Semi-Finished", "Auxiliary Material", "Other"], key="sample_item_type")
         
         with col2:
-            # Pack Type
-            pack_type = st.selectbox(
-                "📦 Pack Type",
-                options=["Bag", "Box", "Carton", "Drum", "Pallet", "Roll", "Tin", "Other"],
-                key="sample_pack_type"
-            )
-            
-            # Unit Weight
-            unit_weight = st.number_input(
-                "⚖️ Unit Weight (kg)",
-                min_value=0.0,
-                step=0.1,
-                format="%.2f",
-                key="sample_unit_weight"
-            )
-            
-            # Quantity
-            quantity = st.number_input(
-                "🔢 Total Quantity",
-                min_value=1,
-                step=1,
-                value=1,
-                key="sample_quantity"
-            )
+            pack_type = st.selectbox("Pack Type", ["Bag", "Box", "Carton", "Drum", "Pallet", "Roll", "Tin", "Other"], key="sample_pack_type")
+            unit_weight = st.number_input("Unit Weight (kg)", min_value=0.0, step=0.1, format="%.2f", key="sample_unit_weight")
+            quantity = st.number_input("Total Quantity", min_value=1, step=1, value=1, key="sample_quantity")
         
         with col3:
-            # Logo Requirement
-            logo_requirement = st.radio(
-                "🎨 Logo Required?",
-                options=["No", "Yes - Standard", "Yes - Custom"],
-                key="sample_logo",
-                horizontal=True
-            )
-            
-            # Additional notes field
+            logo_requirement = st.radio("Logo Required?", options=["No", "Yes - Standard", "Yes - Custom"], key="sample_logo", horizontal=True)
             st.markdown("---")
-            item_notes = st.text_area(
-                "📝 Item Notes (Optional)",
-                placeholder="Any special requirements for this sample...",
-                key="sample_item_notes"
-            )
+            item_notes = st.text_area("Item Notes (Optional)", placeholder="Any special requirements...", key="sample_item_notes")
         
-        # Add item button
         submitted = st.form_submit_button("➕ Add Sample Item", use_container_width=True)
         if submitted:
             add_sample_item()
     
-    # ============================================
-    # DISPLAY ADDED ITEMS
-    # ============================================
     if st.session_state.sample_items:
-        st.subheader(f"📋 Sample Items Added ({len(st.session_state.sample_items)})")
+        st.markdown(f"<div class='subsection-header'>📋 Sample Items ({len(st.session_state.sample_items)})</div>", unsafe_allow_html=True)
         
-        # Display items in a table format
         for idx, item in enumerate(st.session_state.sample_items):
-            col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([2, 2, 1.5, 1.5, 1.5, 1, 1, 0.5])
-            
-            with col1:
-                st.write(item['article_number'])
-            with col2:
-                st.write(item['product_name'][:30] + "..." if len(item['product_name']) > 30 else item['product_name'])
-            with col3:
-                st.write(item['item_type'])
-            with col4:
-                st.write(item['pack_type'])
-            with col5:
-                st.write(f"{item['unit_weight']} kg" if item['unit_weight'] > 0 else "N/A")
-            with col6:
-                st.write(item['quantity'])
-            with col7:
-                st.write(item['logo_requirement'])
-            with col8:
-                if st.button("🗑️", key=f"remove_{idx}"):
-                    st.session_state.sample_items.pop(idx)
-                    st.rerun()
+            cols = st.columns([2, 2, 1.5, 1.5, 1.5, 1, 1, 0.5])
+            cols[0].write(item['article_number'])
+            cols[1].write(item['product_name'][:30] + "..." if len(item['product_name']) > 30 else item['product_name'])
+            cols[2].write(item['item_type'])
+            cols[3].write(item['pack_type'])
+            cols[4].write(f"{item['unit_weight']} kg" if item['unit_weight'] > 0 else "N/A")
+            cols[5].write(item['quantity'])
+            cols[6].write(item['logo_requirement'])
+            if cols[7].button("🗑️", key=f"remove_{idx}"):
+                st.session_state.sample_items.pop(idx)
+                st.rerun()
         
-        # Summary statistics
-        st.markdown("---")
         col1, col2, col3 = st.columns(3)
-        with col1:
-            total_items = len(st.session_state.sample_items)
-            st.metric("Total Sample Items", total_items)
-        with col2:
-            total_quantity = sum(item['quantity'] for item in st.session_state.sample_items)
-            st.metric("Total Quantity", total_quantity)
-        with col3:
-            unique_articles = len(set(item['article_number'] for item in st.session_state.sample_items))
-            st.metric("Unique Articles", unique_articles)
+        col1.metric("Total Sample Items", len(st.session_state.sample_items))
+        col2.metric("Total Quantity", sum(item['quantity'] for item in st.session_state.sample_items))
+        col3.metric("Unique Articles", len(set(item['article_number'] for item in st.session_state.sample_items)))
         
-        # Clear all button
-        if st.button("🗑️ Clear All Items", use_container_width=True, type="secondary"):
+        if st.button("Clear All Items", use_container_width=True):
             st.session_state.sample_items = []
             st.rerun()
     
-    # ============================================
-    # SUBMIT REQUEST
-    # ============================================
     st.markdown("---")
+    request_notes = st.text_area("Additional Request Notes (Optional)", placeholder="Any additional information...", height=80, key="sample_request_notes")
     
-    # Additional request notes
-    request_notes = st.text_area(
-        "📝 Additional Request Notes (Optional)",
-        placeholder="Any additional information about this sample request...",
-        height=100,
-        key="sample_request_notes"
-    )
-    
-    # Submit button
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if st.button("📤 SUBMIT SAMPLES REQUEST", use_container_width=True, type="primary"):
-            # Validate required fields
-            errors = []
-            
-            if not requested_by:
-                errors.append("❌ Requested By is required")
-            if not going_to:
-                errors.append("❌ Going To (Recipient Name) is required")
-            if not address:
-                errors.append("❌ Address is required")
-            if not st.session_state.sample_items:
-                errors.append("❌ At least one sample item is required")
-            
-            if errors:
-                for error in errors:
-                    st.error(error)
-            else:
-                # Store in session state for confirmation
-                st.session_state.last_sample_request = {
-                    'request_date': request_date.strftime("%Y-%m-%d"),
-                    'samples_eta': samples_eta.strftime("%Y-%m-%d"),
-                    'requested_by': requested_by,
-                    'department': department,
-                    'requester_title': requester_title,
-                    'going_to': going_to,
-                    'address': address,
-                    'delivery_method': delivery_method,
-                    'request_notes': request_notes,
-                    'sample_items': st.session_state.sample_items,
-                    'submitted_by': st.session_state.username,
-                    'submission_time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                }
-                st.session_state.sample_form_submitted = True
-                
-                # Display success message
-                st.balloons()
-                st.success("✅ Samples request submitted successfully!")
-                
-                # Show summary for printing
-                st.markdown('<div id="printable-summary">', unsafe_allow_html=True)
-                
-                st.subheader("📋 SAMPLES REQUEST FORM")
-                st.markdown(f"**Request ID:** SAMP-{datetime.now().strftime('%Y%m%d-%H%M%S')}")
-                st.markdown(f"**Submitted By:** {st.session_state.username}")
-                st.markdown(f"**Submission Time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-                st.markdown("---")
-                
-                # Create summary display
-                summary_col1, summary_col2 = st.columns(2)
-                
-                with summary_col1:
-                    st.markdown(f"""
-                    **Request Information:**
-                    - **Request Date:** {request_date.strftime("%Y-%m-%d")}
-                    - **Samples ETA:** {samples_eta.strftime("%Y-%m-%d")}
-                    - **Requested By:** {requested_by}
-                    - **Department:** {department}
-                    - **Requester Title:** {requester_title}
-                    """)
-                
-                with summary_col2:
-                    st.markdown(f"""
-                    **Delivery Information:**
-                    - **Going To:** {going_to}
-                    - **Address:** {address}
-                    - **Delivery Method:** {delivery_method}
-                    """)
-                
-                st.subheader("Sample Items Summary:")
-                summary_df = pd.DataFrame(st.session_state.sample_items)
-                st.dataframe(summary_df, use_container_width=True)
-                
-                if request_notes:
-                    st.markdown(f"**Additional Notes:** {request_notes}")
-                
-                st.markdown('</div>', unsafe_allow_html=True)
-                
-                # Print button
-                st.markdown("""
-                <div style="text-align: center; margin: 20px 0;">
-                    <button onclick="window.print();" style="
-                        background: linear-gradient(135deg, #991B1B, #7F1D1D);
-                        color: white;
-                        padding: 12px 24px;
-                        font-size: 16px;
-                        font-weight: bold;
-                        border: none;
-                        border-radius: 8px;
-                        cursor: pointer;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-                    ">
-                        🖨️ Print / Save as PDF
-                    </button>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Option to reset form
-                if st.button("🔄 Start New Request", use_container_width=True):
-                    # Reset all session state variables
-                    st.session_state.sample_items = []
-                    st.session_state.sample_form_submitted = False
-                    for key in list(st.session_state.keys()):
-                        if key.startswith('sample_'):
-                            del st.session_state[key]
-                    st.rerun()
-    
-    # ============================================
-    # HELPER SECTION - Product Search
-    # ============================================
-    with st.expander("🔍 Quick Product Search (Find Article Numbers)", expanded=False):
-        st.info("Use this search to find article numbers and product details from the catalog")
+    if st.button("📤 SUBMIT SAMPLES REQUEST", use_container_width=True, type="primary"):
+        errors = []
+        if not requested_by:
+            errors.append("Requested By is required")
+        if not going_to:
+            errors.append("Recipient Name is required")
+        if not address:
+            errors.append("Address is required")
+        if not st.session_state.sample_items:
+            errors.append("At least one sample item is required")
         
-        if not catalog_data.empty:
-            search_col1, search_col2 = st.columns([3, 1])
-            with search_col1:
-                quick_search = st.text_input("Search products:", key="sample_quick_search")
-            with search_col2:
-                search_field = st.selectbox("Search in:", ["Article Number", "Product Name"], key="sample_search_field")
-            
-            if quick_search:
-                if search_field == "Article Number":
-                    results = catalog_data[
-                        catalog_data['Article_Number'].astype(str).str.contains(quick_search, case=False, na=False)
-                    ]
-                else:
-                    results = catalog_data[
-                        catalog_data['Product_Name'].astype(str).str.contains(quick_search, case=False, na=False)
-                    ]
-                
-                if not results.empty:
-                    st.write(f"Found {len(results)} results:")
-                    for _, row in results.head(10).iterrows():
-                        col1, col2, col3 = st.columns([2, 3, 1])
-                        with col1:
-                            st.write(f"**{row['Article_Number']}**")
-                        with col2:
-                            st.write(row.get('Product_Name', 'N/A'))
-                        with col3:
-                            if st.button("Select", key=f"select_{row['Article_Number']}"):
-                                st.session_state.sample_article = row['Article_Number']
-                                st.session_state.sample_product = row.get('Product_Name', '')
-                                st.rerun()
-                else:
-                    st.warning("No products found")
+        if errors:
+            for error in errors:
+                st.error(error)
         else:
-            st.warning("Product catalog not available. Please check your Google Sheets connection.")
-    
-    # Instructions
-    with st.expander("ℹ️ How to Use This Form", expanded=False):
-        st.markdown("""
-        **📋 Samples Request Guide:**
-        
-        1. **Fill Request Information** - Date, ETA, requester details
-        2. **Enter Delivery Information** - Recipient, address, delivery method
-        3. **Add Sample Items** - Use the form to add products (minimum 1 item)
-        4. **Review Added Items** - Check the list of added samples
-        5. **Submit Request** - Click submit to send your request
-        6. **Print/Save PDF** - Use the print button to save as PDF
-        
-        **Tips:**
-        - Use the Quick Product Search to find article numbers
-        - You can add multiple sample items before submitting
-        - Remove items using the 🗑️ button next to each item
-        - All fields marked with * are required
-        - After submission, you can print or save as PDF for your records
-        """)
+            st.balloons()
+            st.success("Samples request submitted successfully!")
+            
+            st.markdown("### 📋 SAMPLES REQUEST FORM")
+            st.markdown(f"**Request ID:** SAMP-{datetime.now().strftime('%Y%m%d-%H%M%S')}")
+            st.markdown(f"**Submitted By:** {st.session_state.username}")
+            st.markdown(f"**Submission Time:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            st.markdown("---")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown(f"""
+                **Request Information:**
+                - **Request Date:** {request_date.strftime('%Y-%m-%d')}
+                - **Samples ETA:** {samples_eta.strftime('%Y-%m-%d')}
+                - **Requested By:** {requested_by}
+                - **Department:** {department}
+                - **Requester Title:** {requester_title}
+                """)
+            with col2:
+                st.markdown(f"""
+                **Delivery Information:**
+                - **Recipient:** {going_to}
+                - **Address:** {address}
+                - **Delivery Method:** {delivery_method}
+                """)
+            
+            st.markdown("**Sample Items:**")
+            summary_df = pd.DataFrame(st.session_state.sample_items)
+            st.dataframe(summary_df, use_container_width=True)
+            
+            if request_notes:
+                st.markdown(f"**Additional Notes:** {request_notes}")
+            
+            if st.button("Start New Request", use_container_width=True):
+                st.session_state.sample_items = []
+                st.session_state.sample_form_submitted = False
+                st.rerun()
 
 # ============================================
-# CLIENT'S ORDERS TAB FUNCTION
+# CLIENT'S ORDERS TAB
 # ============================================
 
 def clients_orders_tab():
-    """
-    Client's Orders Tab - Fetches data directly from Clients_CoC sheet
-    Allows client selection and search by article number, product name, or HS code
-    """
+    """Client's Orders Tab"""
     st.markdown("""
-    <div class="clients-orders-header">
-        <h2 style="margin:0;">📋 Client's Orders</h2>
-        <p style="margin:0; opacity:0.9;">Direct Access to Clients_CoC Sheet • Search by Article, Product Name, or HS Code</p>
+    <div style="background: linear-gradient(135deg, #0891b2, #0e7c8c); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
+        <h2 style="margin:0; color: white;">📋 Client's Orders</h2>
+        <p style="margin:0; opacity:0.9; color: white;">Direct access to Clients_CoC sheet • Search by article, product, or HS code</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Get all clients from the master sheet
     all_clients = get_all_clients_from_master()
     
     if not all_clients:
-        st.warning("""
-        ⚠️ **No clients found in Clients_CoC sheet!**
-        
-        **To get started:**
-        1. Go to your Google Sheet
-        2. Add a tab called **'Clients_CoC'**
-        3. Use these exact headers:
-           - Client
-           - Supplier
-           - Article_Number
-           - Product_Name
-           - Price
-           - Order_Number
-           - Order_Date
-           - Year
-           - HS_Code
-           - Packaging
-           - Quantity
-           - Total_Weight
-           - Total_Price
-           - Status
-           - Notes
-        """)
+        st.warning("No clients found in Clients_CoC sheet")
         return
     
-    st.success(f"✅ Found {len(all_clients)} clients in Clients_CoC sheet")
+    st.success(f"Found {len(all_clients)} clients")
     
-    # Client selection
-    client = st.selectbox(
-        "Select Client:",
-        all_clients,
-        key="clients_orders_client_select"
-    )
+    client = st.selectbox("Select Client:", all_clients, key="clients_orders_client_select")
     
-    # Load client data using the existing get_google_sheets_data function
-    with st.spinner(f"📥 Loading orders data for {client}..."):
+    with st.spinner(f"Loading data for {client}..."):
         DATA = get_google_sheets_data(client)
     
     if not DATA.get("Backaldrin") and not DATA.get("Bateel"):
-        st.error(f"❌ No data found for {client} in Clients_CoC sheet")
+        st.error(f"No data found for {client}")
         return
     
-    st.success(f"✅ Connected to {client} data")
+    supplier = st.radio("Select Supplier:", ["Backaldrin", "Bateel"], horizontal=True, key="clients_orders_supplier")
     
-    # Supplier selection
-    supplier = st.radio(
-        "Select Supplier:",
-        ["Backaldrin", "Bateel"],
-        horizontal=True,
-        key="clients_orders_supplier"
-    )
+    st.markdown("<div class='subsection-header'>🔍 Search Orders</div>", unsafe_allow_html=True)
     
-    # ============================================
-    # SEARCH SECTION
-    # ============================================
-    st.subheader("🔍 Search Orders")
-    
-    search_col1, search_col2, search_col3 = st.columns([2, 1, 1])
-    
-    with search_col1:
-        search_term = st.text_input(
-            "Search by Article Number, Product Name, or HS Code:",
-            placeholder="e.g., 1-366, Chocolate Chips, 1901200000...",
-            key="clients_orders_search"
-        )
-    
-    with search_col2:
-        search_type = st.selectbox(
-            "Search Type:",
-            ["All", "Article Number", "Product Name", "HS Code"],
-            key="clients_orders_search_type"
-        )
-    
-    with search_col3:
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col1:
+        search_term = st.text_input("Search by Article, Product, or HS Code:", placeholder="e.g., 1-366, Chocolate...", key="clients_orders_search")
+    with col2:
+        search_type = st.selectbox("Search Type:", ["All", "Article Number", "Product Name", "HS Code"], key="clients_orders_search_type")
+    with col3:
         if st.button("🔍 Search", type="primary", use_container_width=True, key="clients_orders_search_btn"):
             if search_term:
                 add_to_search_history(search_term, client, supplier)
     
-    # Initialize session state for search results
     if 'clients_orders_results' not in st.session_state:
         st.session_state.clients_orders_results = None
     
-    # Get supplier data
     supplier_data = DATA.get(supplier, {})
     
-    # Perform search if search term exists
     if search_term:
         search_results = []
         search_lower = search_term.lower()
@@ -2012,13 +1422,11 @@ def clients_orders_tab():
             match_found = False
             match_type = ""
             
-            # Search by article number
             if search_type in ["All", "Article Number"]:
                 if search_lower in article_num.lower():
                     match_found = True
                     match_type = "Article Number"
             
-            # Search by product name
             if not match_found and search_type in ["All", "Product Name"]:
                 for name in article_data.get('names', []):
                     if search_lower in str(name).lower():
@@ -2026,7 +1434,6 @@ def clients_orders_tab():
                         match_type = "Product Name"
                         break
             
-            # Search by HS code
             if not match_found and search_type in ["All", "HS Code"]:
                 for order in article_data.get('orders', []):
                     hs_code = str(order.get('hs_code', '')).lower()
@@ -2036,12 +1443,7 @@ def clients_orders_tab():
                         break
             
             if match_found and article_data.get('orders'):
-                # Get the latest product name
-                product_name = ""
-                if article_data.get('names'):
-                    product_name = article_data['names'][0]
-                
-                # Count orders and get price range
+                product_name = article_data['names'][0] if article_data.get('names') else ""
                 prices = article_data.get('prices', [])
                 min_price = min(prices) if prices else None
                 max_price = max(prices) if prices else None
@@ -2054,12 +1456,11 @@ def clients_orders_tab():
                     'price_count': len(prices),
                     'min_price': min_price,
                     'max_price': max_price,
-                    'has_orders': True,
                     'article_data': article_data
                 })
         
         if search_results:
-            st.success(f"✅ Found {len(search_results)} matching items for '{search_term}'")
+            st.success(f"Found {len(search_results)} matching items")
             st.session_state.clients_orders_results = {
                 'client': client,
                 'supplier': supplier,
@@ -2067,94 +1468,40 @@ def clients_orders_tab():
                 'results': search_results
             }
         else:
-            st.warning(f"❌ No results found for '{search_term}' in {client} - {supplier}")
+            st.warning(f"No results found for '{search_term}'")
     
-    # Display results if they exist
     if st.session_state.clients_orders_results and st.session_state.clients_orders_results.get('client') == client:
         results_data = st.session_state.clients_orders_results
         search_results = results_data.get('results', [])
         
-        # Display results overview
-        st.subheader(f"📊 Search Results for '{results_data['search_term']}'")
-        
-        # Quick stats
         col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Items Found", len(search_results))
-        with col2:
-            total_orders = sum(r['orders_count'] for r in search_results)
-            st.metric("Total Orders", total_orders)
-        with col3:
-            # Get all prices from all results
-            all_prices = []
-            for r in search_results:
-                if r['min_price']:
-                    all_prices.append(r['min_price'])
-                if r['max_price']:
-                    all_prices.append(r['max_price'])
-            if all_prices:
-                st.metric("Price Range", f"${min(all_prices):.2f} - ${max(all_prices):.2f}")
-            else:
-                st.metric("Price Range", "N/A")
+        col1.metric("Items Found", len(search_results))
+        col2.metric("Total Orders", sum(r['orders_count'] for r in search_results))
         
-        # Display each result in an expander
+        all_prices = []
+        for r in search_results:
+            if r['min_price']:
+                all_prices.append(r['min_price'])
+            if r['max_price']:
+                all_prices.append(r['max_price'])
+        if all_prices:
+            col3.metric("Price Range", f"${min(all_prices):.2f} - ${max(all_prices):.2f}")
+        
         for result in search_results:
-            article_num = result['article']
-            article_data = result['article_data']
-            
-            with st.expander(f"📦 {article_num} - {result['product_name']} | {result['orders_count']} orders | Found by: {result['match_type']}", expanded=False):
-                
-                # Article information
-                col1, col2 = st.columns([2, 1])
-                
+            with st.expander(f"📦 {result['article']} - {result['product_name']} | {result['orders_count']} orders | Found by: {result['match_type']}", expanded=False):
+                col1, col2 = st.columns(2)
                 with col1:
-                    st.markdown("**📋 Article Details**")
-                    st.write(f"**Article Number:** {article_num}")
-                    st.write(f"**Product Name:** {result['product_name']}")
-                    
-                    if result['min_price'] and result['max_price']:
-                        st.write(f"**Price Range:** ${result['min_price']:.2f} - ${result['max_price']:.2f}/kg")
-                        st.write(f"**Total Price Records:** {result['price_count']}")
-                
+                    st.markdown(f"**Article Number:** {result['article']}")
+                    st.markdown(f"**Product Name:** {result['product_name']}")
                 with col2:
-                    st.markdown("**📊 Statistics**")
-                    st.write(f"**Total Orders:** {result['orders_count']}")
+                    st.markdown(f"**Total Orders:** {result['orders_count']}")
                     if result['min_price'] and result['max_price']:
-                        avg_price = (result['min_price'] + result['max_price']) / 2
-                        st.write(f"**Average Price:** ${avg_price:.2f}/kg")
+                        st.markdown(f"**Price Range:** ${result['min_price']:.2f} - ${result['max_price']:.2f}/kg")
                 
-                # Order history
                 st.markdown("---")
-                st.subheader("📜 Order History")
+                st.markdown("**Order History**")
                 
-                # Get orders sorted by date (newest first)
-                orders = article_data.get('orders', [])
-                
-                # Sort orders by date if possible
-                try:
-                    orders_with_dates = []
-                    for order in orders:
-                        date_str = order.get('date', '')
-                        if date_str:
-                            for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d']:
-                                try:
-                                    parsed_date = datetime.strptime(date_str, fmt)
-                                    orders_with_dates.append((parsed_date, order))
-                                    break
-                                except:
-                                    continue
-                        else:
-                            orders_with_dates.append((None, order))
-                    
-                    # Sort by date descending (newest first)
-                    orders_with_dates.sort(key=lambda x: x[0] if x[0] else datetime.min, reverse=True)
-                    orders = [order for _, order in orders_with_dates]
-                except:
-                    pass
-                
-                # Display orders
-                for idx, order in enumerate(orders):
-                    # Format price for display
+                for idx, order in enumerate(result['article_data'].get('orders', [])):
                     price_display = order.get('price', 'N/A')
                     try:
                         price_value = float(str(price_display).replace('$', '').replace(',', '').strip())
@@ -2162,497 +1509,163 @@ def clients_orders_tab():
                     except:
                         price_display = f"${price_display}" if price_display != 'N/A' else 'N/A'
                     
-                    # Create order card
                     st.markdown(f"""
-                    <div class="price-box" style="margin-bottom: 1rem;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="price-card-primary" style="margin-bottom: 0.5rem;">
+                        <div style="display: flex; justify-content: space-between;">
                             <div>
-                                <div style="margin-bottom: 0.5rem;">
-                                    <strong>📦 Order:</strong> {order.get('order_no', 'N/A')}
-                                </div>
-                                <div style="margin-bottom: 0.5rem;">
-                                    <strong>📅 Date:</strong> {order.get('date', 'N/A')}
-                                </div>
-                                {f'<div style="margin-bottom: 0.5rem;"><strong>📅 Year:</strong> {order.get("year", "N/A")}</div>' if order.get('year') else ''}
-                                {f'<div style="margin-bottom: 0.5rem;"><strong>🏷️ HS Code:</strong> {order.get("hs_code", "N/A")}</div>' if order.get('hs_code') else ''}
+                                <strong>Order:</strong> {order.get('order_no', 'N/A')}<br>
+                                <strong>Date:</strong> {order.get('date', 'N/A')}
                             </div>
                             <div>
-                                {f'<div style="margin-bottom: 0.5rem;"><strong>📦 Packaging:</strong> {order.get("packaging", "N/A")}</div>' if order.get('packaging') else ''}
-                                {f'<div style="margin-bottom: 0.5rem;"><strong>🔢 Quantity:</strong> {order.get("quantity", "N/A")}</div>' if order.get('quantity') else ''}
-                                {f'<div style="margin-bottom: 0.5rem;"><strong>⚖️ Weight:</strong> {order.get("total_weight", "N/A")} kg</div>' if order.get('total_weight') else ''}
-                                {f'<div style="margin-bottom: 0.5rem;"><strong>💰 Total Price:</strong> {order.get("total_price", "N/A")}</div>' if order.get('total_price') else ''}
+                                <strong>Price:</strong> {price_display}/kg
                             </div>
                         </div>
-                        <div style="text-align: center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.2);">
-                            <div style="font-size: 1.2em; font-weight: bold; color: #FEF3C7;">
-                                Price: {price_display}/kg
-                            </div>
+                        <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
+                            {order.get('quantity', 'N/A')} units • {order.get('total_weight', 'N/A')} kg
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
-        
+    
     elif not search_term:
-        # Show example when no search is performed
-        st.info("""
-        ### 🔍 How to use this tab:
-        
-        1. **Select a client** from the dropdown list
-        2. **Choose a supplier** (Backaldrin or Bateel)
-        3. **Enter a search term** (article number, product name, or HS code)
-        4. **Click Search** to view all historical orders
-        
-        **Examples:**
-        - Try searching for article number: `1-366`
-        - Try searching for product name: `Chocolate`
-        - Try searching for HS code: `190120`
-        
-        The results will show all orders matching your search criteria, including:
-        - Order number and date
-        - Price history
-        - Quantity and weight details
-        - HS code and packaging information
-        """)
-        
-        # Show sample data if available
-        if all_clients:
-            st.subheader("📋 Available Clients")
-            st.write(f"**Clients with data:** {', '.join(all_clients)}")
-            
-            # Show first few rows from the first client as preview
-            first_client = all_clients[0]
-            with st.expander(f"🔍 Preview data for {first_client} (first 5 orders)", expanded=False):
-                try:
-                    preview_data = get_google_sheets_data(first_client)
-                    if preview_data.get("Backaldrin"):
-                        preview_articles = list(preview_data["Backaldrin"].keys())[:3]
-                        for article in preview_articles:
-                            article_data = preview_data["Backaldrin"][article]
-                            if article_data.get('orders'):
-                                st.write(f"**Article:** {article}")
-                                for order in article_data['orders'][:2]:
-                                    st.write(f"  - Order: {order.get('order_no', 'N/A')} | Date: {order.get('date', 'N/A')} | Price: {order.get('price', 'N/A')}/kg")
-                except:
-                    pass
+        st.info("Enter a search term above to find order history")
 
 # ============================================
-# ALL PRICES TAB FUNCTION
+# ALL PRICES TAB
 # ============================================
 
 def all_prices_tab():
-    """
-    All Prices Tab - Displays data from General_prices sheet
-    Shows complete pricing information with filtering and search capabilities
-    """
+    """All Prices Tab"""
     st.markdown("""
-    <div class="all-prices-header">
-        <h2 style="margin:0;">📊 All Items Price Database</h2>
-        <p style="margin:0; opacity:0.9;">Complete Item Catalog • Pricing Information • Category-wise Analysis</p>
+    <div style="background: linear-gradient(135deg, #7c3aed, #6d28d9); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
+        <h2 style="margin:0; color: white;">📊 All Items Price Database</h2>
+        <p style="margin:0; opacity:0.9; color: white;">Complete item catalog • Pricing information • Category analysis</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Load general prices data
-    with st.spinner("📥 Loading all prices data from General_prices sheet..."):
+    with st.spinner("Loading all prices data..."):
         prices_data = load_general_prices_data()
     
     if prices_data.empty:
-        st.warning("""
-        ⚠️ **General_prices data not found or empty!**
-        
-        **To get started:**
-        1. Go to your Google Sheet
-        2. Add a new tab called **'General_prices'**
-        3. Use these exact headers:
-           - # (Number)
-           - CATEG. (Category)
-           - SUB CATEG. (Sub Category)
-           - SUB. SUB. (Sub Sub Category)
-           - DESCRIPTION
-           - ART# (Article Number)
-           - UOM (Unit of Measure)
-           - UNT WGT (Unit Weight)
-           - NEW EXW (New EXW Price)
-        """)
+        st.warning("General_prices data not found or empty")
         return
     
-    st.success(f"✅ Loaded {len(prices_data)} items from General_prices sheet")
+    st.success(f"Loaded {len(prices_data)} items")
     
-    # ============================================
-    # DATA OVERVIEW
-    # ============================================
-    st.subheader("📊 Data Overview")
-    
-    # Calculate statistics
-    total_items = len(prices_data)
-    
-    # Check if expected columns exist
-    has_category = 'CATEG.' in prices_data.columns
-    has_subcategory = 'SUB CATEG.' in prices_data.columns
-    has_subsubcategory = 'SUB. SUB.' in prices_data.columns
-    has_price = 'NEW EXW' in prices_data.columns
-    
-    if has_category:
-        categories = prices_data['CATEG.'].nunique()
-    else:
-        categories = 0
-    
-    if has_subcategory:
-        subcategories = prices_data['SUB CATEG.'].nunique()
-    else:
-        subcategories = 0
-    
-    if has_price:
-        avg_price = prices_data['NEW EXW'].mean()
-        min_price = prices_data['NEW EXW'].min()
-        max_price = prices_data['NEW EXW'].max()
-    else:
-        avg_price = min_price = max_price = 0
-    
-    # Display statistics
+    # Overview Stats
     col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Total Items", len(prices_data))
     
+    if 'CATEG.' in prices_data.columns:
+        col2.metric("Categories", prices_data['CATEG.'].nunique())
+    
+    if 'NEW EXW' in prices_data.columns:
+        col3.metric("Avg Price", f"${prices_data['NEW EXW'].mean():.2f}")
+        col4.metric("Price Range", f"${prices_data['NEW EXW'].min():.2f} - ${prices_data['NEW EXW'].max():.2f}")
+    
+    # Search
+    st.markdown("<div class='subsection-header'>🔍 Search & Filter</div>", unsafe_allow_html=True)
+    
+    col1, col2 = st.columns([2, 1])
     with col1:
-        st.metric("Total Items", total_items)
-    
+        search_term = st.text_input("Search by article, description, or any field:", placeholder="Enter search term...", key="all_prices_search")
     with col2:
-        st.metric("Categories", categories if has_category else "N/A")
-    
-    with col3:
-        st.metric("Sub Categories", subcategories if has_subcategory else "N/A")
-    
-    with col4:
-        if has_price:
-            st.metric("Avg Price", f"${avg_price:.2f}")
-        else:
-            st.metric("Avg Price", "N/A")
-    
-    # ============================================
-    # SEARCH AND FILTER SECTION
-    # ============================================
-    st.subheader("🔍 Search & Filter Items")
-    
-    # Search options in columns
-    col1, col2, col3 = st.columns([2, 1, 1])
-    
-    with col1:
-        search_term = st.text_input(
-            "Search by article, description, or any field:",
-            placeholder="Enter search term...",
-            key="all_prices_search"
-        )
-    
-    with col2:
-        if has_category:
-            category_options = ["All"] + sorted(prices_data['CATEG.'].dropna().unique().tolist())
-            category_filter = st.selectbox("Category:", category_options, key="all_prices_category")
+        if 'CATEG.' in prices_data.columns:
+            category_filter = st.selectbox("Category:", ["All"] + sorted(prices_data['CATEG.'].dropna().unique().tolist()), key="all_prices_category")
         else:
             category_filter = "All"
-            st.selectbox("Category:", ["No category data"], key="all_prices_category", disabled=True)
     
-    with col3:
-        if has_price:
-            price_range_min = float(prices_data['NEW EXW'].min()) if not prices_data['NEW EXW'].isna().all() else 0
-            price_range_max = float(prices_data['NEW EXW'].max()) if not prices_data['NEW EXW'].isna().all() else 1000
-            price_range = st.slider(
-                "Price Range:",
-                min_value=price_range_min,
-                max_value=price_range_max,
-                value=(price_range_min, price_range_max),
-                key="all_prices_price_range"
-            )
-        else:
-            price_range = (0, 1000)
-            st.slider("Price Range:", 0, 1000, (0, 1000), key="all_prices_price_range", disabled=True)
-    
-    # Advanced search options in expander
-    with st.expander("🔧 Advanced Search Options", expanded=False):
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            if has_subcategory:
-                subcategory_options = ["All"] + sorted(prices_data['SUB CATEG.'].dropna().unique().tolist())
-                subcategory_filter = st.selectbox("Sub Category:", subcategory_options, key="all_prices_subcategory")
-            else:
-                subcategory_filter = "All"
-                st.selectbox("Sub Category:", ["No subcategory data"], key="all_prices_subcategory", disabled=True)
-        
-        with col2:
-            if has_subsubcategory:
-                subsubcategory_options = ["All"] + sorted(prices_data['SUB. SUB.'].dropna().unique().tolist())
-                subsubcategory_filter = st.selectbox("Sub Sub Category:", subsubcategory_options, key="all_prices_subsubcategory")
-            else:
-                subsubcategory_filter = "All"
-                st.selectbox("Sub Sub Category:", ["No sub-subcategory data"], key="all_prices_subsubcategory", disabled=True)
-        
-        with col3:
-            if 'UOM' in prices_data.columns:
-                uom_options = ["All"] + sorted(prices_data['UOM'].dropna().unique().tolist())
-                uom_filter = st.selectbox("Unit of Measure:", uom_options, key="all_prices_uom")
-            else:
-                uom_filter = "All"
-                st.selectbox("Unit of Measure:", ["No UOM data"], key="all_prices_uom", disabled=True)
-    
-    # ============================================
-    # APPLY FILTERS
-    # ============================================
     filtered_data = prices_data.copy()
     
-    # Apply text search
     if search_term:
-        mask = filtered_data.astype(str).apply(
-            lambda x: x.str.contains(search_term, case=False, na=False)
-        ).any(axis=1)
+        mask = filtered_data.astype(str).apply(lambda x: x.str.contains(search_term, case=False, na=False)).any(axis=1)
         filtered_data = filtered_data[mask]
     
-    # Apply category filter
-    if has_category and category_filter != "All":
+    if category_filter != "All" and 'CATEG.' in prices_data.columns:
         filtered_data = filtered_data[filtered_data['CATEG.'] == category_filter]
     
-    # Apply subcategory filter
-    if has_subcategory and subcategory_filter != "All":
-        filtered_data = filtered_data[filtered_data['SUB CATEG.'] == subcategory_filter]
-    
-    # Apply subsubcategory filter
-    if has_subsubcategory and subsubcategory_filter != "All":
-        filtered_data = filtered_data[filtered_data['SUB. SUB.'] == subsubcategory_filter]
-    
-    # Apply UOM filter
-    if 'UOM' in filtered_data.columns and uom_filter != "All":
-        filtered_data = filtered_data[filtered_data['UOM'] == uom_filter]
-    
-    # Apply price range filter
-    if has_price:
-        filtered_data = filtered_data[
-            (filtered_data['NEW EXW'] >= price_range[0]) & 
-            (filtered_data['NEW EXW'] <= price_range[1])
-        ]
-    
-    # ============================================
-    # DISPLAY RESULTS
-    # ============================================
-    st.subheader(f"📋 Items Found: {len(filtered_data)}")
+    st.markdown(f"<div class='subsection-header'>📋 Items Found: {len(filtered_data)}</div>", unsafe_allow_html=True)
     
     if not filtered_data.empty:
-        # Display results as cards
-        for idx, item in filtered_data.iterrows():
+        for _, item in filtered_data.head(20).iterrows():
             with st.expander(f"{item.get('ART#', 'N/A')} - {item.get('DESCRIPTION', 'N/A')}", expanded=False):
-                
-                # Create a nice card display
-                st.markdown(f"""
-                <div class="all-prices-card">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                        <div>
-                            <h3 style="margin:0; color: #7C3AED;">{item.get('ART#', 'N/A')}</h3>
-                            <p style="margin:0; font-weight: bold; color: #1E293B;">{item.get('DESCRIPTION', 'N/A')}</p>
-                        </div>
-                        <div style="text-align: right;">
-                            {f"<h2 style='margin:0; color: #059669;'>${item.get('NEW EXW', 'N/A'):.2f}</h2>" if has_price and pd.notna(item.get('NEW EXW')) else "<p style='margin:0; color: #6B7280;'>Price: N/A</p>"}
-                            {f"<p style='margin:0; color: #6B7280;'>Unit Weight: {item.get('UNT WGT', 'N/A')}</p>" if 'UNT WGT' in item and pd.notna(item.get('UNT WGT')) else ""}
-                            {f"<p style='margin:0; color: #6B7280;'>UOM: {item.get('UOM', 'N/A')}</p>" if 'UOM' in item and pd.notna(item.get('UOM')) else ""}
-                        </div>
-                    </div>
-                    
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; background: rgba(124, 58, 237, 0.1); padding: 0.75rem; border-radius: 6px;">
-                        <div>
-                            <p style="margin:0; font-size: 0.8em; color: #6B7280;">Category</p>
-                            <p style="margin:0; font-weight: bold;">{item.get('CATEG.', 'N/A')}</p>
-                        </div>
-                        <div>
-                            <p style="margin:0; font-size: 0.8em; color: #6B7280;">Sub Category</p>
-                            <p style="margin:0; font-weight: bold;">{item.get('SUB CATEG.', 'N/A')}</p>
-                        </div>
-                        <div>
-                            <p style="margin:0; font-size: 0.8em; color: #6B7280;">Sub Sub Category</p>
-                            <p style="margin:0; font-weight: bold;">{item.get('SUB. SUB.', 'N/A')}</p>
-                        </div>
-                    </div>
-                    
-                    {f"<div style='margin-top: 1rem;'><p style='margin:0; font-size: 0.8em; color: #6B7280;'>#</p><p style='margin:0;'>{item.get('#', 'N/A')}</p></div>" if '#' in item and pd.notna(item.get('#')) else ""}
-                </div>
-                """, unsafe_allow_html=True)
-        
-        # ============================================
-        # SUMMARY STATISTICS FOR FILTERED DATA
-        # ============================================
-        st.subheader("📈 Filtered Data Statistics")
-        
-        if len(filtered_data) > 0:
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                st.metric("Filtered Items", len(filtered_data))
-            
-            with col2:
-                if has_price and 'NEW EXW' in filtered_data.columns:
-                    filtered_avg_price = filtered_data['NEW EXW'].mean()
-                    st.metric("Avg Price", f"${filtered_avg_price:.2f}")
-                else:
-                    st.metric("Avg Price", "N/A")
-            
-            with col3:
-                if has_price and 'NEW EXW' in filtered_data.columns:
-                    filtered_min_price = filtered_data['NEW EXW'].min()
-                    st.metric("Min Price", f"${filtered_min_price:.2f}")
-                else:
-                    st.metric("Min Price", "N/A")
-            
-            with col4:
-                if has_price and 'NEW EXW' in filtered_data.columns:
-                    filtered_max_price = filtered_data['NEW EXW'].max()
-                    st.metric("Max Price", f"${filtered_max_price:.2f}")
-                else:
-                    st.metric("Max Price", "N/A")
-            
-            # Category distribution if available
-            if has_category and len(filtered_data) > 0:
-                st.subheader("📊 Category Distribution")
-                category_counts = filtered_data['CATEG.'].value_counts().head(10)
-                
-                col1, col2 = st.columns([2, 1])
-                
+                col1, col2 = st.columns(2)
                 with col1:
-                    st.bar_chart(category_counts)
-                
+                    st.markdown(f"**Article:** {item.get('ART#', 'N/A')}")
+                    st.markdown(f"**Description:** {item.get('DESCRIPTION', 'N/A')}")
+                    st.markdown(f"**Category:** {item.get('CATEG.', 'N/A')}")
                 with col2:
-                    st.write("**Top Categories:**")
-                    for category, count in category_counts.head(5).items():
-                        st.write(f"• {category}: {count}")
-    
-    else:
-        st.info("No items match your search criteria. Try broadening your search filters.")
-    
-    # ============================================
-    # DATA PREVIEW (RAW DATA)
-    # ============================================
-    with st.expander("👀 View Raw Data Preview", expanded=False):
-        st.dataframe(
-            filtered_data,
-            use_container_width=True,
-            hide_index=True
-        )
-    
-    # ============================================
-    # QUICK TIPS
-    # ============================================
-    with st.expander("💡 How to use this section", expanded=False):
-        st.markdown("""
-        **📊 All Prices Database Guide:**
+                    if 'NEW EXW' in item and pd.notna(item.get('NEW EXW')):
+                        st.markdown(f"**Price:** <span style='font-size: 1.25rem; font-weight: 700; color: #059669;'>${item['NEW EXW']:.2f}</span>", unsafe_allow_html=True)
+                    st.markdown(f"**Unit Weight:** {item.get('UNT WGT', 'N/A')}")
+                    st.markdown(f"**UOM:** {item.get('UOM', 'N/A')}")
         
-        1. **Search Items** - Use the search box to find items by article number, description, or any field
-        2. **Filter by Category** - Narrow down results by main category
-        3. **Price Range Filter** - Set minimum and maximum price limits
-        4. **Advanced Filters** - Use the expander for sub-category and UOM filters
-        5. **View Data** - Browse and analyze filtered results
-        
-        **Available Columns:**
-        - **#**: Item number
-        - **CATEG.**: Main category
-        - **SUB CATEG.**: Sub category
-        - **SUB. SUB.**: Sub sub category
-        - **DESCRIPTION**: Item description
-        - **ART#**: Article number
-        - **UOM**: Unit of measure
-        - **UNT WGT**: Unit weight
-        - **NEW EXW**: New EXW price
-        
-        **Pro Tips:**
-        - Use wildcards in search (e.g., "choc*" for chocolate, chocolates, etc.)
-        - Combine filters for precise results
-        - Check raw data preview for complete information
-        """)
+        if len(filtered_data) > 20:
+            st.info(f"Showing 20 of {len(filtered_data)} items. Use filters to narrow down results.")
 
 # ============================================
-# ORIGINAL TAB FUNCTIONS (Kept from original)
+# ORIGINAL TAB FUNCTIONS (Preserved)
 # ============================================
 
 def clients_tab():
     """Clients management tab"""
-    st.subheader("Client Selection")
+    st.markdown("<div class='subsection-header'>Client Selection</div>", unsafe_allow_html=True)
     
     available_clients = st.session_state.user_clients
-    client = st.selectbox(
-        "Select Client:",
-        available_clients,
-        key="client_select"
-    )
+    client = st.selectbox("Select Client:", available_clients, key="client_select")
     
     if client:
         cdc_dashboard(client)
 
 def cdc_dashboard(client):
-    """Client pricing dashboard with smart features"""
+    """Client pricing dashboard"""
     
-    # Initialize session state
     if 'search_results' not in st.session_state:
         st.session_state.search_results = None
     if 'export_data' not in st.session_state:
         st.session_state.export_data = None
     
     st.markdown(f"""
-    <div class="cdc-header">
-        <h2 style="margin:0;"> {client} Pricing Dashboard</h2>
-        <p style="margin:0; opacity:0.9;">Smart Search • History • Favorites • Bulk Upload</p>
+    <div style="background: linear-gradient(135deg, #991b1b, #7f1d1d); padding: 1rem 1.25rem; border-radius: 12px; margin-bottom: 1rem;">
+        <h2 style="margin:0; color: white;">📊 {client} Pricing Dashboard</h2>
+        <p style="margin:0; opacity:0.9; color: white;">Smart search • History • Favorites</p>
     </div>
     """, unsafe_allow_html=True)
 
-    # Load data directly from Google Sheets
     DATA = get_google_sheets_data(client)
-    st.success(f"✅ Connected to Google Sheets - Live Data for {client}!")
+    st.success(f"Connected to live data for {client}")
     
-    # Refresh button
-    if st.button("🔄 Refresh Data", use_container_width=True, type="secondary", key=f"{client}_refresh"):
+    if st.button("🔄 Refresh Data", use_container_width=True, key=f"{client}_refresh"):
         st.rerun()
 
-    # Supplier selection
-    st.subheader("Select Supplier")
+    st.markdown("<div class='subsection-header'>Select Supplier</div>", unsafe_allow_html=True)
     supplier = st.radio("", ["Backaldrin", "Bateel"], horizontal=True, label_visibility="collapsed", key=f"{client}_supplier")
 
-    # ============================================
-    # FEATURE 1: SMART SEARCH WITH AI SUGGESTIONS
-    # ============================================
-    st.subheader("🔍 Smart Search")
+    st.markdown("<div class='subsection-header'>🔍 Smart Search</div>", unsafe_allow_html=True)
     
     search_container = st.container()
     
     with search_container:
         col1, col2, col3 = st.columns([3, 1, 1])
         with col1:
-            search_input = st.text_input(
-                "**Search by Article, Product, or HS Code:**",
-                placeholder="Start typing for smart suggestions...",
-                key=f"{client}_smart_search"
-            )
-        
+            search_input = st.text_input("Search by Article, Product, or HS Code:", placeholder="Start typing for smart suggestions...", key=f"{client}_smart_search")
         with col2:
-            search_type = st.selectbox(
-                "Search Type",
-                ["All", "Article", "Product", "HS Code"],
-                key=f"{client}_search_type"
-            )
-        
+            search_type = st.selectbox("Search Type", ["All", "Article", "Product", "HS Code"], key=f"{client}_search_type")
         with col3:
             if st.button("🔍 Smart Search", use_container_width=True, type="primary", key=f"{client}_smart_search_btn"):
                 if search_input:
                     add_to_search_history(search_input, client, supplier)
                     handle_search(search_input, "", "", supplier, DATA, client)
     
-    # Show smart suggestions as user types
     if search_input and len(search_input) >= 2:
         supplier_data = DATA.get(supplier, {})
         suggestions = get_smart_suggestions(search_input, supplier_data, search_type)
         
         if suggestions:
-            st.markdown("**🤖 Smart Suggestions (click to select):**")
+            st.markdown("**Smart Suggestions (click to select):**")
             for i, sugg in enumerate(suggestions[:5]):
-                score_color = "#059669" if sugg["score"] >= 90 else "#D97706" if sugg["score"] >= 70 else "#6B7280"
-                
                 col1, col2 = st.columns([4, 1])
                 with col1:
-                    if st.button(
-                        f"{sugg['article']} - {sugg['name']}",
-                        key=f"smart_{i}",
-                        use_container_width=True,
-                        help=f"Match score: {sugg['score']}/100"
-                    ):
+                    if st.button(f"{sugg['article']} - {sugg['name']}", key=f"smart_{i}", use_container_width=True):
                         st.session_state.search_results = {
                             "article": sugg["article"],
                             "supplier": supplier,
@@ -2662,21 +1675,18 @@ def cdc_dashboard(client):
                         st.session_state.export_data = create_export_data(article_data, sugg["article"], supplier, client)
                         add_to_search_history(search_input, client, supplier, sugg["article"])
                         st.rerun()
-                
                 with col2:
-                    st.markdown(f"<span style='color:{score_color}; font-weight:bold;'>{sugg['score']}</span>", unsafe_allow_html=True)
+                    st.markdown(f"<span class='badge-info'>{sugg['score']}</span>", unsafe_allow_html=True)
     
-    # Use a form for Enter key support
     with st.form(key=f"{client}_search_form"):
         col1, col2, col3 = st.columns(3)
         with col1:
-            article = st.text_input("**ARTICLE NUMBER**", placeholder="e.g., 1-366, 1-367...", key=f"{client}_article")
+            article = st.text_input("Article Number", placeholder="e.g., 1-366, 1-367...", key=f"{client}_article")
         with col2:
-            product = st.text_input("**PRODUCT NAME**", placeholder="e.g., Moist Muffin, Date Mix...", key=f"{client}_product")
+            product = st.text_input("Product Name", placeholder="e.g., Moist Muffin, Date Mix...", key=f"{client}_product")
         with col3:
-            hs_code = st.text_input("**HS CODE**", placeholder="e.g., 1901200000, 180690...", key=f"{client}_hscode")
+            hs_code = st.text_input("HS Code", placeholder="e.g., 1901200000, 180690...", key=f"{client}_hscode")
         
-        # Search button - now responds to Enter key
         submitted = st.form_submit_button("🚀 SEARCH HISTORICAL PRICES", use_container_width=True, type="primary")
         
         if submitted:
@@ -2685,62 +1695,14 @@ def cdc_dashboard(client):
                 add_to_search_history(search_term, client, supplier)
                 handle_search(article, product, hs_code, supplier, DATA, client)
 
-    # Display results from session state
     if st.session_state.search_results and st.session_state.search_results.get("client") == client:
         display_from_session_state(DATA, client)
-
-def get_suggestions(search_term, supplier, data):
-    """Get search suggestions for article, product name, or HS code"""
-    suggestions = []
-    supplier_data = data.get(supplier, {})
-    
-    for article_num, article_data in supplier_data.items():
-        if not isinstance(article_data, dict) or 'names' not in article_data:
-            continue
-            
-        # Article number search
-        if search_term.lower() in str(article_num).lower():
-            display_name = article_data['names'][0] if article_data['names'] else 'No Name'
-            suggestions.append({
-                "type": "article",
-                "value": article_num,
-                "display": f"🔢 {article_num} - {display_name}"
-            })
-        
-        # Product name search
-        for name in article_data['names']:
-            if search_term.lower() in str(name).lower():
-                suggestions.append({
-                    "type": "product", 
-                    "value": article_num,
-                    "display": f"📝 {article_num} - {name}"
-                })
-        
-        # HS Code search
-        for order in article_data.get('orders', []):
-            if (order.get('hs_code') and 
-                search_term.lower() in str(order['hs_code']).lower() and
-                article_num not in [s['value'] for s in suggestions]):
-                display_name = article_data['names'][0] if article_data['names'] else 'No Name'
-                suggestions.append({
-                    "type": "hs_code",
-                    "value": article_num,
-                    "display": f"🏷️ {article_num} - HS: {order['hs_code']} - {display_name}"
-                })
-    
-    # Remove duplicates
-    unique_suggestions = {}
-    for sugg in suggestions:
-        if sugg["value"] not in unique_suggestions:
-            unique_suggestions[sugg["value"]] = sugg
-    
-    return list(unique_suggestions.values())
 
 def handle_search(article, product, hs_code, supplier, data, client):
     """Handle search across article, product name, and HS code"""
     search_term = article or product or hs_code
     if not search_term:
-        st.error("❌ Please enter an article number, product name, or HS code")
+        st.error("Please enter an article number, product name, or HS code")
         return
     
     found = False
@@ -2768,11 +1730,11 @@ def handle_search(article, product, hs_code, supplier, data, client):
     if found:
         add_to_search_history(search_term, client, supplier, found_article)
     else:
-        st.error(f"❌ No results found for '{search_term}' in {supplier}")
+        st.error(f"No results found for '{search_term}' in {supplier}")
         add_to_search_history(search_term, client, supplier)
 
 def create_export_data(article_data, article, supplier, client):
-    """Create export data in different formats - Kept for internal use only"""
+    """Create export data"""
     export_data = []
     for order in article_data['orders']:
         export_data.append({
@@ -2791,25 +1753,20 @@ def create_export_data(article_data, article, supplier, client):
             'Supplier': supplier,
             'Export_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         })
-    
     return pd.DataFrame(export_data)
 
 def display_from_session_state(data, client):
-    """Display search results with card design and favorites feature"""
+    """Display search results"""
     results = st.session_state.search_results
     article = results["article"]
     supplier = results["supplier"]
     
     if article not in data[supplier]:
-        st.error("❌ Article not found in current data")
+        st.error("Article not found in current data")
         return
         
     article_data = data[supplier][article]
     
-    # ============================================
-    # FEATURE 3: SAVED SEARCHES/FAVORITES
-    # ============================================
-    # Get search term from session state
     search_term = ""
     for key in [f"{client}_article", f"{client}_product", f"{client}_hscode", f"{client}_smart_search"]:
         if key in st.session_state:
@@ -2817,13 +1774,11 @@ def display_from_session_state(data, client):
             if search_term:
                 break
     
-    # Check if this search is favorited
     is_favorited = is_search_favorited(search_term, client, supplier)
     
-    # Favorites button
     col1, col2 = st.columns([4, 1])
     with col1:
-        st.success(f"✅ **Article {article}** found in **{supplier}** for **{client}**")
+        st.success(f"**Article {article}** found in **{supplier}** for **{client}**")
     with col2:
         if is_favorited:
             if st.button("⭐ Remove Favorite", key="remove_fav", use_container_width=True):
@@ -2832,26 +1787,19 @@ def display_from_session_state(data, client):
         else:
             if st.button("☆ Add to Favorites", key="add_fav", use_container_width=True):
                 if save_search_to_favorites(search_term, client, supplier, article):
-                    st.success("⭐ Added to favorites!")
+                    st.success("Added to favorites!")
                     st.rerun()
     
-    # Product names - SHOW ONLY ONE (most recent)
-    st.subheader("📝 Product Name")
+    st.markdown("<div class='subsection-header'>📝 Product Name</div>", unsafe_allow_html=True)
     
-    # Get the most recent product name from orders
     most_recent_name = ""
-    
-    # Try to find from orders (sorted by date)
     orders = article_data.get('orders', [])
     if orders:
-        # Sort orders by date if possible
         try:
-            # Create list of orders with parsed dates
             orders_with_dates = []
             for order in orders:
                 date_str = order.get('date', '')
                 if date_str:
-                    # Try different date formats
                     for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d', '%d %b %Y', '%d %B %Y']:
                         try:
                             parsed_date = datetime.strptime(date_str, fmt)
@@ -2859,50 +1807,37 @@ def display_from_session_state(data, client):
                             break
                         except:
                             continue
-            
-            # Sort by date descending (newest first)
             orders_with_dates.sort(key=lambda x: x[0], reverse=True)
-            
-            # Get most recent product name
             if orders_with_dates:
                 most_recent_name = orders_with_dates[0][1].get('product_name', '')
         except:
-            # If date parsing fails, use first order
             most_recent_name = orders[0].get('product_name', '')
     
-    # If no orders or no product name in orders, use the first name from names list
     if not most_recent_name and article_data['names']:
         most_recent_name = article_data['names'][0]
     
-    st.markdown(f'<div class="price-card">{most_recent_name}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="price-card-primary">{most_recent_name}</div>', unsafe_allow_html=True)
     
-    # Statistics
     prices = article_data['prices']
     orders = article_data.get('orders', [])
     
-    st.subheader("📊 Price Statistics")
+    st.markdown("<div class='subsection-header'>📊 Price Statistics</div>", unsafe_allow_html=True)
     
-    # Calculate required metrics
     total_records = len(prices)
     
-    # Get last sold price (most recent)
     last_sold_price = None
     second_last_price = None
     
     if orders and prices:
         try:
-            # Create list of orders with prices and dates
             order_price_list = []
             for order in orders:
                 price_str = order.get('price', '')
                 date_str = order.get('date', '')
                 
                 if price_str and date_str:
-                    # Try to parse price
                     try:
                         price = float(str(price_str).replace('$', '').replace(',', '').strip())
-                        
-                        # Try to parse date
                         parsed_date = None
                         for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d', '%d %b %Y', '%d %B %Y']:
                             try:
@@ -2910,43 +1845,30 @@ def display_from_session_state(data, client):
                                 break
                             except:
                                 continue
-                        
                         if parsed_date:
                             order_price_list.append((parsed_date, price))
                     except:
                         continue
-            
-            # Sort by date descending (newest first)
             order_price_list.sort(key=lambda x: x[0], reverse=True)
-            
-            # Get last and second last prices
             if len(order_price_list) > 0:
                 last_sold_price = order_price_list[0][1]
             if len(order_price_list) > 1:
                 second_last_price = order_price_list[1][1]
-                
         except:
-            # Fallback: use the last prices from the prices list
             if len(prices) > 0:
                 last_sold_price = prices[-1]
             if len(prices) > 1:
                 second_last_price = prices[-2]
     
-    # If still None, use min/max as fallback
     if last_sold_price is None and prices:
         last_sold_price = prices[-1] if prices else 0
-    
-    if second_last_price is None and len(prices) > 1:
-        second_last_price = prices[-2] if len(prices) > 1 else 0
-    elif second_last_price is None and prices:
-        second_last_price = prices[0]  # Use first as fallback
     
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         st.markdown(f"""
         <div class="stat-card">
-            <div class="stat-number">{total_records}</div>
+            <div class="stat-value">{total_records}</div>
             <div class="stat-label">Total Records</div>
         </div>
         """, unsafe_allow_html=True)
@@ -2955,7 +1877,7 @@ def display_from_session_state(data, client):
         price_display = f"${last_sold_price:.2f}" if last_sold_price is not None else "N/A"
         st.markdown(f"""
         <div class="stat-card">
-            <div class="stat-number">{price_display}</div>
+            <div class="stat-value">{price_display}</div>
             <div class="stat-label">Last Sold Price/kg</div>
         </div>
         """, unsafe_allow_html=True)
@@ -2964,7 +1886,7 @@ def display_from_session_state(data, client):
         price_display = f"${second_last_price:.2f}" if second_last_price is not None else "N/A"
         st.markdown(f"""
         <div class="stat-card">
-            <div class="stat-number">{price_display}</div>
+            <div class="stat-value">{price_display}</div>
             <div class="stat-label">Previous Price/kg</div>
         </div>
         """, unsafe_allow_html=True)
@@ -2975,634 +1897,300 @@ def display_from_session_state(data, client):
             max_price = max(prices)
             st.markdown(f"""
             <div class="stat-card">
-                <div class="stat-number" style="font-size: 1.4em;">${min_price:.2f} - ${max_price:.2f}</div>
-                <div class="stat-label">Price Range (Min - Max)/kg</div>
+                <div class="stat-value" style="font-size: 1.2rem;">${min_price:.2f} - ${max_price:.2f}</div>
+                <div class="stat-label">Price Range/kg</div>
             </div>
             """, unsafe_allow_html=True)
         else:
             st.markdown(f"""
             <div class="stat-card">
-                <div class="stat-number">N/A</div>
+                <div class="stat-value">N/A</div>
                 <div class="stat-label">Price Range/kg</div>
             </div>
             """, unsafe_allow_html=True)
     
-    # COLLAPSIBLE ORDER CARDS
-    st.subheader("💵 Historical Prices with Order Details")
+    st.markdown("<div class='subsection-header'>💵 Historical Prices</div>", unsafe_allow_html=True)
     
-    # Create expandable cards using Streamlit's native expander
     for i, order in enumerate(article_data['orders']):
-        # Get price for display
         price_display = order.get('price', 'N/A')
         try:
-            # Try to format as currency
             price_value = float(str(price_display).replace('$', '').replace(',', '').strip())
             price_display = f"${price_value:.2f}"
         except:
             price_display = f"${price_display}" if price_display != 'N/A' else 'N/A'
         
-        # Create expander header
-        expander_label = f"📦 {order.get('order_no', 'N/A')} | 📅 {order.get('date', 'N/A')} | 💰 {price_display}/kg"
-        
-        with st.expander(expander_label, expanded=False):
-            # Card content inside expander
-            order_card = f"""
-            <div class="price-box" style="margin: 0; border: none; box-shadow: none;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div>
-                        <div style="margin-bottom: 0.5rem;">
-                            <strong>📦 Product:</strong> {order.get('product_name', 'N/A')}
-                        </div>
-                        <div style="margin-bottom: 0.5rem;">
-                            <strong>🔢 Article:</strong> {order.get('article', 'N/A')}
-                        </div>
-                        {f'<div style="margin-bottom: 0.5rem;"><strong>📅 Year:</strong> {order.get("year", "N/A")}</div>' if order.get('year') else ''}
-                        {f'<div style="margin-bottom: 0.5rem;"><strong>🏷️ HS Code:</strong> {order.get("hs_code", "N/A")}</div>' if order.get('hs_code') else ''}
-                    </div>
-                    <div>
-                        {f'<div style="margin-bottom: 0.5rem;"><strong>📦 Packaging:</strong> {order.get("packaging", "N/A")}</div>' if order.get('packaging') else ''}
-                        {f'<div style="margin-bottom: 0.5rem;"><strong>🔢 Quantity:</strong> {order.get("quantity", "N/A")}</div>' if order.get('quantity') else ''}
-                        {f'<div style="margin-bottom: 0.5rem;"><strong>⚖️ Total Weight:</strong> {order.get("total_weight", "N/A")}</div>' if order.get('total_weight') else ''}
-                        {f'<div style="margin-bottom: 0.5rem;"><strong>💰 Total Price:</strong> {order.get("total_price", "N/A")}</div>' if order.get('total_price') else ''}
-                    </div>
-                </div>
-                <div style="text-align: center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.2);">
-                    <div style="font-size: 1.5em; font-weight: bold; color: #FEF3C7;">
-                        {price_display}/kg
-                    </div>
-                </div>
-            </div>
-            """
-            st.markdown(order_card, unsafe_allow_html=True)
-    
-    # SEARCH HISTORY DISPLAY
-    if st.session_state.get('search_history'):
-        client_history = [
-            h for h in st.session_state.search_history 
-            if h.get('client') == client and h.get('supplier') == supplier
-        ][:3]
-        
-        if client_history:
-            st.subheader("🕐 Recent Searches for this Client")
-            for i, history_item in enumerate(client_history):
-                time_ago = format_time_ago(history_item['timestamp'])
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    if st.button(
-                        f"{history_item['search_term']}",
-                        key=f"recent_{i}",
-                        use_container_width=True,
-                        help=f"Searched {time_ago}"
-                    ):
-                        st.session_state[f"{client}_article"] = history_item['search_term']
-                        st.session_state.search_results = {
-                            "article": history_item.get('article_num', history_item['search_term']),
-                            "supplier": supplier,
-                            "client": client
-                        }
-                        st.rerun()
-                with col2:
-                    st.caption(time_ago)
-    
-    # Note about export removal
-    st.info("📌 Note: Export functionality has been removed from the dashboard. For data export, please contact the administrator.")
-
-def convert_df_to_excel(df):
-    """Convert DataFrame to Excel format - Kept for potential future use"""
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Price_History')
-    processed_data = output.getvalue()
-    return processed_data
+        with st.expander(f"📦 {order.get('order_no', 'N/A')} | 📅 {order.get('date', 'N/A')} | 💰 {price_display}/kg", expanded=False):
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown(f"**Product:** {order.get('product_name', 'N/A')}")
+                st.markdown(f"**Article:** {order.get('article', 'N/A')}")
+                if order.get('year'):
+                    st.markdown(f"**Year:** {order['year']}")
+                if order.get('hs_code'):
+                    st.markdown(f"**HS Code:** {order['hs_code']}")
+            with col2:
+                if order.get('packaging'):
+                    st.markdown(f"**Packaging:** {order['packaging']}")
+                if order.get('quantity'):
+                    st.markdown(f"**Quantity:** {order['quantity']}")
+                if order.get('total_weight'):
+                    st.markdown(f"**Total Weight:** {order['total_weight']}")
+                if order.get('total_price'):
+                    st.markdown(f"**Total Price:** {order['total_price']}")
 
 def prices_tab():
     """All Customers Prices Tab"""
     st.markdown("""
-    <div class="prices-header">
-        <h2 style="margin:0;">💰 All Customers Prices</h2>
-        <p style="margin:0; opacity:0.9;">Complete Price Database • Cross-Customer Analysis • Flexible Search</p>
+    <div style="background: linear-gradient(135deg, #0ea5e9, #0284c7); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
+        <h2 style="margin:0; color: white;">💰 All Customers Prices</h2>
+        <p style="margin:0; opacity:0.9; color: white;">Complete price database • Cross-customer analysis</p>
     </div>
     """, unsafe_allow_html=True)
     
-    with st.spinner("📥 Loading prices data from Google Sheets..."):
+    with st.spinner("Loading prices data..."):
         prices_data = load_prices_data()
     
     if prices_data.empty:
-        st.warning("""
-        ⚠️ **Prices data not found or empty!**
-        
-        **To get started:**
-        1. Go to your Google Sheet
-        2. Add a new tab called **'Prices'**
-        3. Use these exact headers:
-           - Customer
-           - Customer Name
-           - Salesman
-           - Item Code
-           - Item Name
-           - Customer Article No
-           - Customer Label
-           - Packing/kg
-           - Price
-        """)
+        st.warning("Prices data not found or empty")
         return
     
-    st.success(f"✅ Loaded {len(prices_data)} price records")
-    
-    # Overview Statistics
-    st.subheader("📊 Price Database Overview")
+    st.success(f"Loaded {len(prices_data)} price records")
     
     col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Total Records", len(prices_data))
+    col2.metric("Unique Customers", prices_data['Customer'].nunique())
+    col3.metric("Unique Items", prices_data['Item Code'].nunique())
+    col4.metric("Average Price", f"${prices_data['Price'].mean():.2f}")
     
-    with col1:
-        total_records = len(prices_data)
-        st.metric("Total Records", total_records)
-    
-    with col2:
-        unique_customers = prices_data['Customer'].nunique()
-        st.metric("Unique Customers", unique_customers)
-    
-    with col3:
-        unique_items = prices_data['Item Code'].nunique()
-        st.metric("Unique Items", unique_items)
-    
-    with col4:
-        avg_price = prices_data['Price'].mean()
-        st.metric("Average Price", f"${avg_price:.2f}")
-    
-    # Search and Filter Section
-    st.subheader("🔍 Advanced Search & Filter")
+    st.markdown("<div class='subsection-header'>🔍 Advanced Search</div>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns(3)
-    
     with col1:
         customers = ["All"] + sorted(prices_data['Customer'].dropna().unique().tolist())
-        selected_customer = st.selectbox("Filter by Customer:", customers, key="price_customer_filter")
-    
+        selected_customer = st.selectbox("Customer:", customers, key="price_customer_filter")
     with col2:
         salesmen = ["All"] + sorted(prices_data['Salesman'].dropna().unique().tolist())
-        selected_salesman = st.selectbox("Filter by Salesman:", salesmen, key="price_salesman_filter")
-    
+        selected_salesman = st.selectbox("Salesman:", salesmen, key="price_salesman_filter")
     with col3:
         min_price = float(prices_data['Price'].min())
         max_price = float(prices_data['Price'].max())
-        price_range = st.slider(
-            "Price Range:",
-            min_value=min_price,
-            max_value=max_price,
-            value=(min_price, max_price),
-            key="price_range_filter"
-        )
-    
-    # Specific search options
-    st.subheader("🎯 Specific Search Options")
+        price_range = st.slider("Price Range:", min_value=min_price, max_value=max_price, value=(min_price, max_price), key="price_range_filter")
     
     col1, col2, col3 = st.columns(3)
-    
     with col1:
-        article_search = st.text_input(
-            "🔢 Search by Article Number:",
-            placeholder="Enter article number...",
-            key="price_article_search"
-        )
-    
+        article_search = st.text_input("Article Number:", placeholder="Enter article number...", key="price_article_search")
     with col2:
-        item_name_search = st.text_input(
-            "📝 Search by Item Name:",
-            placeholder="Enter item name...",
-            key="price_item_name_search"
-        )
-    
+        item_name_search = st.text_input("Item Name:", placeholder="Enter item name...", key="price_item_name_search")
     with col3:
-        customer_article_search = st.text_input(
-            "🏷️ Search by Customer Article No:",
-            placeholder="Enter customer article no...",
-            key="price_customer_article_search"
-        )
+        customer_article_search = st.text_input("Customer Article No:", placeholder="Enter customer article...", key="price_customer_article_search")
     
-    # Global search
-    global_search = st.text_input(
-        "🌐 Global Search (search across all columns):",
-        placeholder="Enter any term to search across all columns...",
-        key="price_global_search"
-    )
+    global_search = st.text_input("Global Search:", placeholder="Search across all columns...", key="price_global_search")
     
-    # Apply filters
     filtered_data = prices_data.copy()
     
     if selected_customer != "All":
         filtered_data = filtered_data[filtered_data['Customer'] == selected_customer]
-    
     if selected_salesman != "All":
         filtered_data = filtered_data[filtered_data['Salesman'] == selected_salesman]
     
-    filtered_data = filtered_data[
-        (filtered_data['Price'] >= price_range[0]) & 
-        (filtered_data['Price'] <= price_range[1])
-    ]
+    filtered_data = filtered_data[(filtered_data['Price'] >= price_range[0]) & (filtered_data['Price'] <= price_range[1])]
     
     if article_search:
-        filtered_data = filtered_data[
-            filtered_data['Item Code'].astype(str).str.contains(article_search, case=False, na=False)
-        ]
-    
+        filtered_data = filtered_data[filtered_data['Item Code'].astype(str).str.contains(article_search, case=False, na=False)]
     if item_name_search:
-        filtered_data = filtered_data[
-            filtered_data['Item Name'].astype(str).str.contains(item_name_search, case=False, na=False)
-        ]
-    
+        filtered_data = filtered_data[filtered_data['Item Name'].astype(str).str.contains(item_name_search, case=False, na=False)]
     if customer_article_search:
-        filtered_data = filtered_data[
-            filtered_data['Customer Article No'].astype(str).str.contains(customer_article_search, case=False, na=False)
-        ]
+        filtered_data = filtered_data[filtered_data['Customer Article No'].astype(str).str.contains(customer_article_search, case=False, na=False)]
     
     if global_search and not (article_search or item_name_search or customer_article_search):
-        search_columns = ['Customer', 'Customer Name', 'Salesman', 'Item Code', 'Item Name', 
-                         'Customer Article No', 'Customer Label', 'Packing/kg']
-        mask = filtered_data[search_columns].astype(str).apply(
-            lambda x: x.str.contains(global_search, case=False, na=False)
-        ).any(axis=1)
+        search_columns = ['Customer', 'Customer Name', 'Salesman', 'Item Code', 'Item Name', 'Customer Article No', 'Customer Label']
+        mask = filtered_data[search_columns].astype(str).apply(lambda x: x.str.contains(global_search, case=False, na=False)).any(axis=1)
         filtered_data = filtered_data[mask]
     
-    # Display Results
-    st.subheader(f"📋 Price Records ({len(filtered_data)} found)")
+    st.markdown(f"<div class='subsection-header'>📋 Price Records ({len(filtered_data)} found)</div>", unsafe_allow_html=True)
     
     if not filtered_data.empty:
         for _, record in filtered_data.iterrows():
             with st.expander(f"💰 {record['Item Code']} - {record['Item Name']}", expanded=False):
-                col1, col2 = st.columns([2, 1])
-                
+                col1, col2 = st.columns(2)
                 with col1:
-                    st.write(f"**Customer:** {record['Customer']}")
-                    st.write(f"**Customer Name:** {record['Customer Name']}")
-                    st.write(f"**Salesman:** {record['Salesman']}")
-                    st.write(f"**Item Code:** {record['Item Code']}")
-                    st.write(f"**Item Name:** {record['Item Name']}")
-                    
+                    st.markdown(f"**Customer:** {record['Customer']}")
+                    st.markdown(f"**Customer Name:** {record['Customer Name']}")
+                    st.markdown(f"**Salesman:** {record['Salesman']}")
                 with col2:
-                    st.write(f"**Customer Article No:** {record['Customer Article No']}")
-                    st.write(f"**Customer Label:** {record['Customer Label']}")
-                    st.write(f"**Packing/kg:** {record['Packing/kg']}")
-                    st.markdown(f"<h3 style='color: #059669;'>Price: ${record['Price']:.2f}</h3>", unsafe_allow_html=True)
-        
-        # Quick Statistics for filtered data
-        st.subheader("📈 Filtered Data Statistics")
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.metric("Filtered Records", len(filtered_data))
-        
-        with col2:
-            filtered_avg_price = filtered_data['Price'].mean()
-            st.metric("Average Price", f"${filtered_avg_price:.2f}")
-        
-        with col3:
-            min_filtered_price = filtered_data['Price'].min()
-            st.metric("Min Price", f"${min_filtered_price:.2f}")
-        
-        with col4:
-            max_filtered_price = filtered_data['Price'].max()
-            st.metric("Max Price", f"${max_filtered_price:.2f}")
-        
-        # Note about export removal
-        st.info("📌 Note: Export functionality has been removed from the dashboard. For data export, please contact the administrator.")
-            
-    else:
-        st.info("No price records match your search criteria.")
+                    st.markdown(f"**Item Code:** {record['Item Code']}")
+                    st.markdown(f"**Customer Article No:** {record['Customer Article No']}")
+                    st.markdown(f"**Packing:** {record['Packing/kg']}")
+                    st.markdown(f"**Price:** <span style='font-size: 1.25rem; font-weight: 700; color: #059669;'>${record['Price']:.2f}</span>", unsafe_allow_html=True)
 
 def etd_tab():
-    """ETD Sheet - Live Google Sheets Integration with Multi-Month Support"""
+    """ETD Sheet Tab"""
     st.markdown("""
-    <div class="intelligence-header">
-        <h2 style="margin:0;">📅 ETD Management Dashboard</h2>
-        <p style="margin:0; opacity:0.9;">Live Order Tracking • Multi-Supplier ETD • Multi-Month View</p>
+    <div style="background: linear-gradient(135deg, #059669, #047857); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
+        <h2 style="margin:0; color: white;">📅 ETD Management Dashboard</h2>
+        <p style="margin:0; opacity:0.9; color: white;">Live order tracking • Multi-supplier ETD</p>
     </div>
     """, unsafe_allow_html=True)
 
-    # ETD Sheet configuration
     ETD_SHEET_ID = "1eA-mtD3aK_n9VYNV_bxnmqm58IywF0f5-7vr3PT51hs"
-    
     AVAILABLE_MONTHS = ["October 2025 ", "November 2025 "]
 
     try:
-        # Month Selection
-        st.subheader("📅 Select Month")
-        selected_month = st.radio(
-            "Choose month to view:",
-            AVAILABLE_MONTHS,
-            horizontal=True,
-            key="etd_month_selector"
-        )
+        selected_month = st.radio("Select month:", AVAILABLE_MONTHS, horizontal=True, key="etd_month_selector")
         
-        # Load ETD data for selected month
-        with st.spinner(f"🔄 Loading {selected_month.strip()} ETD data..."):
+        with st.spinner(f"Loading {selected_month.strip()} ETD data..."):
             etd_data = load_etd_data(ETD_SHEET_ID, selected_month)
         
         if etd_data.empty:
-            st.warning(f"No ETD data found in {selected_month}. Please check the sheet.")
+            st.warning(f"No ETD data found in {selected_month}")
             return
 
-        st.success(f"✅ Connected to {selected_month.strip()}! Loaded {len(etd_data)} orders")
+        st.success(f"Connected to {selected_month.strip()}! Loaded {len(etd_data)} orders")
 
-        # Overview Metrics
-        st.subheader("📊 ETD Overview")
         col1, col2, col3, col4, col5 = st.columns(5)
+        col1.metric("Total Orders", len(etd_data))
+        col2.metric("Shipped", len(etd_data[etd_data['Status'].str.lower() == 'shipped']))
+        col3.metric("In Production", len(etd_data[etd_data['Status'].str.lower().str.contains('production', na=False)]))
+        col4.metric("Pending", len(etd_data[etd_data['Status'].str.lower().str.contains('pending', na=False)]))
         
-        with col1:
-            total_orders = len(etd_data)
-            st.metric("Total Orders", total_orders)
-        
-        with col2:
-            shipped_orders = len(etd_data[etd_data['Status'].str.lower() == 'shipped'])
-            st.metric("Shipped", shipped_orders)
-        
-        with col3:
-            production_orders = len(etd_data[etd_data['Status'].str.lower().str.contains('production', na=False)])
-            st.metric("In Production", production_orders)
-        
-        with col4:
-            pending_orders = len(etd_data[etd_data['Status'].str.lower().str.contains('pending', na=False)])
-            st.metric("Pending", pending_orders)
-        
-        with col5:
-            need_etd = len(etd_data[
-                (etd_data['ETD _ Backaldrine'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
-                (etd_data['ETD_bateel'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
-                (etd_data['ETD _ Kasih'].astype(str).str.contains('NEETD', case=False, na=False)) |
-                (etd_data['ETD_PMC'].astype(str).str.contains('NEED ETD', case=False, na=False))
-            ])
-            st.metric("Need ETD", need_etd)
+        need_etd = len(etd_data[
+            (etd_data['ETD _ Backaldrine'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
+            (etd_data['ETD_bateel'].astype(str).str.contains('NEED ETD', case=False, na=False))
+        ])
+        col5.metric("Need ETD", need_etd)
 
-        # Cross-Month Summary
-        if len(AVAILABLE_MONTHS) > 1:
-            st.subheader("🌐 Cross-Month Summary")
-            month_cols = st.columns(len(AVAILABLE_MONTHS))
-            
-            for i, month in enumerate(AVAILABLE_MONTHS):
-                with month_cols[i]:
-                    if month == selected_month:
-                        st.info(f"**{month.strip()}**\n**{len(etd_data)} orders**")
-                    else:
-                        try:
-                            other_month_data = load_etd_data(ETD_SHEET_ID, month)
-                            if not other_month_data.empty:
-                                st.metric(month.strip(), len(other_month_data))
-                            else:
-                                st.write(f"**{month.strip()}**\n0 orders")
-                        except:
-                            st.write(f"**{month.strip()}**\n–")
-
-        # Search and Filter Section
-        st.subheader("🔍 Filter & Search Orders")
+        st.markdown("<div class='subsection-header'>🔍 Filter Orders</div>", unsafe_allow_html=True)
         
-        col1, col2, col3, col4 = st.columns(4)
-        
+        col1, col2, col3 = st.columns(3)
         with col1:
-            client_filter = st.selectbox(
-                "Client",
-                ["All"] + sorted(etd_data['Client Name'].dropna().unique()),
-                key="etd_client_filter"
-            )
-        
+            client_filter = st.selectbox("Client", ["All"] + sorted(etd_data['Client Name'].dropna().unique()), key="etd_client_filter")
         with col2:
-            employee_filter = st.selectbox(
-                "Employee", 
-                ["All"] + sorted(etd_data['Concerned Employee'].dropna().unique()),
-                key="etd_employee_filter"
-            )
-        
+            status_filter = st.selectbox("Status", ["All", "Shipped", "In Production", "Pending", "Need ETD"], key="etd_status_filter")
         with col3:
-            status_filter = st.selectbox(
-                "Status",
-                ["All", "Shipped", "In Production", "Pending", "Need ETD"],
-                key="etd_status_filter"
-            )
-        
-        with col4:
             search_term = st.text_input("Search Order No...", key="etd_search")
 
-        # Apply filters
         filtered_data = etd_data.copy()
         
         if client_filter != "All":
             filtered_data = filtered_data[filtered_data['Client Name'] == client_filter]
         
-        if employee_filter != "All":
-            filtered_data = filtered_data[filtered_data['Concerned Employee'] == employee_filter]
-        
         if status_filter != "All":
             if status_filter == "Need ETD":
                 filtered_data = filtered_data[
                     (filtered_data['ETD _ Backaldrine'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
-                    (filtered_data['ETD_bateel'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
-                    (etd_data['ETD _ Kasih'].astype(str).str.contains('NEED ETD', case=False, na=False)) |
-                    (etd_data['ETD_PMC'].astype(str).str.contains('NEED ETD', case=False, na=False))
+                    (filtered_data['ETD_bateel'].astype(str).str.contains('NEED ETD', case=False, na=False))
                 ]
             else:
                 filtered_data = filtered_data[filtered_data['Status'] == status_filter]
         
         if search_term:
-            filtered_data = filtered_data[
-                filtered_data['Order No.'].astype(str).str.contains(search_term, case=False, na=False)
-            ]
+            filtered_data = filtered_data[filtered_data['Order No.'].astype(str).str.contains(search_term, case=False, na=False)]
 
-        # Display filtered results
-        st.subheader(f"📋 {selected_month.strip()} Orders ({len(filtered_data)} found)")
+        st.markdown(f"<div class='subsection-header'>📋 {selected_month.strip()} Orders ({len(filtered_data)} found)</div>", unsafe_allow_html=True)
         
         if not filtered_data.empty:
             for _, order in filtered_data.iterrows():
                 display_etd_order_card(order, selected_month.strip())
         else:
             st.info("No orders match your filter criteria.")
-        
-        # Note about export removal
-        st.info("📌 Note: Export functionality has been removed from the dashboard. For data export, please contact the administrator.")
 
     except Exception as e:
-        st.error(f"❌ Error loading ETD data: {str(e)}")
-        st.info("Please check: 1) Google Sheet is shared, 2) Sheet name is correct, 3) Internet connection")
+        st.error(f"Error loading ETD data: {str(e)}")
 
 def display_etd_order_card(order, month):
-    """Display individual ETD order card with supplier tracking"""
-    
+    """Display ETD order card"""
     status = order.get('Status', 'Unknown')
-    status_color = {
-        'Shipped': '🟢',
-        'In Production': '🟡', 
-        'Pending': '🟠',
-        'Unknown': '⚫'
-    }.get(status, '⚫')
+    status_color = {'Shipped': '🟢', 'In Production': '🟡', 'Pending': '🟠'}.get(status, '⚫')
     
     needs_etd = []
-    for supplier in ['Backaldrine', 'bateel', 'Kasih', 'PMC']:
+    for supplier in ['Backaldrine', 'bateel']:
         etd_col = f"ETD _{supplier}" if supplier != 'bateel' else 'ETD_bateel'
         etd_value = order.get(etd_col, '')
         if pd.notna(etd_value) and 'NEED ETD' in str(etd_value).upper():
             needs_etd.append(supplier)
     
     with st.expander(f"{status_color} {order.get('Order No.', 'N/A')} - {order.get('Client Name', 'N/A')} | {month}", expanded=False):
-        
-        # Order Header
-        col1, col2, col3 = st.columns([2, 1, 1])
-        
+        col1, col2, col3 = st.columns(3)
         with col1:
-            st.write(f"**Client:** {order.get('Client Name', 'N/A')}")
-            st.write(f"**Employee:** {order.get('Concerned Employee', 'N/A')}")
-            st.write(f"**Month:** {month}")
-            
+            st.markdown(f"**Client:** {order.get('Client Name', 'N/A')}")
+            st.markdown(f"**Employee:** {order.get('Concerned Employee', 'N/A')}")
         with col2:
-            st.write(f"**Status:** {status}")
-            st.write(f"**Confirmation:** {order.get('Confirmation Date', 'N/A')}")
-            
+            st.markdown(f"**Status:** {status}")
+            st.markdown(f"**Confirmation:** {order.get('Confirmation Date', 'N/A')}")
         with col3:
             if needs_etd:
-                st.error(f"🚨 NEED ETD: {', '.join(needs_etd)}")
-            st.write(f"**Loading:** {order.get('Scheduled Date For Loading', 'N/A')}")
+                st.markdown(f"<span class='badge-danger'>NEED ETD: {', '.join(needs_etd)}</span>", unsafe_allow_html=True)
+            st.markdown(f"**Loading:** {order.get('Scheduled Date For Loading', 'N/A')}")
         
-        # Supplier ETD Tracking
-        st.write("---")
-        st.write("**🚚 Supplier ETD Status**")
+        st.markdown("---")
+        st.markdown("**Supplier ETD Status**")
         
-        suppliers = [
-            ('Backaldrine', 'ETD _ Backaldrine', 'bateel Order #'),
-            ('bateel', 'ETD_bateel', 'bateel Order #'),
-            ('Kasih', 'ETD _ Kasih', 'Kasih Order #'), 
-            ('PMC', 'ETD_PMC', 'PMC Order #')
-        ]
-        
-        cols = st.columns(4)
-        for idx, (supplier, etd_col, order_col) in enumerate(suppliers):
-            with cols[idx]:
-                etd_value = order.get(etd_col, '')
-                order_value = order.get(order_col, '')
-                
-                if pd.isna(etd_value) or str(etd_value).strip() == '':
-                    st.write(f"**{supplier}:** ❌ No ETD")
-                elif 'NEED ETD' in str(etd_value).upper():
-                    st.error(f"**{supplier}:** 🚨 NEED ETD")
-                elif 'READY' in str(etd_value).upper():
-                    st.success(f"**{supplier}:** ✅ Ready")
-                else:
-                    st.info(f"**{supplier}:** 📅 {etd_value}")
-                
-                if pd.notna(order_value) and str(order_value).strip() != '':
-                    st.caption(f"Order: {order_value}")
-        
-        # Additional Information
-        st.write("---")
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            stock_notes = order.get('Stock Notes', '')
-            if pd.notna(stock_notes) and str(stock_notes).strip() != '':
-                st.write("**📦 Stock Notes:**")
-                st.info(stock_notes)
-                
-        with col2:
-            transport = order.get('transport Company', '')
-            if pd.notna(transport) and str(transport).strip() != '':
-                st.write("**🚛 Transport:**")
-                st.write(transport)
+        for supplier in ['Backaldrine', 'bateel']:
+            etd_col = f"ETD _{supplier}" if supplier != 'bateel' else 'ETD_bateel'
+            order_col = f"{supplier} Order #" if supplier != 'bateel' else 'bateel Order #'
+            etd_value = order.get(etd_col, '')
+            order_value = order.get(order_col, '')
+            
+            if pd.isna(etd_value) or str(etd_value).strip() == '':
+                st.markdown(f"**{supplier}:** ❌ No ETD")
+            elif 'NEED ETD' in str(etd_value).upper():
+                st.markdown(f"**{supplier}:** <span class='badge-danger'>NEED ETD</span>", unsafe_allow_html=True)
+            elif 'READY' in str(etd_value).upper():
+                st.markdown(f"**{supplier}:** <span class='badge-success'>Ready</span>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"**{supplier}:** 📅 {etd_value}")
+            
+            if pd.notna(order_value) and str(order_value).strip() != '':
+                st.caption(f"Order: {order_value}")
 
 def ceo_specials_tab():
-    """CEO Special Prices tab - NOW CLIENT SPECIFIC"""
+    """CEO Special Prices Tab"""
     st.markdown("""
-    <div class="ceo-header">
-        <h2 style="margin:0;">⭐ CEO Special Prices</h2>
-        <p style="margin:0; opacity:0.9;">Exclusive Pricing • Limited Time Offers • VIP Client Rates</p>
+    <div style="background: linear-gradient(135deg, #d97706, #b45309); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
+        <h2 style="margin:0; color: white;">⭐ CEO Special Prices</h2>
+        <p style="margin:0; opacity:0.9; color: white;">Exclusive pricing • Limited time offers • VIP client rates</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Client selection for CEO specials
     available_clients = st.session_state.user_clients
-    client = st.selectbox(
-        "Select Client for CEO Special Prices:",
-        available_clients,
-        key="ceo_client_select"
-    )
+    client = st.selectbox("Select Client:", available_clients, key="ceo_client_select")
     
     if not client:
-        st.warning("No clients available for your account")
+        st.warning("No clients available")
         return
-        
-    st.info(f"📊 Showing CEO Special Prices for **{client}**")
     
-    # Load CEO special prices for selected client
     ceo_data = load_ceo_special_prices(client)
     
     if ceo_data.empty:
-        sheet_name = CLIENT_SHEETS[client]["ceo_special"]
-        st.warning(f"⚠️ No CEO special prices found for {client}. Please add data to '{sheet_name}' sheet.")
-        st.info(f"""
-        **To add CEO special prices for {client}:**
-        1. Go to your Google Sheet
-        2. Add a new tab called **'{sheet_name}'**
-        3. Use these columns:
-           - Article_Number
-           - Product_Name  
-           - Special_Price
-           - Currency
-           - Incoterm
-           - Notes
-           - Effective_Date
-           - Expiry_Date
-        """)
+        st.warning(f"No CEO special prices found for {client}")
         return
      
-    # CEO Special Prices Overview
-    st.subheader(f"📊 {client} CEO Specials Overview")
     col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Total Special Offers", len(ceo_data))
+    col2.metric("Active Offers", len(ceo_data[ceo_data['Expiry_Date'] >= datetime.now().strftime('%Y-%m-%d')]))
+    col3.metric("Currencies", ceo_data['Currency'].nunique())
+    col4.metric("Expiring Soon", len(ceo_data[(ceo_data['Expiry_Date'] >= datetime.now().strftime('%Y-%m-%d')) & (ceo_data['Expiry_Date'] <= (datetime.now() + pd.Timedelta(days=30)).strftime('%Y-%m-%d'))]))
     
-    with col1:
-        st.metric("Total Special Offers", len(ceo_data))
-    with col2:
-        active_offers = len(ceo_data[ceo_data['Expiry_Date'] >= datetime.now().strftime('%Y-%m-%d')])
-        st.metric("Active Offers", active_offers)
-    with col3:
-        unique_currencies = ceo_data['Currency'].nunique()
-        st.metric("Currencies Used", unique_currencies)
-    with col4:
-        expiring_soon = len(ceo_data[
-            (ceo_data['Expiry_Date'] >= datetime.now().strftime('%Y-%m-%d')) &
-            (ceo_data['Expiry_Date'] <= (datetime.now() + pd.Timedelta(days=30)).strftime('%Y-%m-%d'))
-        ])
-        st.metric("Expiring Soon", expiring_soon)
-    
-    # Search and Filter
-    st.subheader("🔍 Search CEO Special Prices")
-    
-    col1, col2, col3 = st.columns([2, 1, 1])
+    col1, col2 = st.columns([2, 1])
     with col1:
         search_term = st.text_input("Search by article or product name...", key="ceo_search")
     with col2:
         show_active = st.checkbox("Show Active Only", value=True, key="ceo_active")
-    with col3:
-        currency_filter = st.selectbox("Currency", ["All"] + list(ceo_data['Currency'].unique()), key="ceo_currency")
     
-    # Filter data
     filtered_data = ceo_data.copy()
     
     if search_term:
-        mask = filtered_data.astype(str).apply(
-            lambda x: x.str.contains(search_term, case=False, na=False)
-        ).any(axis=1)
+        mask = filtered_data.astype(str).apply(lambda x: x.str.contains(search_term, case=False, na=False)).any(axis=1)
         filtered_data = filtered_data[mask]
-    
     if show_active:
         filtered_data = filtered_data[filtered_data['Expiry_Date'] >= datetime.now().strftime('%Y-%m-%d')]
     
-    if currency_filter != "All":
-        filtered_data = filtered_data[filtered_data['Currency'] == currency_filter]
-    
-    # Display CEO Special Prices
-    st.subheader(f"🎯 {client} Special Price List")
+    st.markdown(f"<div class='subsection-header'>🎯 {client} Special Price List</div>", unsafe_allow_html=True)
     
     if not filtered_data.empty:
         for _, special in filtered_data.iterrows():
             is_active = special['Expiry_Date'] >= datetime.now().strftime('%Y-%m-%d')
-            status_color = "🟢" if is_active else "🔴"
-            status_text = "Active" if is_active else "Expired"
+            status_color = "🟢 Active" if is_active else "🔴 Expired"
             
             try:
                 price_display = f"{float(special['Special_Price']):.2f}"
@@ -3610,84 +2198,54 @@ def ceo_specials_tab():
                 price_display = str(special['Special_Price'])
             
             st.markdown(f"""
-            <div class="special-price-card">
-                <div style="display: flex; justify-content: between; align-items: center;">
+            <div class="price-card-secondary">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <h3 style="margin:0; color: #D97706;">{special['Article_Number']} - {special['Product_Name']}</h3>
-                        <p style="margin:0; font-size: 1.2em; font-weight: bold; color: #B45309;">
-                            Special Price: {price_display} {special['Currency']}/kg
-                        </p>
-                        <p style="margin:0; color: #6B7280;">
-                            {status_color} {status_text} • Valid until: {special['Expiry_Date']}
-                            {f" • Incoterm: {special['Incoterm']}" if pd.notna(special['Incoterm']) and special['Incoterm'] != '' else ''}
-                        </p>
-                        {f"<p style='margin:5px 0 0 0; color: #6B7280;'><strong>Notes:</strong> {special['Notes']}</p>" if pd.notna(special['Notes']) and special['Notes'] != '' else ''}
+                        <strong>{special['Article_Number']} - {special['Product_Name']}</strong>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #b45309;">Special Price: {price_display} {special['Currency']}/kg</div>
+                        <div style="font-size: 0.8rem; color: #64748b;">{status_color} • Valid until: {special['Expiry_Date']}</div>
                     </div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
-        
-        # Note about export removal
-        st.info("📌 Note: Export functionality has been removed from the dashboard. For data export, please contact the administrator.")
-        
-    else:
-        st.info("No CEO special prices match your search criteria.")
 
 def price_intelligence_tab():
-    """CEO Price Intelligence - Cross-client price comparison"""
+    """CEO Price Intelligence Tab"""
     st.markdown("""
-    <div class="intelligence-header">
-        <h2 style="margin:0;">💰 CEO Price Intelligence</h2>
-        <p style="margin:0; opacity:0.9;">Cross-Client Price Comparison • Market Intelligence • Strategic Insights</p>
+    <div style="background: linear-gradient(135deg, #059669, #047857); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
+        <h2 style="margin:0; color: white;">💰 CEO Price Intelligence</h2>
+        <p style="margin:0; opacity:0.9; color: white;">Cross-client price comparison • Market intelligence</p>
     </div>
     """, unsafe_allow_html=True)
-    
-    st.info("🔍 **Search across selected clients to compare pricing strategies and identify opportunities**")
     
     available_clients = st.session_state.user_clients
     
     if len(available_clients) < 2:
-        st.warning("🔒 You need access to at least 2 clients to compare prices. Currently you only have access to: " + ", ".join(available_clients))
+        st.warning(f"You need access to at least 2 clients to compare prices. Current access: {', '.join(available_clients)}")
     
-    # Search Configuration Section
-    st.subheader("🔧 Search Configuration")
-    
-    col1, col2, col3 = st.columns([2, 2, 1])
-    
+    col1, col2 = st.columns([2, 1])
     with col1:
-        client_selection = st.multiselect(
-            "**SELECT CLIENTS TO ANALYZE**",
-            options=available_clients,
-            default=available_clients,
-            key="intelligence_clients"
-        )
-    
+        client_selection = st.multiselect("Select clients to analyze:", options=available_clients, default=available_clients, key="intelligence_clients")
     with col2:
-        search_term = st.text_input("**ENTER ARTICLE NUMBER OR PRODUCT NAME**", 
-                                  placeholder="e.g., 281, Chocolate, Date Mix...", 
-                                  key="intelligence_search")
+        search_term = st.text_input("Article or product name:", placeholder="e.g., 281, Chocolate...", key="intelligence_search")
     
-    with col3:
-        supplier_filter = st.selectbox("**SUPPLIER**", ["All", "Backaldrin", "Bateel"], key="intelligence_supplier")
-    
-    # Analyze Button
-    if st.button("🚀 ANALYZE PRICES ACROSS SELECTED CLIENTS", use_container_width=True, type="primary", key="intelligence_analyze"):
+    if st.button("Analyze Prices", use_container_width=True, type="primary", key="intelligence_analyze"):
         if search_term and client_selection:
-            analyze_cross_client_prices(search_term, client_selection, supplier_filter)
+            analyze_cross_client_prices(search_term, client_selection, "All")
         else:
             if not search_term:
-                st.error("❌ Please enter an article number or product name to analyze")
+                st.error("Please enter an article number or product name")
             if not client_selection:
-                st.error("❌ Please select at least one client to analyze")
+                st.error("Please select at least one client")
 
 def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="All"):
-    """Analyze prices across selected clients for a given search term"""
-    st.subheader(f"🔍 Analysis Results: '{search_term}'")
-    st.info(f"**Clients Analyzed:** {', '.join(selected_clients)}")
+    """Analyze prices across selected clients"""
+    st.markdown(f"<div class='subsection-header'>Analysis Results: '{search_term}'</div>", unsafe_allow_html=True)
     
     all_results = {}
     total_records = 0
     found_articles = set()
+    all_prices = []
     
     for client in selected_clients:
         client_data = get_google_sheets_data(client)
@@ -3709,6 +2267,7 @@ def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="
                         avg_price = sum(article_data['prices']) / len(article_data['prices'])
                         min_price = min(article_data['prices'])
                         max_price = max(article_data['prices'])
+                        all_prices.extend(article_data['prices'])
                         
                         client_results.append({
                             'article': article_num,
@@ -3740,59 +2299,35 @@ def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="
             all_results[f"{client} - {supplier}"] = client_results
     
     if not found_articles:
-        st.warning(f"❌ No results found for '{search_term}' across selected clients")
+        st.warning(f"No results found for '{search_term}'")
         return
     
-    all_prices = []
-    for client_supplier, results in all_results.items():
-        for result in results:
-            if result['has_data']:
-                all_prices.extend(result['all_prices'])
-    
-    # Display overview statistics
-    st.subheader("📊 Cross-Client Price Overview")
-    
     col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("Total Price Records", total_records)
-    with col2:
-        if all_prices:
-            price_range = max(all_prices) - min(all_prices) if all_prices else 0
-            st.metric("Price Range", f"${price_range:.2f}/kg")
-        else:
-            st.metric("Price Range", "N/A")
-    with col3:
-        overall_min = min(all_prices) if all_prices else "N/A"
-        st.metric("Lowest Price", f"${overall_min}/kg" if all_prices else "N/A")
-    with col4:
-        overall_max = max(all_prices) if all_prices else "N/A"
-        st.metric("Highest Price", f"${overall_max}/kg" if all_prices else "N/A")
+    col1.metric("Total Price Records", total_records)
+    if all_prices:
+        col2.metric("Price Range", f"${max(all_prices) - min(all_prices):.2f}/kg")
+        col3.metric("Lowest Price", f"${min(all_prices):.2f}/kg")
+        col4.metric("Highest Price", f"${max(all_prices):.2f}/kg")
     
-    # Display detailed comparison
-    st.subheader("🏢 Client-by-Client Price Comparison")
+    st.markdown("<div class='subsection-header'>Client-by-Client Comparison</div>", unsafe_allow_html=True)
     
     articles_data = {}
-    
     for client_supplier, results in all_results.items():
         client_name, supplier_name = client_supplier.split(" - ")
         for result in results:
             article_num = result['article']
             if article_num not in articles_data:
-                articles_data[article_num] = {
-                    'product_names': result['product_names'],
-                    'client_data': {}
-                }
+                articles_data[article_num] = {'product_names': result['product_names'], 'client_data': {}}
             articles_data[article_num]['client_data'][client_supplier] = result
     
     for article_num, article_data in articles_data.items():
         st.markdown(f"### 📦 Article: {article_num}")
-        st.caption(f"**Product Names:** {', '.join(article_data['product_names'])}")
+        st.caption(f"Product: {', '.join(article_data['product_names'])}")
         
         comparison_data = []
-
         for client_supplier in all_results.keys():
-            client_name, supplier_name = client_supplier.split(" - ")
             result = article_data['client_data'].get(client_supplier)
+            client_name, supplier_name = client_supplier.split(" - ")
             
             if result and result['has_data']:
                 comparison_data.append({
@@ -3800,261 +2335,96 @@ def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="
                     'Supplier': supplier_name,
                     'Min Price': f"${result['min_price']:.2f}",
                     'Max Price': f"${result['max_price']:.2f}",
-                    'Records': result['records'],
-                    'Status': '✅ Available'
+                    'Records': result['records']
                 })
             else:
                 comparison_data.append({
                     'Client': client_name,
                     'Supplier': supplier_name,
                     'Min Price': "N/A",
-                    'Max Price': "N/A", 
-                    'Records': "0",
-                    'Status': '❌ Not Available'
+                    'Max Price': "N/A",
+                    'Records': 0
                 })
         
-        comparison_df = pd.DataFrame(comparison_data)
-        st.dataframe(comparison_df, use_container_width=True)
-        
-        st.markdown("#### 📈 Detailed Price History")
-        
-        for client_supplier, result in article_data['client_data'].items():
-            client_name, supplier_name = client_supplier.split(" - ")
-            
-            if result['has_data']:
-                is_best = result['min_price'] == overall_min if all_prices else False
-                is_worst = result['max_price'] == overall_max if all_prices else False
-                
-                col1, col2 = st.columns([3, 1])
-                
-                with col1:
-                    st.markdown(f"**{client_name} - {supplier_name}**")
-                    
-                with col2:
-                    st.markdown(f"**${result['min_price']:.2f} - ${result['max_price']:.2f}**/kg")
-                    st.caption(f"Range: ${result['max_price'] - result['min_price']:.2f}")
-                    st.caption(f"{result['records']} records")
-                
-                badge_col1, badge_col2 = st.columns(2)
-                with badge_col1:
-                    if is_best:
-                        st.success("🎯 BEST PRICE")
-                with badge_col2:
-                    if is_worst:
-                        st.error("⚠️ HIGHEST PRICE")
-                
-                with st.expander(f"View price history for {client_name}"):
-                    cols = st.columns(2)
-                    for i, order in enumerate(result['orders']):
-                        with cols[i % 2]:
-                            try:
-                                price_value = float(order['price']) if order['price'] else 0
-                                price_display = f"${price_value:.2f}"
-                            except (ValueError, TypeError):
-                                price_display = f"${order['price']}" if order['price'] else "$N/A"
-                            
-                            st.markdown(f"""
-                            <div class="price-box">
-                                <div style="font-size: 1.1em; font-weight: bold;">{price_display}/kg</div>
-                                <div class="order-info">
-                                    <strong>Order:</strong> {order['order_no']}<br>
-                                    <strong>Date:</strong> {order['date']}
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
-            else:
-                st.warning(f"**{client_name} - {supplier_name}**: ❌ No pricing data available for this article")
-        
-        st.markdown("---")
-    
-    # Note about export removal
-    st.info("📌 Note: Export functionality has been removed from the dashboard. For data export, please contact the administrator.")
+        st.dataframe(pd.DataFrame(comparison_data), use_container_width=True)
 
 def product_catalog_tab():
-    """Full Product Catalog with comprehensive product information"""
-    
+    """Product Catalog Tab"""
     st.markdown("""
-    <div class="product-catalog-header">
-        <h2 style="margin:0;">📦 Full Product Catalog</h2>
-        <p style="margin:0; opacity:0.9;">Complete Product Database • Technical Specifications • Search & Filter</p>
+    <div style="background: linear-gradient(135deg, #0ea5e9, #0284c7); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
+        <h2 style="margin:0; color: white;">📦 Full Product Catalog</h2>
+        <p style="margin:0; opacity:0.9; color: white;">Complete product database • Technical specifications</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Load product catalog data
     catalog_data = load_product_catalog()
     
     if catalog_data.empty:
-        st.warning("""
-        ⚠️ **Product catalog not found or empty!**
-        
-        **To get started:**
-        1. Go to your Google Sheet
-        2. Add a new tab called **'FullProductList'**
-        3. Use these columns (at minimum):
-           - Article_Number
-           - Product_Name
-           - Supplier
-        """)
+        st.warning("Product catalog not found or empty")
         return
     
-    # Catalog Overview
-    st.subheader("📊 Catalog Overview")
-    
     col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Total Products", len(catalog_data))
+    if 'Supplier' in catalog_data.columns:
+        col2.metric("Suppliers", catalog_data['Supplier'].nunique())
+    if 'Category' in catalog_data.columns:
+        col3.metric("Categories", catalog_data['Category'].nunique())
+    col4.metric("Unique Articles", catalog_data['Article_Number'].nunique())
     
-    with col1:
-        st.metric("Total Products", len(catalog_data))
-    
-    with col2:
-        if 'Supplier' in catalog_data.columns:
-            suppliers = catalog_data['Supplier'].nunique()
-            st.metric("Suppliers", suppliers)
-        else:
-            st.metric("Suppliers", "N/A")
-    
-    with col3:
-        if 'Category' in catalog_data.columns:
-            categories = catalog_data['Category'].nunique()
-            st.metric("Categories", categories)
-        else:
-            st.metric("Categories", "N/A")
-    
-    with col4:
-        articles_with_data = catalog_data['Article_Number'].nunique()
-        st.metric("Unique Articles", articles_with_data)
-    
-    # Search and Filter Section
-    st.subheader("🔍 Search & Filter Products")
-    
-    col1, col2, col3 = st.columns([2, 1, 1])
-    
+    col1, col2 = st.columns([2, 1])
     with col1:
         search_term = st.text_input("Search by article, product name, or description...", key="catalog_search")
-    
     with col2:
         if 'Supplier' in catalog_data.columns:
             supplier_filter = st.selectbox("Supplier", ["All"] + list(catalog_data['Supplier'].unique()), key="catalog_supplier")
         else:
             supplier_filter = "All"
-            st.selectbox("Supplier", ["No supplier data"], key="catalog_supplier", disabled=True)
     
-    with col3:
-        if 'Category' in catalog_data.columns:
-            category_filter = st.selectbox("Category", ["All"] + list(catalog_data['Category'].unique()), key="catalog_category")
-        else:
-            category_filter = "All"
-            st.selectbox("Category", ["No category data"], key="catalog_category", disabled=True)
-    
-    # Filter data
     filtered_data = catalog_data.copy()
     
     if search_term:
-        mask = filtered_data.astype(str).apply(
-            lambda x: x.str.contains(search_term, case=False, na=False)
-        ).any(axis=1)
+        mask = filtered_data.astype(str).apply(lambda x: x.str.contains(search_term, case=False, na=False)).any(axis=1)
         filtered_data = filtered_data[mask]
-    
     if supplier_filter != "All" and 'Supplier' in catalog_data.columns:
         filtered_data = filtered_data[filtered_data['Supplier'] == supplier_filter]
     
-    if category_filter != "All" and 'Category' in catalog_data.columns:
-        filtered_data = filtered_data[filtered_data['Category'] == category_filter]
-    
-    # Display Results
-    st.subheader(f"📋 Products Found: {len(filtered_data)}")
+    st.markdown(f"<div class='subsection-header'>📋 Products Found: {len(filtered_data)}</div>", unsafe_allow_html=True)
     
     if not filtered_data.empty:
-        # Show product cards
         for _, product in filtered_data.iterrows():
-            display_product_card_flexible(product, catalog_data.columns)
-        
-        # Note about export removal
-        st.info("📌 Note: Export functionality has been removed from the dashboard. For data export, please contact the administrator.")
-        
-    else:
-        st.info("No products match your search criteria.")
-
-def display_product_card_flexible(product, available_columns):
-    """Display individual product card with available columns only"""
-    
-    if 'Supplier' in available_columns and product['Supplier'] == 'Backaldrin':
-        card_class = "price-card"
-        border_color = "#991B1B"
-    elif 'Supplier' in available_columns and product['Supplier'] == 'Bateel':
-        card_class = "special-price-card"
-        border_color = "#D97706"
-    else:
-        card_class = "intelligence-stat-card"
-        border_color = "#059669"
-    
-    with st.expander(f"📦 {product['Article_Number']} - {product['Product_Name']}", expanded=False):
-        # Build HTML content as a single line string
-        html_content = f'<div class="{card_class}"><div style="border-left: 5px solid {border_color}; padding-left: 1rem;"><h3 style="margin:0; color: {border_color};">{product["Article_Number"]} - {product["Product_Name"]}</h3>'
-        
-        if 'Supplier' in available_columns:
-            html_content += f'<p style="margin:0; font-weight: bold; color: #6B7280;">Supplier: {product["Supplier"]}</p>'
-        
-        html_content += '<div style="margin-top: 1rem;"><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">'
-        
-        # Left column
-        left_content = ""
-        if 'Category' in available_columns and product['Category']:
-            left_content += f'<p style="margin:0;"><strong>Main Category:</strong> {product["Category"]}</p>'
-        if 'Sub_Category' in available_columns and product['Sub_Category']:
-            left_content += f'<p style="margin:0;"><strong>Sub Category:</strong> {product["Sub_Category"]}</p>'
-        if 'Sub_Sub_Category' in available_columns and product['Sub_Sub_Category']:
-            left_content += f'<p style="margin:0;"><strong>Sub-Sub Category:</strong> {product["Sub_Sub_Category"]}</p>'
-        
-        # Right column
-        right_content = ""
-        if 'UOM' in available_columns and product['UOM']:
-            right_content += f'<p style="margin:0;"><strong>UOM:</strong> {product["UOM"]}</p>'
-        if 'Unit_Weight' in available_columns and product['Unit_Weight']:
-            right_content += f'<p style="margin:0;"><strong>Unit Weight:</strong> {product["Unit_Weight"]}</p>'
-        if 'Current_Price' in available_columns and product['Current_Price']:
-            right_content += f'<p style="margin:0;"><strong>Current Price:</strong> ${product["Current_Price"]}/kg</p>'
-        
-        html_content += f'<div>{left_content}</div><div>{right_content}</div></div></div>'
-        
-        # Additional fields - now as single line strings
-        if 'Common_Description' in available_columns and product['Common_Description']:
-            html_content += f'<div style="margin-top: 1rem;"><p style="margin:0;"><strong>Description:</strong></p><p style="margin:0; color: #6B7280;">{product["Common_Description"]}</p></div>'
-        
-        if 'Purpose_Of_Use' in available_columns and product['Purpose_Of_Use']:
-            html_content += f'<div style="margin-top: 1rem;"><p style="margin:0;"><strong>Purpose of Use:</strong></p><p style="margin:0; color: #6B7280;">{product["Purpose_Of_Use"]}</p></div>'
-        
-        if 'Dosage' in available_columns and product['Dosage']:
-            html_content += f'<div style="margin-top: 1rem;"><p style="margin:0;"><strong>Dosage:</strong></p><p style="margin:0; color: #6B7280;">{product["Dosage"]}</p></div>'
-        
-        if 'Ingredients' in available_columns and product['Ingredients']:
-            # Escape HTML tags in ingredients
-            ingredients = str(product['Ingredients']).replace('<', '&lt;').replace('>', '&gt;')
-            html_content += f'<div style="margin-top: 1rem;"><p style="margin:0;"><strong>Ingredients:</strong></p><p style="margin:0; color: #6B7280; white-space: pre-wrap;">{ingredients}</p></div>'
-        
-        if 'Datasheet_Link' in available_columns and product['Datasheet_Link']:
-            html_content += f'<div style="margin-top: 1rem;"><p style="margin:0;"><strong>Datasheet:</strong> <a href="{product["Datasheet_Link"]}" target="_blank" style="color: #0EA5E9;">View Datasheet</a></p></div>'
-        
-        # Close the main divs
-        html_content += "</div></div>"
-        
-        st.markdown(html_content, unsafe_allow_html=True)
+            card_class = "price-card-primary" if product.get('Supplier') == 'Backaldrin' else "price-card-secondary"
+            with st.expander(f"📦 {product['Article_Number']} - {product['Product_Name']}", expanded=False):
+                st.markdown(f'<div class="{card_class}">', unsafe_allow_html=True)
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown(f"**Article Number:** {product['Article_Number']}")
+                    st.markdown(f"**Product Name:** {product['Product_Name']}")
+                    if 'Supplier' in product:
+                        st.markdown(f"**Supplier:** {product['Supplier']}")
+                with col2:
+                    if 'Category' in product and product['Category']:
+                        st.markdown(f"**Category:** {product['Category']}")
+                    if 'UOM' in product and product['UOM']:
+                        st.markdown(f"**UOM:** {product['UOM']}")
+                    if 'Current_Price' in product and product['Current_Price']:
+                        st.markdown(f"**Price:** ${product['Current_Price']}/kg")
+                if 'Common_Description' in product and product['Common_Description']:
+                    st.markdown(f"**Description:** {product['Common_Description']}")
+                st.markdown('</div>', unsafe_allow_html=True)
 
 def palletizing_tab():
-    """Quick Pallet Calculator for CDC Items"""
+    """Palletizing Tab"""
     st.markdown("""
-    <div class="palletizing-header">
-        <h2 style="margin:0;">📦 Quick Pallet Calculator</h2>
-        <p style="margin:0; opacity:0.9;">Instant Pallet Calculations • CDC Standard Items • Real-time Results</p>
+    <div style="background: linear-gradient(135deg, #7c3aed, #6d28d9); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
+        <h2 style="margin:0; color: white;">📦 Quick Pallet Calculator</h2>
+        <p style="margin:0; opacity:0.9; color: white;">Instant pallet calculations • CDC standard items</p>
     </div>
     """, unsafe_allow_html=True)
     
     quick_pallet_calculator()
 
 def quick_pallet_calculator():
-    """Quick Pallet Calculator for CDC Items"""
-    st.subheader("🧮 Quick Pallet Calculator")
-    
-    # CDC Common Items Database
+    """Quick Pallet Calculator"""
     cdc_items = {
         "Vermicelli Color": {"packing": "5kg", "cartons_per_pallet": 100, "weight_per_carton": 5},
         "Vermicelli Dark": {"packing": "5kg", "cartons_per_pallet": 100, "weight_per_carton": 5},
@@ -4068,30 +2438,14 @@ def quick_pallet_calculator():
     col1, col2 = st.columns(2)
     
     with col1:
-        selected_item = st.selectbox(
-            "Select Item:",
-            list(cdc_items.keys()),
-            key="item_select"
-        )
-        
-        quantity = st.number_input(
-            "Quantity:",
-            min_value=1,
-            value=100,
-            step=1,
-            key="quantity"
-        )
-        
-        uom = st.selectbox(
-            "Unit of Measure:",
-            ["Cartons", "KGs", "Pallets"],
-            key="uom"
-        )
+        selected_item = st.selectbox("Select Item:", list(cdc_items.keys()), key="item_select")
+        quantity = st.number_input("Quantity:", min_value=1, value=100, step=1, key="quantity")
+        uom = st.selectbox("Unit of Measure:", ["Cartons", "KGs", "Pallets"], key="uom")
     
     with col2:
         if selected_item == "Custom Item":
-            st.info("🔧 Enter Custom Item Details:")
-            packing = st.text_input("Packing (e.g., 5kg, 25kg):", value="5kg", key="custom_packing")
+            st.info("Enter custom item details:")
+            packing = st.text_input("Packing:", value="5kg", key="custom_packing")
             cartons_per_pallet = st.number_input("Cartons per Pallet:", min_value=1, value=100, step=1, key="custom_cartons")
             weight_per_carton = st.number_input("Weight per Carton (kg):", min_value=0.1, value=5.0, step=0.1, key="custom_weight")
         else:
@@ -4099,15 +2453,11 @@ def quick_pallet_calculator():
             packing = item_data["packing"]
             cartons_per_pallet = item_data["cartons_per_pallet"]
             weight_per_carton = item_data["weight_per_carton"]
-            
-            st.info(f"📦 **Standard Packing:** {packing}")
-            st.info(f"📊 **Cartons per Pallet:** {cartons_per_pallet}")
-            st.info(f"⚖️ **Weight per Carton:** {weight_per_carton} kg")
+            st.info(f"**Standard Packing:** {packing}")
+            st.info(f"**Cartons per Pallet:** {cartons_per_pallet}")
+            st.info(f"**Weight per Carton:** {weight_per_carton} kg")
     
-    # REAL-TIME CALCULATIONS
     if quantity > 0:
-        st.subheader("🎯 INSTANT PALCALC RESULTS")
-        
         if uom == "Cartons":
             total_cartons = quantity
         elif uom == "KGs":
@@ -4118,70 +2468,37 @@ def quick_pallet_calculator():
         full_pallets = total_cartons // cartons_per_pallet
         partial_pallet_cartons = total_cartons % cartons_per_pallet
         partial_pallet_percentage = (partial_pallet_cartons / cartons_per_pallet) * 100 if cartons_per_pallet > 0 else 0
-        
         total_weight = total_cartons * weight_per_carton
         
         col1, col2, col3 = st.columns(3)
-        
         with col1:
-            if full_pallets > 0:
-                st.success(f"### 📦 {full_pallets:,.0f} FULL PALLET{'S' if full_pallets > 1 else ''}")
-            else:
-                st.info("### 📦 0 FULL PALLETS")
-                
+            st.markdown(f"""
+            <div class="stat-card">
+                <div class="stat-value">{full_pallets:,.0f}</div>
+                <div class="stat-label">Full Pallets</div>
+            </div>
+            """, unsafe_allow_html=True)
         with col2:
-            if partial_pallet_cartons > 0:
-                st.warning(f"### 📦 1 PARTIAL PALLET")
-                st.write(f"({partial_pallet_cartons:,.0f} cartons - {partial_pallet_percentage:.1f}% full)")
-            else:
-                st.success("### ✅ NO PARTIAL PALLETS")
-                
+            st.markdown(f"""
+            <div class="stat-card">
+                <div class="stat-value">{partial_pallet_cartons:,.0f}</div>
+                <div class="stat-label">Partial Cartons</div>
+            </div>
+            """, unsafe_allow_html=True)
         with col3:
-            st.info(f"### ⚖️ {total_weight:,.0f} kg")
-            st.write(f"({total_cartons:,.0f} cartons total)")
+            st.markdown(f"""
+            <div class="stat-card">
+                <div class="stat-value">{total_weight:,.0f} kg</div>
+                <div class="stat-label">Total Weight</div>
+            </div>
+            """, unsafe_allow_html=True)
         
-        with st.expander("📊 View Detailed Calculation", expanded=False):
+        with st.expander("View Details", expanded=False):
             st.write(f"**Item:** {selected_item} ({packing})")
-            
-            if uom == "Cartons":
-                st.write(f"**Input:** {quantity:,.0f} cartons")
-            elif uom == "KGs":
-                st.write(f"**Input:** {quantity:,.0f} kg = {total_cartons:,.0f} cartons")
-            else:
-                st.write(f"**Input:** {quantity:,.0f} pallets = {total_cartons:,.0f} cartons")
-            
             st.write(f"**Calculation:** {total_cartons:,.0f} cartons ÷ {cartons_per_pallet} cartons/pallet")
-            st.write(f"**Result:** {full_pallets:,.0f} full pallets + {partial_pallet_cartons:,.0f} cartons partial")
+            st.write(f"**Result:** {full_pallets:,.0f} full pallets + {partial_pallet_cartons:,.0f} cartons ({partial_pallet_percentage:.1f}% of a pallet)")
         
-        st.subheader("💡 Quick Examples")
-        
-        examples_col1, examples_col2 = st.columns(2)
-        
-        with examples_col1:
-            if st.button(f"Example: 100 cartons {selected_item}", key="example_100"):
-                st.session_state.quantity = 100
-                st.session_state.uom = "Cartons"
-                st.rerun()
-                
-        with examples_col2:
-            if st.button(f"Example: 1 pallet {selected_item}", key="example_1"):
-                st.session_state.quantity = 1
-                st.session_state.uom = "Pallets"
-                st.rerun()
-        
-        st.markdown("---")
-        st.subheader("🚢 Container Information")
-        st.info("""
-        **40ft Container Capacity:**
-        - **Max Pallets:** 30 pallets
-        - **Max Weight:** 23,000 kg (23 tons)
-        - **Your current order:** Will fill approximately **{:.1f}%** of container capacity
-        """.format((full_pallets / 30) * 100))
-    
-    st.markdown("---")
-    with st.expander("📊 Bulk Analysis from Google Sheets (Optional)"):
-        st.info("For bulk analysis of your existing Palletizing_Data sheet, use the main data import features.")
-        st.write("The Quick Calculator above is designed for instant pallet calculations!")
+        st.info(f"**Container Info:** 40ft container holds 30 pallets max. Your order fills {(full_pallets / 30 * 100):.1f}% of container capacity.")
 
 # ============================================
 # MAIN EXECUTION
