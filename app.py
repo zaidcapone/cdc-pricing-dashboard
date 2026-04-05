@@ -298,10 +298,144 @@ st.markdown("""
         margin-bottom: 0.5rem;
     }
     
-    /* ===== SIDEBAR ===== */
+    /* ===== SIDEBAR NAVIGATION PANEL - DARK THEME ===== */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-        border-right: 1px solid #e2e8f0;
+        background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
+        border-right: 1px solid #334155 !important;
+    }
+    
+    [data-testid="stSidebar"] .stMarkdown {
+        color: #e2e8f0 !important;
+    }
+    
+    /* Sidebar text and labels */
+    [data-testid="stSidebar"] h1, 
+    [data-testid="stSidebar"] h2, 
+    [data-testid="stSidebar"] h3, 
+    [data-testid="stSidebar"] h4,
+    [data-testid="stSidebar"] .stMarkdown p {
+        color: #f1f5f9 !important;
+    }
+    
+    /* Sidebar buttons - navigation tabs */
+    [data-testid="stSidebar"] .stButton button {
+        background: transparent !important;
+        color: #cbd5e1 !important;
+        border: 1px solid #334155 !important;
+        text-align: left !important;
+        justify-content: flex-start !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    [data-testid="stSidebar"] .stButton button:hover {
+        background: #334155 !important;
+        color: white !important;
+        border-color: #475569 !important;
+        transform: translateX(4px);
+    }
+    
+    /* Primary button style in sidebar (active tab) */
+    [data-testid="stSidebar"] .stButton button[kind="primary"] {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+        color: white !important;
+        border: none !important;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
+    
+    /* Announcement cards in sidebar */
+    [data-testid="stSidebar"] .announcement-item {
+        background: linear-gradient(135deg, #1e3a5f 0%, #1e293b 100%) !important;
+        border-left: 3px solid #3b82f6 !important;
+        color: #bae6fd !important;
+    }
+    
+    /* Sidebar dividers */
+    [data-testid="stSidebar"] hr {
+        border-color: #334155 !important;
+    }
+    
+    /* Sidebar select boxes */
+    [data-testid="stSidebar"] .stSelectbox label,
+    [data-testid="stSidebar"] .stMultiSelect label {
+        color: #cbd5e1 !important;
+    }
+    
+    [data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] {
+        background-color: #334155 !important;
+        border-color: #475569 !important;
+    }
+    
+    /* Sidebar number input, text input */
+    [data-testid="stSidebar"] .stTextInput input,
+    [data-testid="stSidebar"] .stNumberInput input {
+        background-color: #334155 !important;
+        border-color: #475569 !important;
+        color: white !important;
+    }
+    
+    [data-testid="stSidebar"] .stTextInput input::placeholder {
+        color: #94a3b8 !important;
+    }
+    
+    /* Sidebar info/warning/success messages */
+    [data-testid="stSidebar"] .stAlert {
+        background-color: #1e293b !important;
+        border-color: #334155 !important;
+    }
+    
+    [data-testid="stSidebar"] .stAlert .stMarkdown p {
+        color: #e2e8f0 !important;
+    }
+    
+    /* Sidebar metrics */
+    [data-testid="stSidebar"] [data-testid="stMetric"] {
+        background-color: #1e293b !important;
+        border: 1px solid #334155 !important;
+    }
+    
+    [data-testid="stSidebar"] [data-testid="stMetric"] label,
+    [data-testid="stSidebar"] [data-testid="stMetric"] .stMarkdown p {
+        color: #e2e8f0 !important;
+    }
+    
+    /* Scrollbar in sidebar */
+    [data-testid="stSidebar"] ::-webkit-scrollbar-track {
+        background: #1e293b !important;
+    }
+    
+    [data-testid="stSidebar"] ::-webkit-scrollbar-thumb {
+        background: #475569 !important;
+        border-radius: 10px !important;
+    }
+    
+    [data-testid="stSidebar"] ::-webkit-scrollbar-thumb:hover {
+        background: #64748b !important;
+    }
+    
+    /* User info badge in sidebar */
+    [data-testid="stSidebar"] .badge-info {
+        background: #334155 !important;
+        color: #93c5fd !important;
+    }
+    
+    /* Sidebar expander */
+    [data-testid="stSidebar"] .streamlit-expanderHeader {
+        background-color: #1e293b !important;
+        border-color: #334155 !important;
+        color: #e2e8f0 !important;
+    }
+    
+    /* Logout button in sidebar */
+    [data-testid="stSidebar"] button:has(.stMarkdown:contains("Logout")) {
+        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+        color: white !important;
+        border: none !important;
+        margin-top: 1rem !important;
+    }
+    
+    [data-testid="stSidebar"] button:has(.stMarkdown:contains("Logout")):hover {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        transform: translateY(-2px);
     }
     
     /* ===== FOOTER ===== */
