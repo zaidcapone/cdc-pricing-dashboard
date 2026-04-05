@@ -2,44 +2,15 @@
 # MULTI-CLIENT PRICING DASHBOARD
 # ============================================
 # Author: Zaid F. Al-Shami
-# Version: 3.4 (Export Functionality Removed)
-# Last Updated: 01 April 2026
-# ============================================
-# REMOVED TABS (Keep for reference - can be restored):
-# 
-# 1. 📋 NEW ORDERS TAB - Removed on 01 April 2026
-#    - Function: new_orders_tab()
-#    - Purpose: Client Orders Management for order preparation and PI generation
-#    - Restoration: Add back the new_orders_tab() function and add tab to tabs list
-#
-# 2. 📊 ORDERS MANAGEMENT TAB - Removed on 01 April 2026
-#    - Function: orders_management_tab()
-#    - Purpose: Order tracking with status monitoring and payment updates
-#    - Restoration: Add back orders_management_tab() function and add tab to tabs list
-#
-# 3. 🔴 PRICE MATCHING TAB - Removed on 01 April 2026
-#    - Function: price_matching_tab()
-#    - Purpose: PI Price Validation Tool with historical price comparison
-#    - Restoration: Add back price_matching_tab() function and add tab to tabs list
-#
-# 4. 📈 VISUAL ANALYTICS TAB - Removed on 01 April 2026
-#    - Function: visual_analytics_tab()
-#    - Purpose: Interactive charts, price trends, and visual analysis
-#    - Restoration: Add back visual_analytics_tab() function and add tab to tabs list
-#
-# 5. 📊 ITEM ANALYSIS TAB - Removed on 01 April 2026
-#    - Function: item_analysis_tab()
-#    - Purpose: Advanced item analysis with month-over-month and YoY growth
-#    - Restoration: Add back item_analysis_tab() function and add tab to tabs list
-#
+# Version: 3.2 (with Client's Orders Tab)
+# Last Updated: 30 March 2026
 # ============================================
 # IMPORTANT NOTES:
 # 1. This dashboard connects to Google Sheets for real-time data
 # 2. All data is cached for 5 minutes to improve performance
 # 3. Supports multiple clients: CDC, CoteDivoire, CakeArt, SweetHouse, Cameron, Qzine, MEPT
-# 4. Features: Smart Search, Price Intelligence, Palletizing, Client Orders Search
-# 5. Client's Orders tab - Fetches data directly from Clients_CoC sheet
-# 6. EXPORT FUNCTIONALITY REMOVED - No download buttons available
+# 4. Features: Smart Search, Price Intelligence, Order Management, Visual Analytics
+# 5. NEW: Added "Client's Orders" tab - Fetches data from Clients_CoC sheet
 # ============================================
 
 import streamlit as st
@@ -49,6 +20,10 @@ import json
 from datetime import datetime
 from io import BytesIO
 import re
+
+# NEW IMPORTS FOR VISUAL ANALYTICS
+import matplotlib.pyplot as plt
+import numpy as np
 
 # Page config
 st.set_page_config(
@@ -216,6 +191,13 @@ st.markdown("""
         margin: 0.25rem 0;
         font-size: 0.8em;
         color: #6B7280;
+    }
+    .export-section {
+        background: #F0F9FF;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 2px solid #0EA5E9;
+        margin: 1rem 0;
     }
     .ceo-section {
         background: #FFFBEB;
@@ -502,42 +484,50 @@ USERS = {
 CLIENT_SHEETS = {
     "CDC": {
         "ceo_special": "CDC_CEO_Special_Prices",
+        "new_orders": "New_client_orders",
+        "paid_orders": "Paid_Orders",
         "palletizing": "Palletizing_Data"
     },
     "CoteDivoire": {
         "backaldrin": "Backaldrin_CoteDivoire",
         "bateel": "Bateel_CoteDivoire", 
         "ceo_special": "CoteDivoire_CEO_Special_Prices",
+        "new_orders": "New_client_orders",
         "palletizing": "Palletizing_Data"
     },
     "CakeArt": {
         "backaldrin": "Backaldrin_CakeArt",
         "bateel": "Bateel_CakeArt",
         "ceo_special": "CakeArt_CEO_Special_Prices",
+        "new_orders": "New_client_orders",
         "palletizing": "Palletizing_Data"
     },
     "SweetHouse": {
         "backaldrin": "Backaldrin_SweetHouse",
         "bateel": "Bateel_SweetHouse",
         "ceo_special": "SweetHouse_CEO_Special_Prices",
+        "new_orders": "New_client_orders",
         "palletizing": "Palletizing_Data"
     },
     "Cameron": {
         "backaldrin": "Backaldrin_Cameron",
         "bateel": "Bateel_Cameron", 
         "ceo_special": "Cameron_CEO_Special_Prices",
+        "new_orders": "New_client_orders",
         "palletizing": "Palletizing_Data"
     },
     "Qzine": {
         "backaldrin": "Backaldrin_Qzine",
         "bateel": "Bateel_Qzine",
         "ceo_special": "Qzine_CEO_Special_Prices",
+        "new_orders": "New_client_orders",
         "palletizing": "Palletizing_Data"
     },
     "MEPT": {
         "backaldrin": "Backaldrin_MEPT",
         "bateel": "Bateel_MEPT",
         "ceo_special": "MEPT_CEO_Special_Prices",
+        "new_orders": "New_client_orders",
         "palletizing": "Palletizing_Data"
     }
 }
@@ -1176,12 +1166,12 @@ def load_etd_data(sheet_id, sheet_name):
     return load_sheet_data(sheet_name, start_row=13)
 
 @st.cache_data(ttl=300)
-def load_palletizing_data(client):
-    """Load palletizing data from Google Sheets"""
+def load_new_orders_data(client):
+    """Load new client orders data from Google Sheets - CACHED"""
     try:
-        sheet_name = CLIENT_SHEETS[client]["palletizing"]
-        url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
-        response = requests.get(url)
+        sheet_name = CLIENT_SHEETS[client]["new_orders"]
+        orders_url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
+        response = requests.get(orders_url)
         
         if response.status_code == 200:
             data = response.json()
@@ -1193,24 +1183,132 @@ def load_palletizing_data(client):
                 
                 df = pd.DataFrame(rows, columns=headers)
                 
-                required_cols = ['Client', 'Item Code', 'Item Name', 'Unit/KG', 'Unit/Carton', 
-                               'Unit Pack/Pallet', 'Total Unit', 'Pallet Order', 'Total Weight', 'Factory']
+                required_cols = ['Order_Number', 'Product_Name', 'Article_No', 'HS_Code', 'Origin', 
+                                'Packing', 'Qty', 'Type', 'Total_Weight', 'Price_in_USD_kg', 'Total_Price']
                 
-                missing_cols = [col for col in required_cols if col not in df.columns]
-                if missing_cols:
-                    st.error(f"Missing columns in palletizing data: {', '.join(missing_cols)}")
-                    return pd.DataFrame()
+                for col in required_cols:
+                    if col not in df.columns:
+                        df[col] = ''
                 
-                numeric_cols = ['Unit/KG', 'Unit/Carton', 'Unit Pack/Pallet', 'Total Unit', 'Pallet Order', 'Total Weight']
+                if 'Status' not in df.columns:
+                    df['Status'] = 'Draft'
+                
+                numeric_cols = ['Qty', 'Total_Weight', 'Price_in_USD_kg', 'Total_Price']
                 for col in numeric_cols:
-                    df[col] = pd.to_numeric(df[col], errors='coerce')
+                    if col in df.columns:
+                        df[col] = pd.to_numeric(df[col], errors='coerce')
                 
                 return df
                 
         return pd.DataFrame()
         
     except Exception as e:
-        st.error(f"Error loading palletizing data for {client}: {str(e)}")
+        st.error(f"Error loading new orders data for {client}: {str(e)}")
+        return pd.DataFrame()
+
+@st.cache_data(ttl=300)
+def load_orders_data(client):
+    """Load ALL orders data - SIMPLE VERSION - CACHED"""
+    try:
+        sample_orders = [
+            {
+                'Order Number': 'SA C.D 125/2025', 'ERP': 'Yes', 'Date of request': 'N/A',
+                'Date of PI issue': '08-Sep-25', 'Date of Client signing': 'N/A',
+                'Invoice': 0, 'Payment': 'Credit Note 45550', 'Manufacturer': 'BAJ',
+                'ETD': '28-Dec-25', 'Payment due date': '16-Sep-25', 
+                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': 'Credit Note 45550'
+            },
+            {
+                'Order Number': 'SA C.D 127/2025', 'ERP': 'Yes', 'Date of request': '08-Oct-25',
+                'Date of PI issue': '09-Oct-25', 'Date of Client signing': '12-Oct-25',
+                'Invoice': 80500.00, 'Payment': '$80,500.00', 'Manufacturer': 'BAJ',
+                'ETD': '30-Oct-25', 'Payment due date': '17-Nov-25',
+                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': ''
+            },
+            {
+                'Order Number': 'SA C.D 140/2025', 'ERP': 'Yes', 'Date of request': '08-Oct-25',
+                'Date of PI issue': '09-Oct-25', 'Date of Client signing': '09-Oct-25',
+                'Invoice': 49092.59, 'Payment': '$49,092.59', 'Manufacturer': 'BAJ',
+                'ETD': '17-Nov-25', 'Payment due date': '30-Oct-25',
+                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': 'New ETD 30 Oct'
+            },
+            {
+                'Order Number': 'SA C.D 135/2025', 'ERP': 'Yes', 'Date of request': '08-Oct-25',
+                'Date of PI issue': '09-Oct-25', 'Date of Client signing': '09-Oct-25',
+                'Invoice': 58770.00, 'Payment': '$58,770.00', 'Manufacturer': 'BAJ',
+                'ETD': '13-Nov-25', 'Payment due date': '26-Oct-25',
+                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': ''
+            },
+            {
+                'Order Number': 'SA C.D 138/2025', 'ERP': 'Yes', 'Date of request': '08-Oct-25',
+                'Date of PI issue': '09-Oct-25', 'Date of Client signing': '09-Oct-25',
+                'Invoice': 42900.00, 'Payment': '$42,900.00', 'Manufacturer': 'BAJ',
+                'ETD': '8-Nov-25', 'Payment due date': '21-Oct-25',
+                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': ''
+            },
+            {
+                'Order Number': 'SA C.D 128/2025', 'ERP': 'Bated', 'Date of request': '08-Sep-25',
+                'Date of PI issue': '08-Sep-25', 'Date of Client signing': '10-Sep-25',
+                'Invoice': 46711.00, 'Payment': '$46,711.00', 'Manufacturer': 'BT',
+                'ETD': '7-Nov-25', 'Payment due date': '20-Oct-25',
+                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': 'ETD was shared by CEO with Ammar'
+            },
+            {
+                'Order Number': 'SA C.D 115/2025', 'ERP': 'Yes', 'Date of request': '22-Jul-25',
+                'Date of PI issue': '05-Aug-25', 'Date of Client signing': '07-Aug-25',
+                'Invoice': 36228.00, 'Payment': '$36,228.00', 'Manufacturer': 'BAJ',
+                'ETD': '6-Nov-25', 'Payment due date': '19-Oct-25',
+                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': 'Will follow'
+            },
+            {
+                'Order Number': 'SA C.D 130/2025', 'ERP': 'Yes', 'Date of request': '08-Sep-25',
+                'Date of PI issue': '08-Sep-25', 'Date of Client signing': '10-Sep-25',
+                'Invoice': 38550.30, 'Payment': '$38,550.30', 'Manufacturer': 'BAJ',
+                'ETD': '6-Nov-25', 'Payment due date': '19-Oct-25',
+                'Payment Update': 'Pending', 'Status': 'Shipped', 'Notes': ''
+            },
+            {
+                'Order Number': 'SA C.D 136/2025', 'ERP': 'Yes', 'Date of request': '08-Oct-25',
+                'Date of PI issue': '09-Oct-25', 'Date of Client signing': '09-Oct-25',
+                'Invoice': 27140.00, 'Payment': '$27,140.00', 'Manufacturer': 'BAJ',
+                'ETD': '3-Nov-25', 'Payment due date': '16-Oct-25',
+                'Payment Update': 'Pending', 'Status': 'In Production', 'Notes': ''
+            },
+            {
+                'Order Number': 'SA C.D 137/2025', 'ERP': 'Yes', 'Date of request': '08-Oct-25',
+                'Date of PI issue': '09-Oct-25', 'Date of Client signing': '09-Oct-25',
+                'Invoice': 32190.00, 'Payment': '$32,190.00', 'Manufacturer': 'BAJ',
+                'ETD': '3-Nov-25', 'Payment due date': '16-Oct-25',
+                'Payment Update': 'Pending', 'Status': 'In Production', 'Notes': ''
+            },
+            {
+                'Order Number': 'SA C.D 133/2025', 'ERP': 'Yes', 'Date of request': '08-Sep-25',
+                'Date of PI issue': '14-Sep-25', 'Date of Client signing': '15-Sep-25',
+                'Invoice': 48966.10, 'Payment': '$48,966.10', 'Manufacturer': 'BAJ',
+                'ETD': '20-Oct-25', 'Payment due date': '2-Oct-25',
+                'Payment Update': 'Due', 'Status': 'Shipped', 'Notes': ''
+            },
+            {
+                'Order Number': 'SA C.D 129/2025', 'ERP': 'Yes', 'Date of request': '08-Sep-25',
+                'Date of PI issue': '08-Sep-25', 'Date of Client signing': '10-Sep-25',
+                'Invoice': 55668.20, 'Payment': '$55,668.20', 'Manufacturer': 'BAJ',
+                'ETD': '19-Oct-25', 'Payment due date': '1-Oct-25',
+                'Payment Update': 'Due', 'Status': 'Shipped', 'Notes': ''
+            },
+            {
+                'Order Number': 'SA C.D 144/2025', 'ERP': 'Yes', 'Date of request': '08-Oct-25',
+                'Date of PI issue': '09-Oct-25', 'Date of Client signing': '12-Oct-25',
+                'Invoice': 69494.00, 'Payment': '$69,494.00', 'Manufacturer': 'BAJ',
+                'ETD': '19-Nov-25', 'Payment due date': '18-Jan-00',
+                'Payment Update': 'Pending', 'Status': 'Pending', 'Notes': 'add chocolate'
+            }
+        ]
+        
+        df = pd.DataFrame(sample_orders)
+        return df
+        
+    except Exception as e:
+        st.error(f"Error loading orders data: {str(e)}")
         return pd.DataFrame()
 
 def check_login():
@@ -1290,19 +1388,40 @@ def main_dashboard():
         st.markdown("### 📋 Navigation")
         
         # Define tabs based on user role
-        tabs = [
-            "🏢 CLIENTS",
-            "💰 PRICES", 
-            "📅 ETD SHEET",
-            "⭐ CEO SPECIAL PRICES",
-            "💰 PRICE INTELLIGENCE",
-            "📦 PRODUCT CATALOG",
-            "📦 PALLETIZING",
-            "📊 ALL PRICES",
-            "📋 CLIENT'S ORDERS"
-                "🎁 SAMPLES REQUEST"  # ADD THIS LINE
-
-        ]
+        if st.session_state.username in ["ceo", "admin"]:
+            tabs = [
+                "🏢 CLIENTS",
+                "💰 PRICES", 
+                "📋 NEW ORDERS",
+                "📅 ETD SHEET",
+                "⭐ CEO SPECIAL PRICES",
+                "💰 PRICE INTELLIGENCE",
+                "📦 PRODUCT CATALOG",
+                "📊 ORDERS MANAGEMENT",
+                "📦 PALLETIZING",
+                "🔴 PRICE MATCHING",
+                "📈 VISUAL ANALYTICS",
+                "📊 ITEM ANALYSIS",
+                "📊 ALL PRICES",
+                "📋 CLIENT'S ORDERS"  # NEW TAB ADDED HERE
+            ]
+        else:
+            tabs = [
+                "🏢 CLIENTS",
+                "💰 PRICES", 
+                "📋 NEW ORDERS",
+                "📅 ETD SHEET",
+                "⭐ CEO SPECIAL PRICES",
+                "💰 PRICE INTELLIGENCE",
+                "📦 PRODUCT CATALOG",
+                "📊 ORDERS MANAGEMENT",
+                "📦 PALLETIZING",
+                "🔴 PRICE MATCHING",
+                "📈 VISUAL ANALYTICS",
+                "📊 ITEM ANALYSIS",
+                "📊 ALL PRICES",
+                "📋 CLIENT'S ORDERS"  # NEW TAB ADDED HERE
+            ]
         
         # Display tabs as clickable buttons
         for tab in tabs:
@@ -1336,9 +1455,10 @@ def main_dashboard():
             "🤖 **NEW**: Smart Search with AI suggestions!",
             "⭐ **NEW**: Save favorite searches!",
             "📁 **NEW**: Bulk article search available!",
+            "🔴 **NEW**: Price Matching Tool available for all clients!",
+            "📈 **NEW**: Visual Analytics Dashboard added!",
             "📊 **NEW**: All Prices tab added! View General_prices sheet data!",
-            "📋 **NEW**: Client's Orders tab added! Search orders directly from Clients_CoC sheet!",
-            "📤 **NOTE**: Export functionality has been removed from the dashboard"
+            "📋 **NEW**: Client's Orders tab added! Search orders directly from Clients_CoC sheet!"  # NEW ANNOUNCEMENT
         ]
         
         for announcement in announcements:
@@ -1397,6 +1517,8 @@ def main_dashboard():
         clients_tab()
     elif st.session_state.active_tab == "💰 PRICES":
         prices_tab()
+    elif st.session_state.active_tab == "📋 NEW ORDERS":
+        new_orders_tab()
     elif st.session_state.active_tab == "📅 ETD SHEET":
         etd_tab()
     elif st.session_state.active_tab == "⭐ CEO SPECIAL PRICES":
@@ -1405,21 +1527,27 @@ def main_dashboard():
         price_intelligence_tab()
     elif st.session_state.active_tab == "📦 PRODUCT CATALOG":
         product_catalog_tab()
+    elif st.session_state.active_tab == "📊 ORDERS MANAGEMENT":
+        orders_management_tab()
     elif st.session_state.active_tab == "📦 PALLETIZING":
         palletizing_tab()
+    elif st.session_state.active_tab == "🔴 PRICE MATCHING":
+        price_matching_tab()
+    elif st.session_state.active_tab == "📈 VISUAL ANALYTICS":
+        visual_analytics_tab()
+    elif st.session_state.active_tab == "📊 ITEM ANALYSIS":
+        item_analysis_tab()
     elif st.session_state.active_tab == "📊 ALL PRICES":
         all_prices_tab()
-    elif st.session_state.active_tab == "📋 CLIENT'S ORDERS":
-        clients_orders_tab()
-        elif st.session_state.active_tab == "🎁 SAMPLES REQUEST":
-    samples_request_tab()
+    elif st.session_state.active_tab == "📋 CLIENT'S ORDERS":  # NEW TAB HANDLER
+        clients_orders_tab()  # NEW FUNCTION
     
     # Logout button at bottom
     st.markdown("---")
     logout_button()
 
 # ============================================
-# CLIENT'S ORDERS TAB FUNCTION
+# NEW CLIENT'S ORDERS TAB FUNCTION
 # ============================================
 
 def clients_orders_tab():
@@ -1711,6 +1839,112 @@ def clients_orders_tab():
                     </div>
                     """, unsafe_allow_html=True)
         
+        # Export Section
+        st.markdown('<div class="export-section">', unsafe_allow_html=True)
+        st.subheader("📤 Export Search Results")
+        
+        # Prepare export data
+        export_data = []
+        for result in search_results:
+            article_data = result['article_data']
+            for order in article_data.get('orders', []):
+                export_data.append({
+                    'Client': client,
+                    'Supplier': supplier,
+                    'Article_Number': result['article'],
+                    'Product_Name': result['product_name'],
+                    'Order_Number': order.get('order_no', ''),
+                    'Order_Date': order.get('date', ''),
+                    'Year': order.get('year', ''),
+                    'HS_Code': order.get('hs_code', ''),
+                    'Packaging': order.get('packaging', ''),
+                    'Quantity': order.get('quantity', ''),
+                    'Total_Weight_kg': order.get('total_weight', ''),
+                    'Price_per_kg': order.get('price', ''),
+                    'Total_Price': order.get('total_price', ''),
+                    'Status': order.get('status', ''),
+                    'Notes': order.get('notes', ''),
+                    'Search_Term': results_data['search_term'],
+                    'Search_Type': search_type,
+                    'Export_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                })
+        
+        if export_data:
+            export_df = pd.DataFrame(export_data)
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                csv = export_df.to_csv(index=False)
+                st.download_button(
+                    label="📥 Download CSV",
+                    data=csv,
+                    file_name=f"{client}_orders_{results_data['search_term']}_{datetime.now().strftime('%Y%m%d')}.csv",
+                    mime="text/csv",
+                    use_container_width=True,
+                    key="clients_orders_csv"
+                )
+            
+            with col2:
+                try:
+                    output = BytesIO()
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        export_df.to_excel(writer, index=False, sheet_name='Client_Orders')
+                    excel_data = output.getvalue()
+                    
+                    st.download_button(
+                        label="📊 Download Excel",
+                        data=excel_data,
+                        file_name=f"{client}_orders_{results_data['search_term']}_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                        mime="application/vnd.ms-excel",
+                        use_container_width=True,
+                        key="clients_orders_excel"
+                    )
+                except:
+                    st.info("📊 Excel export requires openpyxl package")
+            
+            with col3:
+                # Generate summary report
+                summary_text = f"""
+CLIENT'S ORDERS REPORT
+======================
+
+Client: {client}
+Supplier: {supplier}
+Search Term: "{results_data['search_term']}"
+Search Type: {search_type}
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+SUMMARY:
+• Items Found: {len(search_results)}
+• Total Orders: {len(export_data)}
+• Unique Articles: {export_df['Article_Number'].nunique()}
+• Date Range: {export_df['Order_Date'].min() if export_df['Order_Date'].notna().any() else 'N/A'} to {export_df['Order_Date'].max() if export_df['Order_Date'].notna().any() else 'N/A'}
+
+ITEMS FOUND:
+{chr(10).join([f"• {r['article']} - {r['product_name']}: {r['orders_count']} orders" for r in search_results])}
+
+ORDER DETAILS:
+{chr(10).join([f"• {row['Order_Number']} - {row['Article_Number']} - {row['Price_per_kg']}/kg ({row['Order_Date']})" for _, row in export_df.head(20).iterrows()])}
+
+{'... and ' + str(len(export_df) - 20) + ' more orders' if len(export_df) > 20 else ''}
+                """
+                
+                st.download_button(
+                    label="📄 Download Summary",
+                    data=summary_text,
+                    file_name=f"{client}_orders_summary_{results_data['search_term']}_{datetime.now().strftime('%Y%m%d')}.txt",
+                    mime="text/plain",
+                    use_container_width=True,
+                    key="clients_orders_summary"
+                )
+            
+            # Preview data
+            with st.expander("👀 Preview Export Data", expanded=False):
+                st.dataframe(export_df, use_container_width=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
     elif not search_term:
         # Show example when no search is performed
         st.info("""
@@ -1755,7 +1989,7 @@ def clients_orders_tab():
                     pass
 
 # ============================================
-# ALL PRICES TAB FUNCTION
+# ALL PRICES TAB FUNCTION (Kept from original)
 # ============================================
 
 def all_prices_tab():
@@ -2040,6 +2274,78 @@ def all_prices_tab():
                     st.write("**Top Categories:**")
                     for category, count in category_counts.head(5).items():
                         st.write(f"• {category}: {count}")
+        
+        # ============================================
+        # EXPORT FUNCTIONALITY
+        # ============================================
+        st.markdown("---")
+        st.subheader("📤 Export Data")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            # Download CSV
+            csv = filtered_data.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv,
+                file_name=f"all_prices_export_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="all_prices_csv"
+            )
+        
+        with col2:
+            # Download Excel
+            try:
+                output = BytesIO()
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    filtered_data.to_excel(writer, index=False, sheet_name='All_Prices')
+                excel_data = output.getvalue()
+                
+                st.download_button(
+                    label="📊 Download Excel",
+                    data=excel_data,
+                    file_name=f"all_prices_export_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                    mime="application/vnd.ms-excel",
+                    use_container_width=True,
+                    key="all_prices_excel"
+                )
+            except:
+                st.info("📊 Excel export requires openpyxl")
+        
+        with col3:
+            # Generate summary report
+            summary_text = f"""
+All Prices Export - General_prices Sheet
+========================================
+
+Export Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Total Items: {len(filtered_data)}
+Search Term: "{search_term}"
+Category Filter: {category_filter}
+Price Range: ${price_range[0]:.2f} - ${price_range[1]:.2f}
+
+Statistics:
+• Average Price: ${filtered_data['NEW EXW'].mean():.2f if has_price and 'NEW EXW' in filtered_data.columns else 'N/A'}
+• Minimum Price: ${filtered_data['NEW EXW'].min():.2f if has_price and 'NEW EXW' in filtered_data.columns else 'N/A'}
+• Maximum Price: ${filtered_data['NEW EXW'].max():.2f if has_price and 'NEW EXW' in filtered_data.columns else 'N/A'}
+
+Top Items by Price:
+{chr(10).join([f"• {row.get('ART#', 'N/A')} - {row.get('DESCRIPTION', 'N/A')}: ${row.get('NEW EXW', 'N/A'):.2f}" 
+               for _, row in filtered_data.nlargest(10, 'NEW EXW').iterrows()]) if has_price else 'No price data available'}
+
+Export Generated by: {st.session_state.username}
+            """
+            
+            st.download_button(
+                label="📄 Download Summary",
+                data=summary_text,
+                file_name=f"all_prices_summary_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True,
+                key="all_prices_summary"
+            )
     
     else:
         st.info("No items match your search criteria. Try broadening your search filters.")
@@ -2065,7 +2371,7 @@ def all_prices_tab():
         2. **Filter by Category** - Narrow down results by main category
         3. **Price Range Filter** - Set minimum and maximum price limits
         4. **Advanced Filters** - Use the expander for sub-category and UOM filters
-        5. **View Data** - Browse and analyze filtered results
+        5. **Export Data** - Download filtered results in CSV, Excel, or summary format
         
         **Available Columns:**
         - **#**: Item number
@@ -2080,8 +2386,1045 @@ def all_prices_tab():
         
         **Pro Tips:**
         - Use wildcards in search (e.g., "choc*" for chocolate, chocolates, etc.)
+        - Export data for offline analysis
         - Combine filters for precise results
         - Check raw data preview for complete information
+        """)
+
+# ============================================
+# VISUAL ANALYTICS TAB FUNCTION (Kept from original)
+# ============================================
+
+def visual_analytics_tab():
+    """Visual Analytics Tab with Interactive Charts"""
+    st.markdown("""
+    <div class="visual-header">
+        <h2 style="margin:0;">📈 Visual Analytics Dashboard</h2>
+        <p style="margin:0; opacity:0.9;">Interactive Charts • Sales Trends • Product Performance • Custom Visualizations</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Client selection
+    available_clients = st.session_state.user_clients
+    if not available_clients:
+        st.warning("No clients available for your account")
+        return
+    
+    client = st.selectbox(
+        "Select Client:",
+        available_clients,
+        key="visual_client_select"
+    )
+    
+    # Load client data
+    with st.spinner(f"📥 Loading data for {client}..."):
+        DATA = get_google_sheets_data(client)
+    
+    if not DATA.get("Backaldrin") and not DATA.get("Bateel"):
+        st.error(f"❌ No data found for {client}")
+        return
+    
+    st.success(f"✅ Loaded data for {client}")
+    
+    # Supplier selection
+    supplier = st.radio(
+        "Select Supplier:",
+        ["Backaldrin", "Bateel"],
+        horizontal=True,
+        key="visual_supplier"
+    )
+    
+    # ============================================
+    # SECTION 1: PRODUCT SELECTION
+    # ============================================
+    st.subheader("🎯 Select Product for Analysis")
+    
+    # Get all articles from the selected supplier
+    supplier_data = DATA.get(supplier, {})
+    articles = list(supplier_data.keys())
+    
+    if not articles:
+        st.info(f"No articles found for {supplier} - {client}")
+        return
+    
+    # Create searchable select box
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        selected_article = st.selectbox(
+            "Search and select article:",
+            articles,
+            format_func=lambda x: f"{x} - {supplier_data[x]['names'][0] if supplier_data[x]['names'] else 'No Name'}",
+            key="visual_article_select"
+        )
+    
+    with col2:
+        # Time range selection
+        time_range = st.selectbox(
+            "Time Period:",
+            ["All Time", "Last 2 Years", "Last Year", "Last 6 Months", "Custom"],
+            key="visual_time_range"
+        )
+    
+    # Get selected article data
+    article_data = supplier_data.get(selected_article, {})
+    
+    if not article_data:
+        st.error(f"No data found for article {selected_article}")
+        return
+    
+    # ============================================
+    # SECTION 2: PERFORMANCE METRICS
+    # ============================================
+    st.subheader("📊 Performance Overview")
+    
+    # Calculate metrics
+    orders = article_data.get('orders', [])
+    prices = article_data.get('prices', [])
+    
+    if not orders:
+        st.info(f"No order history for article {selected_article}")
+        return
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        total_orders = len(orders)
+        st.metric("Total Orders", total_orders)
+    
+    with col2:
+        avg_price = sum(prices) / len(prices) if prices else 0
+        st.metric("Avg Price/kg", f"${avg_price:.2f}")
+    
+    with col3:
+        min_price = min(prices) if prices else 0
+        st.metric("Min Price", f"${min_price:.2f}")
+    
+    with col4:
+        max_price = max(prices) if prices else 0
+        st.metric("Max Price", f"${max_price:.2f}")
+    
+    # ============================================
+    # SECTION 3: PRICE TREND CHART
+    # ============================================
+    st.subheader("📈 Price Trend Over Time")
+    
+    # Prepare data for chart
+    chart_data = []
+    for order in orders:
+        try:
+            price = float(order.get('price', 0))
+            date_str = order.get('date', '')
+            if price > 0 and date_str:
+                # Try to parse date
+                try:
+                    # Handle different date formats
+                    for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d']:
+                        try:
+                            date = datetime.strptime(date_str, fmt)
+                            chart_data.append({
+                                'Date': date,
+                                'Price': price,
+                                'Order': order.get('order_no', ''),
+                                'Quantity': float(order.get('quantity', 0) or 0),
+                                'Total_Weight': float(order.get('total_weight', 0) or 0)
+                            })
+                            break
+                        except:
+                            continue
+                except:
+                    continue
+        except:
+            continue
+    
+    if chart_data:
+        # Create DataFrame for charting
+        df_chart = pd.DataFrame(chart_data)
+        df_chart = df_chart.sort_values('Date')
+        
+        # Chart 1: Price Trend Line
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            st.markdown("**Price per kg over time**")
+            st.line_chart(df_chart.set_index('Date')['Price'], use_container_width=True)
+        
+        with col2:
+            st.markdown("**Statistics**")
+            st.write(f"First order: {df_chart['Date'].min().strftime('%b %Y')}")
+            st.write(f"Latest order: {df_chart['Date'].max().strftime('%b %Y')}")
+            st.write(f"Total period: {(df_chart['Date'].max() - df_chart['Date'].min()).days} days")
+        
+        # Chart 2: Quantity vs Price Scatter
+        st.subheader("📊 Quantity vs Price Analysis")
+        
+        if not df_chart.empty and 'Quantity' in df_chart.columns and df_chart['Quantity'].sum() > 0:
+            # Scatter plot
+            fig1, ax1 = plt.subplots(figsize=(10, 6))
+            scatter = ax1.scatter(df_chart['Quantity'], df_chart['Price'], 
+                                 c=range(len(df_chart)), cmap='viridis', s=100, alpha=0.6)
+            
+            # Add labels and trend line
+            ax1.set_xlabel('Quantity (units)')
+            ax1.set_ylabel('Price ($/kg)')
+            ax1.set_title(f'Quantity vs Price - {selected_article}')
+            ax1.grid(True, alpha=0.3)
+            
+            # Add trend line if enough points
+            if len(df_chart) > 1:
+                z = np.polyfit(df_chart['Quantity'], df_chart['Price'], 1)
+                p = np.poly1d(z)
+                ax1.plot(df_chart['Quantity'], p(df_chart['Quantity']), "r--", alpha=0.5, 
+                        label=f'Trend: y={z[0]:.4f}x + {z[1]:.2f}')
+                ax1.legend()
+            
+            # Add colorbar
+            plt.colorbar(scatter, ax=ax1, label='Order Sequence')
+            
+            st.pyplot(fig1)
+            
+            # Insights
+            correlation = df_chart['Quantity'].corr(df_chart['Price'])
+            st.info(f"**Insight:** Quantity-Price correlation: {correlation:.3f}")
+            if correlation < -0.3:
+                st.success("✅ **Negative correlation:** Higher quantities tend to get better prices")
+            elif correlation > 0.3:
+                st.warning("⚠️ **Positive correlation:** Higher quantities might be paying more")
+            else:
+                st.info("ℹ️ **Weak correlation:** Quantity doesn't strongly affect price")
+        
+        # Chart 3: Monthly Aggregation
+        st.subheader("📅 Monthly Performance")
+        
+        # Group by month
+        df_chart['YearMonth'] = df_chart['Date'].dt.to_period('M')
+        monthly_data = df_chart.groupby('YearMonth').agg({
+            'Price': ['mean', 'count', 'min', 'max'],
+            'Quantity': 'sum',
+            'Total_Weight': 'sum'
+        }).round(2)
+        
+        monthly_data.columns = ['Avg_Price', 'Order_Count', 'Min_Price', 'Max_Price', 'Total_Quantity', 'Total_Weight']
+        monthly_data = monthly_data.reset_index()
+        monthly_data['YearMonth'] = monthly_data['YearMonth'].astype(str)
+        
+        # Display monthly table
+        with st.expander("📋 View Monthly Breakdown", expanded=True):
+            st.dataframe(
+                monthly_data.style
+                .background_gradient(subset=['Avg_Price'], cmap='RdYlGn_r')
+                .background_gradient(subset=['Total_Quantity'], cmap='Blues')
+                .format({'Avg_Price': '${:.2f}', 'Min_Price': '${:.2f}', 'Max_Price': '${:.2f}'}),
+                use_container_width=True
+            )
+        
+        # Chart 4: Bar chart for monthly comparison
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**Monthly Average Price**")
+            st.bar_chart(monthly_data.set_index('YearMonth')['Avg_Price'])
+        
+        with col2:
+            st.markdown("**Monthly Order Count**")
+            st.bar_chart(monthly_data.set_index('YearMonth')['Order_Count'])
+        
+        # ============================================
+        # SECTION 4: COMPARATIVE ANALYSIS
+        # ============================================
+        st.subheader("🔍 Comparative Analysis")
+        
+        # Compare with other articles
+        compare_articles = st.multiselect(
+            "Compare with other articles:",
+            [a for a in articles if a != selected_article],
+            max_selections=3,
+            key="compare_articles"
+        )
+        
+        if compare_articles:
+            comparison_data = []
+            for article in [selected_article] + compare_articles:
+                art_data = supplier_data.get(article, {})
+                art_prices = art_data.get('prices', [])
+                if art_prices:
+                    comparison_data.append({
+                        'Article': article,
+                        'Name': art_data.get('names', [''])[0],
+                        'Avg_Price': sum(art_prices) / len(art_prices),
+                        'Min_Price': min(art_prices),
+                        'Max_Price': max(art_prices),
+                        'Order_Count': len(art_data.get('orders', [])),
+                        'Price_Range': max(art_prices) - min(art_prices)
+                    })
+            
+            if comparison_data:
+                df_comparison = pd.DataFrame(comparison_data)
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("**Price Comparison**")
+                    fig2, ax2 = plt.subplots(figsize=(8, 6))
+                    
+                    articles_list = df_comparison['Article'].tolist()
+                    avg_prices = df_comparison['Avg_Price'].tolist()
+                    
+                    bars = ax2.bar(range(len(articles_list)), avg_prices, 
+                                  color=['#991B1B' if a == selected_article else '#6B7280' for a in articles_list],
+                                  alpha=0.7)
+                    
+                    ax2.set_xlabel('Article')
+                    ax2.set_ylabel('Average Price ($/kg)')
+                    ax2.set_title('Average Price Comparison')
+                    ax2.set_xticks(range(len(articles_list)))
+                    ax2.set_xticklabels([f"{a[:15]}..." for a in articles_list], rotation=45, ha='right')
+                    
+                    # Add value labels on bars
+                    for bar in bars:
+                        height = bar.get_height()
+                        ax2.text(bar.get_x() + bar.get_width()/2., height,
+                                f'${height:.2f}', ha='center', va='bottom')
+                    
+                    st.pyplot(fig2)
+                
+                with col2:
+                    st.markdown("**Comparison Table**")
+                    st.dataframe(
+                        df_comparison.style
+                        .highlight_max(subset=['Avg_Price'], color='#FECACA')
+                        .highlight_min(subset=['Avg_Price'], color='#D1FAE5')
+                        .format({'Avg_Price': '${:.2f}', 'Min_Price': '${:.2f}', 
+                                'Max_Price': '${:.2f}', 'Price_Range': '${:.2f}'}),
+                        use_container_width=True
+                    )
+        
+        # ============================================
+        # SECTION 5: EXPORT VISUAL REPORT
+        # ============================================
+        st.markdown('<div class="export-section">', unsafe_allow_html=True)
+        st.subheader("📤 Export Visual Report")
+        
+        # Generate summary report
+        report_text = f"""
+VISUAL ANALYTICS REPORT
+=======================
+
+Client: {client}
+Supplier: {supplier}
+Article: {selected_article}
+Product: {article_data.get('names', [''])[0]}
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+PERFORMANCE SUMMARY:
+• Total Orders: {total_orders}
+• Average Price: ${avg_price:.2f}/kg
+• Price Range: ${min_price:.2f} - ${max_price:.2f}/kg
+• Analysis Period: {df_chart['Date'].min().strftime('%b %d, %Y')} to {df_chart['Date'].max().strftime('%b %d, %Y')}
+
+MONTHLY BREAKDOWN:
+{chr(10).join([f"• {row['YearMonth']}: ${row['Avg_Price']:.2f} avg ({row['Order_Count']} orders, {row['Total_Quantity']} units)" 
+               for _, row in monthly_data.iterrows()])}
+
+KEY INSIGHTS:
+1. Price stability: {'Stable' if (max_price - min_price) < avg_price * 0.2 else 'Volatile'}
+2. Order frequency: {'Regular' if len(df_chart) / ((df_chart['Date'].max() - df_chart['Date'].min()).days/30) > 0.5 else 'Irregular'}
+3. Best performing month: {monthly_data.loc[monthly_data['Order_Count'].idxmax(), 'YearMonth']}
+4. Highest average price: ${monthly_data['Avg_Price'].max():.2f} in {monthly_data.loc[monthly_data['Avg_Price'].idxmax(), 'YearMonth']}
+
+RECOMMENDATIONS:
+• Consider price adjustment if volatility > 20%
+• Monitor order patterns for seasonal trends
+• Compare with market benchmarks regularly
+        """
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Download CSV
+            if not df_chart.empty:
+                csv = df_chart.to_csv(index=False)
+                st.download_button(
+                    label="📥 Download Chart Data (CSV)",
+                    data=csv,
+                    file_name=f"{client}_{supplier}_{selected_article}_chart_data.csv",
+                    mime="text/csv",
+                    use_container_width=True,
+                    key="visual_csv"
+                )
+        
+        with col2:
+            # Download Report
+            st.download_button(
+                label="📄 Download Analysis Report",
+                data=report_text,
+                file_name=f"{client}_{supplier}_{selected_article}_analysis_report.txt",
+                mime="text/plain",
+                use_container_width=True,
+                key="visual_report"
+            )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    else:
+        st.warning("No valid date/price data available for charting")
+    
+    # ============================================
+    # SECTION 6: QUICK TIPS
+    # ============================================
+    with st.expander("💡 How to use this dashboard"):
+        st.markdown("""
+        **📈 Visual Analytics Guide:**
+        
+        1. **Select Client & Supplier** - Choose which data to analyze
+        2. **Search Article** - Use dropdown to find specific products
+        3. **Analyze Trends** - View price changes over time
+        4. **Compare Products** - Select multiple articles for comparison
+        5. **Export Insights** - Download reports for presentations
+        
+        **Key Metrics to Watch:**
+        - **Price Volatility**: Large price swings may indicate market changes
+        - **Order Frequency**: Regular orders suggest stable demand
+        - **Quantity-Price Correlation**: Bulk discounts or premium pricing patterns
+        - **Monthly Trends**: Seasonal demand patterns
+        
+        **Pro Tips:**
+        - Use monthly breakdown to identify seasonal patterns
+        - Compare similar products to spot pricing opportunities
+        - Export charts for client presentations
+        - Monitor price stability for negotiation strategies
+        """)
+
+# ============================================
+# ITEM ANALYSIS TAB FUNCTION (Kept from original)
+# ============================================
+
+def item_analysis_tab():
+    """
+    Advanced Item Analysis Tab
+    Compare item performance between months and years with growth percentages
+    """
+    st.markdown("""
+    <div class="item-analysis-header">
+        <h2 style="margin:0;">📊 Advanced Item Analysis</h2>
+        <p style="margin:0; opacity:0.9;">Monthly Comparison • Year-over-Year Growth • Item Performance Tracking</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Client selection
+    available_clients = st.session_state.user_clients
+    if not available_clients:
+        st.warning("No clients available for your account")
+        return
+    
+    client = st.selectbox(
+        "Select Client:",
+        available_clients,
+        key="item_analysis_client"
+    )
+    
+    st.info(f"📊 **Analyzing data for:** {client}")
+    
+    # Load data for the selected client
+    with st.spinner(f"📥 Loading data for {client}..."):
+        DATA = get_google_sheets_data(client)
+    
+    if not DATA.get("Backaldrin") and not DATA.get("Bateel"):
+        st.error(f"❌ No data found for {client}")
+        return
+    
+    # Supplier selection
+    supplier = st.radio(
+        "Select Supplier:",
+        ["Backaldrin", "Bateel"],
+        horizontal=True,
+        key="item_analysis_supplier"
+    )
+    
+    supplier_data = DATA.get(supplier, {})
+    
+    if not supplier_data:
+        st.warning(f"No data available for {supplier} - {client}")
+        return
+    
+    # ============================================
+    # STEP 1: EXTRACT AND PROCESS DATA
+    # ============================================
+    st.subheader("🔍 Select Item for Analysis")
+    
+    # Get all unique items from the data
+    all_items = {}
+    
+    for article_num, article_data in supplier_data.items():
+        if article_data.get('orders'):
+            # Get product name
+            product_name = ""
+            if article_data.get('names'):
+                product_name = article_data['names'][0] if article_data['names'] else ""
+            
+            # Process each order to extract weight, date, etc.
+            monthly_data = {}
+            
+            for order in article_data['orders']:
+                try:
+                    # Extract month and year
+                    date_str = order.get('date', '')
+                    year = order.get('year', '')
+                    
+                    if not date_str and not year:
+                        continue
+                    
+                    # Parse date or use year
+                    if date_str:
+                        try:
+                            # Try multiple date formats
+                            for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d', '%d %b %Y']:
+                                try:
+                                    date_obj = datetime.strptime(date_str, fmt)
+                                    month_year = date_obj.strftime("%B %Y")
+                                    month = date_obj.strftime("%B")
+                                    year = date_obj.strftime("%Y")
+                                    break
+                                except:
+                                    continue
+                        except:
+                            # If date parsing fails, use year from data
+                            month = order.get('month', 'Unknown')
+                            year = order.get('year', 'Unknown')
+                            month_year = f"{month} {year}" if month != 'Unknown' else f"Unknown {year}"
+                    else:
+                        month = order.get('month', 'Unknown')
+                        year = order.get('year', 'Unknown')
+                        month_year = f"{month} {year}" if month != 'Unknown' else f"Unknown {year}"
+                    
+                    # Extract weight (convert to float)
+                    weight_str = order.get('total_weight', '0')
+                    try:
+                        weight = float(str(weight_str).replace(',', '').strip())
+                    except:
+                        weight = 0
+                    
+                    # Extract price
+                    price_str = order.get('price', '0')
+                    try:
+                        price = float(str(price_str).replace('$', '').replace(',', '').strip())
+                    except:
+                        price = 0
+                    
+                    # Extract quantity
+                    quantity_str = order.get('quantity', '0')
+                    try:
+                        quantity = float(str(quantity_str).replace(',', '').strip())
+                    except:
+                        quantity = 0
+                    
+                    # Add to monthly data
+                    if month_year not in monthly_data:
+                        monthly_data[month_year] = {
+                            'weight': 0,
+                            'quantity': 0,
+                            'revenue': 0,
+                            'orders_count': 0,
+                            'month': month,
+                            'year': year,
+                            'avg_price': 0,
+                            'prices': []
+                        }
+                    
+                    monthly_data[month_year]['weight'] += weight
+                    monthly_data[month_year]['quantity'] += quantity
+                    monthly_data[month_year]['orders_count'] += 1
+                    
+                    # Calculate revenue if both weight and price are available
+                    if weight > 0 and price > 0:
+                        revenue = weight * price
+                        monthly_data[month_year]['revenue'] += revenue
+                        monthly_data[month_year]['prices'].append(price)
+                
+                except Exception as e:
+                    continue
+            
+            # Calculate average price for each month
+            for month_year, data in monthly_data.items():
+                if data['prices']:
+                    data['avg_price'] = sum(data['prices']) / len(data['prices'])
+            
+            all_items[article_num] = {
+                'product_name': product_name,
+                'monthly_data': monthly_data,
+                'total_weight': sum(data['weight'] for data in monthly_data.values()),
+                'total_orders': sum(data['orders_count'] for data in monthly_data.values()),
+                'total_revenue': sum(data['revenue'] for data in monthly_data.values())
+            }
+    
+    if not all_items:
+        st.warning(f"No item data available for analysis for {supplier} - {client}")
+        return
+    
+    # Create dropdown for item selection
+    items_list = list(all_items.keys())
+    
+    # Add search functionality
+    search_term = st.text_input(
+        "🔍 Search for item by article number or product name:",
+        placeholder="e.g., 558, Roxella, 1-366...",
+        key="item_search"
+    )
+    
+    # Filter items based on search
+    filtered_items = {}
+    if search_term:
+        search_lower = search_term.lower()
+        for item_id, item_data in all_items.items():
+            if (search_lower in item_id.lower() or 
+                search_lower in item_data['product_name'].lower()):
+                filtered_items[item_id] = item_data
+    else:
+        filtered_items = all_items
+    
+    # Item selection dropdown
+    if filtered_items:
+        # Format display options
+        item_options = {
+            f"{item_id} - {item_data['product_name']} (Total: {item_data['total_weight']:,.0f} kg)": item_id
+            for item_id, item_data in filtered_items.items()
+        }
+        
+        selected_display = st.selectbox(
+            "Select Item for Detailed Analysis:",
+            list(item_options.keys()),
+            key="item_selection"
+        )
+        
+        selected_item = item_options[selected_display]
+        item_data = filtered_items[selected_item]
+    else:
+        st.warning("No items match your search. Try a different search term.")
+        return
+    
+    # ============================================
+    # STEP 2: DISPLAY ITEM OVERVIEW
+    # ============================================
+    st.subheader(f"📋 Overview: {selected_item} - {item_data['product_name']}")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("Total Weight Sold", f"{item_data['total_weight']:,.0f} kg")
+    
+    with col2:
+        st.metric("Total Orders", item_data['total_orders'])
+    
+    with col3:
+        st.metric("Total Revenue", f"${item_data['total_revenue']:,.0f}")
+    
+    with col4:
+        if item_data['total_weight'] > 0:
+            avg_price_per_kg = item_data['total_revenue'] / item_data['total_weight']
+            st.metric("Avg Price/kg", f"${avg_price_per_kg:.2f}")
+        else:
+            st.metric("Avg Price/kg", "$0.00")
+    
+    # ============================================
+    # STEP 3: MONTHLY COMPARISON TABLE
+    # ============================================
+    st.subheader("📅 Monthly Performance Comparison")
+    
+    # Prepare monthly data for comparison
+    monthly_comparison = []
+    
+    # Get all months from the data and sort them properly
+    months_data = item_data['monthly_data']
+    
+    # Convert month names to datetime for proper sorting
+    month_objs = []
+    for month_year_str, data in months_data.items():
+        try:
+            month_name = data['month']
+            year = data['year']
+            
+            # Create a sortable date
+            month_num = datetime.strptime(month_name, "%B").month if month_name != 'Unknown' else 1
+            sort_key = f"{year}-{month_num:02d}"
+            
+            month_objs.append({
+                'sort_key': sort_key,
+                'month_year': month_year_str,
+                'data': data
+            })
+        except:
+            continue
+    
+    # Sort by year and month
+    month_objs.sort(key=lambda x: x['sort_key'])
+    
+    # Calculate month-over-month growth
+    previous_weight = None
+    previous_month = None
+    
+    for i, month_obj in enumerate(month_objs):
+        month_year = month_obj['month_year']
+        data = month_obj['data']
+        
+        # Calculate growth percentage
+        growth_percent = None
+        if previous_weight is not None and previous_weight > 0:
+            growth_percent = ((data['weight'] - previous_weight) / previous_weight) * 100
+        
+        monthly_comparison.append({
+            'Period': month_year,
+            'Month': data['month'],
+            'Year': data['year'],
+            'Total Weight (kg)': f"{data['weight']:,.0f}",
+            'Weight_Value': data['weight'],
+            'Quantity': f"{data['quantity']:,.0f}",
+            'Orders': data['orders_count'],
+            'Avg Price/kg': f"${data['avg_price']:.2f}" if data['avg_price'] > 0 else "N/A",
+            'Revenue': f"${data['revenue']:,.0f}" if data['revenue'] > 0 else "N/A",
+            'Growth vs Previous': f"{growth_percent:+.1f}%" if growth_percent is not None else "First Record"
+        })
+        
+        previous_weight = data['weight']
+        previous_month = month_year
+    
+    # Display the comparison table
+    if monthly_comparison:
+        df_comparison = pd.DataFrame(monthly_comparison)
+        
+        # Create styled DataFrame
+        styled_df = df_comparison.style
+        
+        # Add color coding for growth
+        def color_growth(val):
+            if isinstance(val, str) and '%' in val:
+                try:
+                    percent = float(val.replace('%', '').replace('+', ''))
+                    if percent > 20:
+                        return 'background-color: #D1FAE5; color: #065F46; font-weight: bold;'  # Green for high growth
+                    elif percent > 0:
+                        return 'background-color: #FEF3C7; color: #92400E;'  # Yellow for moderate growth
+                    elif percent < -10:
+                        return 'background-color: #FEE2E2; color: #991B1B; font-weight: bold;'  # Red for significant drop
+                    elif percent < 0:
+                        return 'background-color: #FEF3C7; color: #92400E;'  # Yellow for small drop
+                except:
+                    pass
+            return ''
+        
+        # Apply styling
+        styled_df = styled_df.applymap(color_growth, subset=['Growth vs Previous'])
+        
+        # Display the table
+        st.dataframe(
+            styled_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Weight_Value": st.column_config.NumberColumn("Weight Value", format="%d")
+            }
+        )
+        
+        # ============================================
+        # STEP 4: YEAR-OVER-YEAR COMPARISON
+        # ============================================
+        st.subheader("📈 Year-over-Year Comparison")
+        
+        # Group data by year
+        year_data = {}
+        for month_obj in month_objs:
+            data = month_obj['data']
+            year = data['year']
+            
+            if year not in year_data:
+                year_data[year] = {
+                    'total_weight': 0,
+                    'total_revenue': 0,
+                    'total_orders': 0,
+                    'months': []
+                }
+            
+            year_data[year]['total_weight'] += data['weight']
+            year_data[year]['total_revenue'] += data['revenue']
+            year_data[year]['total_orders'] += data['orders_count']
+            year_data[year]['months'].append(data['month'])
+        
+        # Create year comparison table
+        year_comparison = []
+        years = sorted(year_data.keys())
+        
+        previous_year_weight = None
+        
+        for year in years:
+            data = year_data[year]
+            
+            # Calculate YoY growth
+            yoy_growth = None
+            if previous_year_weight is not None and previous_year_weight > 0:
+                yoy_growth = ((data['total_weight'] - previous_year_weight) / previous_year_weight) * 100
+            
+            year_comparison.append({
+                'Year': year,
+                'Total Weight (kg)': f"{data['total_weight']:,.0f}",
+                'Weight_Value': data['total_weight'],
+                'Total Revenue': f"${data['total_revenue']:,.0f}",
+                'Total Orders': data['total_orders'],
+                'Months with Sales': len(set(data['months'])),
+                'YoY Growth': f"{yoy_growth:+.1f}%" if yoy_growth is not None else "N/A"
+            })
+            
+            previous_year_weight = data['total_weight']
+        
+        if len(year_comparison) > 1:
+            df_year_comparison = pd.DataFrame(year_comparison)
+            
+            # Style YoY growth
+            styled_year_df = df_year_comparison.style
+            
+            def color_yoy_growth(val):
+                if isinstance(val, str) and '%' in val:
+                    try:
+                        percent = float(val.replace('%', '').replace('+', ''))
+                        if percent > 0:
+                            return 'background-color: #D1FAE5; color: #065F46; font-weight: bold;'
+                        else:
+                            return 'background-color: #FEE2E2; color: #991B1B; font-weight: bold;'
+                    except:
+                        pass
+                return ''
+            
+            styled_year_df = styled_year_df.applymap(color_yoy_growth, subset=['YoY Growth'])
+            
+            st.dataframe(
+                styled_year_df,
+                use_container_width=True,
+                hide_index=True
+            )
+            
+            # ============================================
+            # STEP 5: SPECIFIC MONTH COMPARISON (As requested)
+            # ============================================
+            st.subheader("🔍 Specific Month-to-Month Comparison")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                month1 = st.selectbox(
+                    "Select First Month:",
+                    [m['Period'] for m in monthly_comparison],
+                    key="month1_select"
+                )
+            
+            with col2:
+                month2 = st.selectbox(
+                    "Select Second Month:",
+                    [m['Period'] for m in monthly_comparison],
+                    index=min(1, len(monthly_comparison)-1),
+                    key="month2_select"
+                )
+            
+            # Find data for selected months
+            month1_data = next((m for m in monthly_comparison if m['Period'] == month1), None)
+            month2_data = next((m for m in monthly_comparison if m['Period'] == month2), None)
+            
+            if month1_data and month2_data:
+                weight1 = month1_data['Weight_Value']
+                weight2 = month2_data['Weight_Value']
+                
+                # Calculate comparison metrics
+                weight_difference = weight2 - weight1
+                if weight1 > 0:
+                    percentage_change = (weight_difference / weight1) * 100
+                else:
+                    percentage_change = 100 if weight2 > 0 else 0
+                
+                # Display comparison cards
+                st.markdown("---")
+                st.subheader("📊 Comparison Results")
+                
+                comp_col1, comp_col2, comp_col3 = st.columns(3)
+                
+                with comp_col1:
+                    st.metric(
+                        f"{month1}",
+                        f"{weight1:,.0f} kg",
+                        delta=None
+                    )
+                
+                with comp_col2:
+                    st.metric(
+                        f"{month2}",
+                        f"{weight2:,.0f} kg",
+                        delta=f"{weight_difference:+,.0f} kg"
+                    )
+                
+                with comp_col3:
+                    if weight1 > 0:
+                        st.metric(
+                            "Percentage Change",
+                            f"{percentage_change:+.1f}%",
+                            delta_color="normal" if percentage_change >= 0 else "inverse"
+                        )
+                    else:
+                        st.metric(
+                            "Percentage Change",
+                            f"{percentage_change:+.1f}%",
+                            delta="New Sales"
+                        )
+                
+                # Detailed comparison
+                st.markdown("#### 📋 Detailed Comparison")
+                
+                comparison_details = pd.DataFrame([
+                    {
+                        'Metric': 'Total Weight',
+                        f'{month1}': f"{weight1:,.0f} kg",
+                        f'{month2}': f"{weight2:,.0f} kg",
+                        'Difference': f"{weight_difference:+,.0f} kg",
+                        'Change %': f"{percentage_change:+.1f}%"
+                    }
+                ])
+                
+                st.dataframe(comparison_details, use_container_width=True, hide_index=True)
+        
+        # ============================================
+        # STEP 6: VISUALIZATION
+        # ============================================
+        st.subheader("📈 Weight Sales Trend")
+        
+        # Prepare data for chart
+        chart_data = pd.DataFrame([
+            {
+                'Month': m['Period'],
+                'Weight (kg)': m['Weight_Value'],
+                'Growth %': float(m['Growth vs Previous'].replace('%', '').replace('+', '').replace('First Record', '0')) 
+                if m['Growth vs Previous'] != 'First Record' else 0
+            }
+            for m in monthly_comparison
+        ])
+        
+        if not chart_data.empty:
+            # Create two columns for charts
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**Monthly Weight Sales**")
+                st.bar_chart(chart_data.set_index('Month')['Weight (kg)'], use_container_width=True)
+            
+            with col2:
+                st.markdown("**Growth Percentage**")
+                st.line_chart(chart_data.set_index('Month')['Growth %'], use_container_width=True)
+        
+        # ============================================
+        # STEP 7: EXPORT FUNCTIONALITY
+        # ============================================
+        st.markdown("---")
+        st.subheader("📤 Export Analysis")
+        
+        # Create comprehensive export data
+        export_data = []
+        for month_data in monthly_comparison:
+            export_data.append({
+                'Item_ID': selected_item,
+                'Product_Name': item_data['product_name'],
+                'Period': month_data['Period'],
+                'Month': month_data['Month'],
+                'Year': month_data['Year'],
+                'Total_Weight_kg': month_data['Weight_Value'],
+                'Quantity': month_data['Quantity'].replace(',', ''),
+                'Number_of_Orders': month_data['Orders'],
+                'Average_Price_kg': month_data['Avg Price/kg'].replace('$', '').replace('N/A', '0'),
+                'Revenue': month_data['Revenue'].replace('$', '').replace(',', '').replace('N/A', '0'),
+                'Month_over_Month_Growth': month_data['Growth vs Previous'].replace('%', '').replace('+', '').replace('First Record', '0')
+            })
+        
+        export_df = pd.DataFrame(export_data)
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            csv = export_df.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV Report",
+                data=csv,
+                file_name=f"{client}_{supplier}_{selected_item}_analysis_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="item_analysis_csv"
+            )
+        
+        with col2:
+            # Create summary report
+            summary_text = f"""
+ITEM ANALYSIS REPORT
+====================
+
+Client: {client}
+Supplier: {supplier}
+Item: {selected_item}
+Product: {item_data['product_name']}
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+OVERALL STATISTICS:
+• Total Weight Sold: {item_data['total_weight']:,.0f} kg
+• Total Orders: {item_data['total_orders']}
+• Total Revenue: ${item_data['total_revenue']:,.0f}
+• Average Price/kg: ${(item_data['total_revenue'] / item_data['total_weight']):.2f if item_data['total_weight'] > 0 else 0}
+
+MONTHLY BREAKDOWN:
+{chr(10).join([f"• {row['Period']}: {row['Total_Weight_kg']} kg | Growth: {row['Month_over_Month_Growth']}% | Revenue: ${float(row['Revenue']):,.0f}" for row in export_data])}
+
+YEAR-OVER-YEAR COMPARISON:
+{chr(10).join([f"• {row['Year']}: {row['Total_Weight_kg']} kg" for row in export_data if row['Year'] in years])}
+
+KEY INSIGHTS:
+1. Best Performing Month: {max(monthly_comparison, key=lambda x: x['Weight_Value'])['Period']}
+2. Total Sales Period: {len(monthly_comparison)} months
+3. Average Monthly Weight: {item_data['total_weight']/len(monthly_comparison):,.0f} kg
+4. Most Recent Month: {monthly_comparison[-1]['Period']} - {monthly_comparison[-1]['Weight_Value']:,.0f} kg
+
+RECOMMENDATIONS:
+• Monitor growth trends for inventory planning
+• Analyze price changes vs. volume changes
+• Compare with market demand patterns
+            """
+            
+            st.download_button(
+                label="📄 Download Summary Report",
+                data=summary_text,
+                file_name=f"{client}_{supplier}_{selected_item}_summary_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True,
+                key="item_analysis_summary"
+            )
+    
+    else:
+        st.info("No monthly data available for comparison.")
+    
+    # ============================================
+    # STEP 8: QUICK TIPS
+    # ============================================
+    with st.expander("💡 How to Use This Analysis Tool", expanded=False):
+        st.markdown("""
+        **📊 Item Analysis Guide:**
+        
+        1. **Select Client & Supplier** - Choose which data to analyze
+        2. **Search for Items** - Use the search box to find specific items
+        3. **View Monthly Breakdown** - See weight, revenue, and growth per month
+        4. **Compare Specific Months** - Select two months for direct comparison
+        5. **Analyze Trends** - View year-over-year and month-over-month growth
+        6. **Export Reports** - Download data for presentations
+        
+        **Key Metrics Explained:**
+        - **Total Weight**: Kilograms sold in that period
+        - **Growth %**: Percentage change from previous period
+        - **YoY Growth**: Year-over-Year growth percentage
+        - **Revenue**: Total sales value (weight × price)
+        
+        **Pro Tips:**
+        - Use month comparison to identify seasonal patterns
+        - Export data for client presentations
+        - Monitor growth trends for inventory planning
+        - Compare multiple items to identify best sellers
         """)
 
 # ============================================
@@ -2296,7 +3639,7 @@ def handle_search(article, product, hs_code, supplier, data, client):
         add_to_search_history(search_term, client, supplier)
 
 def create_export_data(article_data, article, supplier, client):
-    """Create export data in different formats - Kept for internal use only"""
+    """Create export data in different formats"""
     export_data = []
     for order in article_data['orders']:
         export_data.append({
@@ -2590,11 +3933,78 @@ def display_from_session_state(data, client):
                 with col2:
                     st.caption(time_ago)
     
-    # Note about export removal
-    st.info("📌 Note: Export functionality has been removed from the dashboard. For data export, please contact the administrator.")
+    # EXPORT SECTION
+    st.markdown('<div class="export-section">', unsafe_allow_html=True)
+    st.subheader("📤 Export Data")
+    
+    if st.session_state.export_data is not None:
+        export_df = st.session_state.export_data
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            csv = export_df.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv,
+                file_name=f"{client}_pricing_{article}_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                type="primary",
+                key=f"{client}_csv"
+            )
+        
+        with col2:
+            try:
+                excel_data = convert_df_to_excel(export_df)
+                st.download_button(
+                    label="📊 Download Excel",
+                    data=excel_data,
+                    file_name=f"{client}_pricing_{article}_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                    mime="application/vnd.ms-excel",
+                    use_container_width=True,
+                    key=f"{client}_excel"
+                )
+            except:
+                st.info("📊 Excel export requires openpyxl package")
+        
+        with col3:
+            st.download_button(
+                label="📄 Download Summary",
+                data=f"""
+{client} Pricing Summary Report
+===============================
+
+Article: {article}
+Supplier: {supplier}
+Client: {client}
+Product: {export_df['product_name'].iloc[0]}
+Report Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+Price Statistics:
+• Total Records: {len(export_df)}
+• Minimum Price: ${min(prices):.2f}/kg
+• Maximum Price: ${max(prices):.2f}/kg  
+• Price Range: ${max(prices) - min(prices):.2f}/kg
+
+Orders Included: {', '.join(export_df['order_number'].tolist())}
+                """,
+                file_name=f"{client}_summary_{article}_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True,
+                key=f"{client}_summary"
+            )
+        
+        with st.expander("👀 Preview Export Data"):
+            st.dataframe(export_df, use_container_width=True)
+            
+    else:
+        st.info("Search for an article to enable export options")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 def convert_df_to_excel(df):
-    """Convert DataFrame to Excel format - Kept for potential future use"""
+    """Convert DataFrame to Excel format"""
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Price_History')
@@ -2602,7 +4012,7 @@ def convert_df_to_excel(df):
     return processed_data
 
 def prices_tab():
-    """All Customers Prices Tab"""
+    """NEW: All Customers Prices Tab"""
     st.markdown("""
     <div class="prices-header">
         <h2 style="margin:0;">💰 All Customers Prices</h2>
@@ -2680,7 +4090,7 @@ def prices_tab():
             key="price_range_filter"
         )
     
-    # Specific search options
+    # NEW: Specific search options
     st.subheader("🎯 Specific Search Options")
     
     col1, col2, col3 = st.columns(3)
@@ -2771,6 +4181,59 @@ def prices_tab():
                     st.write(f"**Packing/kg:** {record['Packing/kg']}")
                     st.markdown(f"<h3 style='color: #059669;'>Price: ${record['Price']:.2f}</h3>", unsafe_allow_html=True)
         
+        # Export Section
+        st.markdown('<div class="export-section">', unsafe_allow_html=True)
+        st.subheader("📤 Export Price Data")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            csv = filtered_data.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv,
+                file_name=f"all_prices_data_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="prices_csv"
+            )
+        
+        with col2:
+            summary_text = f"""
+All Customers Prices Report
+===========================
+
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Total Records: {len(filtered_data)}
+Unique Customers: {filtered_data['Customer'].nunique()}
+Unique Items: {filtered_data['Item Code'].nunique()}
+Average Price: ${filtered_data['Price'].mean():.2f}
+Price Range: ${filtered_data['Price'].min():.2f} - ${filtered_data['Price'].max():.2f}
+
+Filters Applied:
+- Customer: {selected_customer}
+- Salesman: {selected_salesman}
+- Price Range: ${price_range[0]:.2f} - ${price_range[1]:.2f}
+- Article Search: {article_search if article_search else 'None'}
+- Item Name Search: {item_name_search if item_name_search else 'None'}
+- Customer Article Search: {customer_article_search if customer_article_search else 'None'}
+- Global Search: {global_search if global_search and not (article_search or item_name_search or customer_article_search) else 'None'}
+
+Top Items by Price:
+{chr(10).join([f"• {row['Item Code']} - {row['Item Name']}: ${row['Price']:.2f} ({row['Customer']})" 
+               for _, row in filtered_data.nlargest(10, 'Price').iterrows()])}
+            """
+            st.download_button(
+                label="📄 Download Summary",
+                data=summary_text,
+                file_name=f"prices_summary_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True,
+                key="prices_summary"
+            )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        
         # Quick Statistics for filtered data
         st.subheader("📈 Filtered Data Statistics")
         
@@ -2790,12 +4253,190 @@ def prices_tab():
         with col4:
             max_filtered_price = filtered_data['Price'].max()
             st.metric("Max Price", f"${max_filtered_price:.2f}")
-        
-        # Note about export removal
-        st.info("📌 Note: Export functionality has been removed from the dashboard. For data export, please contact the administrator.")
             
     else:
         st.info("No price records match your search criteria.")
+
+def new_orders_tab():
+    """NEW: Client Orders Management Tab"""
+    st.markdown("""
+    <div class="new-orders-header">
+        <h2 style="margin:0;">📋 New Client Orders Management</h2>
+        <p style="margin:0; opacity:0.9;">Order Preparation • PI Generation • Item Allocation • Availability Tracking</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Client selection
+    available_clients = st.session_state.user_clients
+    client = st.selectbox(
+        "Select Client:",
+        available_clients,
+        key="new_orders_client"
+    )
+    
+    if not client:
+        st.warning("Please select a client to manage orders")
+        return
+    
+    # Load new orders data
+    with st.spinner(f"📥 Loading orders data for {client}..."):
+        orders_data = load_new_orders_data(client)
+    
+    if orders_data.empty:
+        st.info(f"""
+        ⚠️ **No new orders data found for {client}**
+        
+        **To get started:**
+        1. Go to your Google Sheet for {client}
+        2. Add data to the **'New_client_orders'** sheet
+        3. Use these headers:
+           - Order_Number, Client_Name, Product_Name, Article_No
+           - HS_Code, Origin, Packing, Qty, Type
+           - Total_Weight, Price_in_USD_kg, Total_Price, Status
+        """)
+        return
+    
+    # Orders Overview
+    st.subheader("📊 Orders Overview")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        total_orders = orders_data['Order_Number'].nunique()
+        st.metric("Total PIs", total_orders)
+    
+    with col2:
+        total_items = len(orders_data)
+        st.metric("Total Items", total_items)
+    
+    with col3:
+        total_value = orders_data['Total_Price'].sum()
+        st.metric("Total Value", f"${total_value:,.2f}")
+    
+    with col4:
+        unique_articles = orders_data['Article_No'].nunique()
+        st.metric("Unique Articles", unique_articles)
+    
+    # Search and Filter Section
+    st.subheader("🔍 Search & Filter Orders")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        search_type = st.radio("Search By:", ["Article Number", "Product Name", "PI Number", "HS Code"], 
+                              horizontal=True, key="new_orders_search_type")
+    
+    with col2:
+        search_term = st.text_input("Enter search term...", key="new_orders_search")
+    
+    with col3:
+        status_filter = st.selectbox("Order Status", ["All", "Draft", "Confirmed", "In Production", "Shipped"], 
+                                    key="new_orders_status")
+    
+    # Filter data
+    filtered_data = orders_data.copy()
+    
+    if search_term:
+        if search_type == "Article Number":
+            filtered_data = filtered_data[filtered_data['Article_No'].astype(str).str.contains(search_term, case=False, na=False)]
+        elif search_type == "Product Name":
+            filtered_data = filtered_data[filtered_data['Product_Name'].str.contains(search_term, case=False, na=False)]
+        elif search_type == "PI Number":
+            filtered_data = filtered_data[filtered_data['Order_Number'].str.contains(search_term, case=False, na=False)]
+        elif search_type == "HS Code":
+            filtered_data = filtered_data[filtered_data['HS_Code'].astype(str).str.contains(search_term, case=False, na=False)]
+    
+    if status_filter != "All":
+        filtered_data = filtered_data[filtered_data['Status'] == status_filter]
+    
+    # Display Results
+    st.subheader(f"📋 Order Items ({len(filtered_data)} found)")
+    
+    if not filtered_data.empty:
+        # Group by Order Number
+        for order_num, order_group in filtered_data.groupby('Order_Number'):
+            with st.expander(f"📦 PI: {order_num} | Items: {len(order_group)} | Status: {order_group['Status'].iloc[0]}", expanded=False):
+                
+                # Order summary
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Total Items", len(order_group))
+                with col2:
+                    st.metric("Total Qty", order_group['Qty'].sum())
+                with col3:
+                    st.metric("Total Weight", f"{order_group['Total_Weight'].sum():.1f} kg")
+                with col4:
+                    st.metric("Total Value", f"${order_group['Total_Price'].sum():,.2f}")
+                
+                # Display items in this order
+                for _, item in order_group.iterrows():
+                    st.markdown(f"""
+                    <div class="price-card">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div style="flex: 2;">
+                                <h4 style="margin:0; color: #991B1B;">
+                                                                {item['Article_No']} - {item['Product_Name']}</h4>
+                                <p style="margin:0; color: #6B7280;">
+                                    HS Code: {item['HS_Code']} | Origin: {item['Origin']} | Packing: {item['Packing']}
+                                </p>
+                            </div>
+                            <div style="flex: 1; text-align: right;">
+                                <p style="margin:0; font-weight: bold;">Qty: {item['Qty']} {item['Type']}</p>
+                                <p style="margin:0;">Weight: {item['Total_Weight']} kg</p>
+                                <p style="margin:0; color: #059669;">Price: ${item['Price_in_USD_kg']}/kg</p>
+                                <p style="margin:0; font-weight: bold;">Total: ${item['Total_Price']:,.2f}</p>
+                            </div>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+        
+        # Export Section
+        st.markdown('<div class="export-section">', unsafe_allow_html=True)
+        st.subheader("📤 Export Orders Data")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            csv = filtered_data.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv,
+                file_name=f"{client}_new_orders_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="new_orders_csv"
+            )
+        
+        with col2:
+            # Create summary report
+            summary_text = f"""
+{client} New Orders Report
+=========================
+
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Total PIs: {filtered_data['Order_Number'].nunique()}
+Total Items: {len(filtered_data)}
+Total Value: ${filtered_data['Total_Price'].sum():,.2f}
+
+Orders Summary:
+{chr(10).join([f"• {order_num}: {len(group)} items, ${group['Total_Price'].sum():,.2f} ({group['Status'].iloc[0]})" 
+               for order_num, group in filtered_data.groupby('Order_Number')])}
+
+Search Criteria: {search_type} = '{search_term}' | Status: {status_filter}
+            """
+            st.download_button(
+                label="📄 Download Summary",
+                data=summary_text,
+                file_name=f"{client}_orders_summary_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True,
+                key="new_orders_summary"
+            )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    else:
+        st.info("No orders match your search criteria.")
 
 def etd_tab():
     """ETD Sheet - Live Google Sheets Integration with Multi-Month Support"""
@@ -2941,9 +4582,45 @@ def etd_tab():
                 display_etd_order_card(order, selected_month.strip())
         else:
             st.info("No orders match your filter criteria.")
+
+        # Export Section
+        st.markdown('<div class="export-section">', unsafe_allow_html=True)
+        st.subheader("📤 Export ETD Data")
         
-        # Note about export removal
-        st.info("📌 Note: Export functionality has been removed from the dashboard. For data export, please contact the administrator.")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            csv = filtered_data.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv,
+                file_name=f"etd_data_{selected_month.strip().replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="etd_csv"
+            )
+        
+        with col2:
+            summary_text = f"""
+ETD Data Export - {selected_month.strip()}
+===============================
+
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Total Orders: {len(filtered_data)}
+Filters: Client={client_filter}, Employee={employee_filter}, Status={status_filter}
+
+Orders Summary:
+{chr(10).join([f"• {row['Order No.']} - {row['Client Name']} - {row['Status']}" for _, row in filtered_data.iterrows()])}
+            """
+            st.download_button(
+                label="📄 Download Summary",
+                data=summary_text,
+                file_name=f"etd_summary_{selected_month.strip().replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                key="etd_summary"
+            )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
     except Exception as e:
         st.error(f"❌ Error loading ETD data: {str(e)}")
@@ -3153,8 +4830,44 @@ def ceo_specials_tab():
             </div>
             """, unsafe_allow_html=True)
         
-        # Note about export removal
-        st.info("📌 Note: Export functionality has been removed from the dashboard. For data export, please contact the administrator.")
+        # Export CEO Specials
+        st.markdown('<div class="export-section">', unsafe_allow_html=True)
+        st.subheader("📤 Export CEO Special Prices")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            csv = filtered_data.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv,
+                file_name=f"{client}_ceo_special_prices_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="ceo_csv"
+            )
+        
+        with col2:
+            st.download_button(
+                label="📄 Download Summary",
+                data=f"""
+{client} CEO Special Prices Summary
+===================================
+
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Total Offers: {len(filtered_data)}
+Active Offers: {len(filtered_data[filtered_data['Expiry_Date'] >= datetime.now().strftime('%Y-%m-%d')])}
+
+Special Prices:
+{chr(10).join([f"• {row['Article_Number']} - {row['Product_Name']}: {row['Special_Price']} {row['Currency']} (Incoterm: {row['Incoterm']}, Until: {row['Expiry_Date']})" for _, row in filtered_data.iterrows()])}
+                """,
+                file_name=f"{client}_ceo_specials_summary_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True,
+                key="ceo_summary"
+            )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
         
     else:
         st.info("No CEO special prices match your search criteria.")
@@ -3393,8 +5106,80 @@ def analyze_cross_client_prices(search_term, selected_clients, supplier_filter="
         
         st.markdown("---")
     
-    # Note about export removal
-    st.info("📌 Note: Export functionality has been removed from the dashboard. For data export, please contact the administrator.")
+    # Export intelligence report
+    st.subheader("📤 Export Price Intelligence Report")
+    
+    export_data = []
+    for article_num, article_data in articles_data.items():
+        for client_supplier, result in article_data['client_data'].items():
+            client_name, supplier_name = client_supplier.split(" - ")
+            
+            if result['has_data']:
+                export_data.append({
+                    'Article_Number': article_num,
+                    'Product_Names': ', '.join(result['product_names']),
+                    'Client': client_name,
+                    'Supplier': supplier_name,
+                    'Min_Price': result['min_price'],
+                    'Max_Price': result['max_price'], 
+                    'Records_Count': result['records'],
+                    'Status': 'Available',
+                    'Analysis_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                })
+            else:
+                export_data.append({
+                    'Article_Number': article_num,
+                    'Product_Names': ', '.join(result['product_names']),
+                    'Client': client_name,
+                    'Supplier': supplier_name,
+                    'Min_Price': 'N/A',
+                    'Max_Price': 'N/A',
+                    'Records_Count': 0,
+                    'Status': 'Not Available',
+                    'Analysis_Date': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                })
+    
+    if export_data:
+        export_df = pd.DataFrame(export_data)
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            csv = export_df.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV Report",
+                data=csv,
+                file_name=f"price_intelligence_{search_term}_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="intelligence_csv"
+            )
+        
+        with col2:
+            st.download_button(
+                label="📄 Download Summary",
+                data=f"""
+Price Intelligence Report
+=========================
+
+Search Term: {search_term}
+Clients Analyzed: {', '.join(selected_clients)}
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Total Records Analyzed: {total_records}
+
+Overall Price Range: ${overall_min if all_prices else 'N/A'} - ${overall_max if all_prices else 'N/A'}/kg
+
+Detailed Findings:
+{chr(10).join([f"• {row['Client']} - {row['Supplier']}: {row['Article_Number']} - Min:${row['Min_Price'] if row['Status'] == 'Available' else 'N/A'}, Max:${row['Max_Price'] if row['Status'] == 'Available' else 'N/A'}/kg ({row['Status']})" for row in export_data])}
+                """,
+                file_name=f"price_intelligence_summary_{search_term}_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True,
+                key="intelligence_summary"
+            )
+            
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 def product_catalog_tab():
     """Full Product Catalog with comprehensive product information"""
@@ -3494,8 +5279,41 @@ def product_catalog_tab():
         for _, product in filtered_data.iterrows():
             display_product_card_flexible(product, catalog_data.columns)
         
-        # Note about export removal
-        st.info("📌 Note: Export functionality has been removed from the dashboard. For data export, please contact the administrator.")
+        # Export Section
+        st.markdown('<div class="export-section">', unsafe_allow_html=True)
+        st.subheader("📤 Export Product Catalog")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            csv = filtered_data.to_csv(index=False)
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv,
+                file_name=f"product_catalog_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True,
+                key="catalog_csv"
+            )
+        
+        with col2:
+            export_text = f"""Product Catalog Export
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Total Products: {len(filtered_data)}
+
+Products:
+{chr(10).join([f"• {row['Article_Number']} - {row['Product_Name']} " + (f"({row['Supplier']})" if 'Supplier' in row and row['Supplier'] else '') for _, row in filtered_data.iterrows()])}
+"""
+            st.download_button(
+                label="📄 Download Summary",
+                data=export_text,
+                file_name=f"product_catalog_summary_{datetime.now().strftime('%Y%m%d')}.txt",
+                mime="text/plain",
+                use_container_width=True,
+                key="catalog_summary"
+            )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
         
     else:
         st.info("No products match your search criteria.")
@@ -3564,6 +5382,189 @@ def display_product_card_flexible(product, available_columns):
         html_content += "</div></div>"
         
         st.markdown(html_content, unsafe_allow_html=True)
+
+def orders_management_tab():
+    """Orders Management Dashboard"""
+    st.markdown("""
+    <div class="orders-header">
+        <h2 style="margin:0;">📋 Orders Management Dashboard</h2>
+        <p style="margin:0; opacity:0.9;">Order Tracking • Status Monitoring • Payment Updates</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Client selection for orders
+    available_clients = st.session_state.user_clients
+    client = st.selectbox(
+        "Select Client:",
+        available_clients,
+        key="orders_client_select"
+    )
+    
+    if not client:
+        st.warning("Please select a client to view orders")
+        return
+    
+    # Load orders data
+    orders_data = load_orders_data(client)
+    
+    if orders_data.empty:
+        st.info(f"No orders data found for {client}. Orders management will be available when data is added.")
+        return
+    
+    st.success(f"✅ Showing {len(orders_data)} orders from your data")
+    
+    # Orders Overview
+    st.subheader("📊 Orders Overview")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        total_orders = len(orders_data)
+        st.metric("Total Orders", total_orders)
+    
+    with col2:
+        shipped_orders = len(orders_data[orders_data['Status'] == 'Shipped'])
+        st.metric("Shipped", shipped_orders)
+    
+    with col3:
+        production_orders = len(orders_data[orders_data['Status'] == 'In Production'])
+        st.metric("In Production", production_orders)
+    
+    with col4:
+        pending_orders = len(orders_data[orders_data['Status'] == 'Pending'])
+        st.metric("Pending", pending_orders)
+    
+    # Filter section
+    st.subheader("🔍 Filter Orders")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        status_filter = st.selectbox(
+            "Status",
+            ["All", "Shipped", "In Production", "Pending"],
+            key="orders_status_filter"
+        )
+    
+    with col2:
+        payment_filter = st.selectbox(
+            "Payment Status", 
+            ["All", "Pending", "Due", "Paid"],
+            key="orders_payment_filter"
+        )
+    
+    with col3:
+        search_term = st.text_input("Search Order Number...", key="orders_search")
+    
+    # Apply filters
+    filtered_orders = orders_data.copy()
+    
+    if status_filter != "All":
+        filtered_orders = filtered_orders[filtered_orders['Status'] == status_filter]
+    
+    if payment_filter != "All":
+        filtered_orders = filtered_orders[filtered_orders['Payment Update'] == payment_filter]
+    
+    if search_term:
+        filtered_orders = filtered_orders[
+            filtered_orders['Order Number'].str.contains(search_term, case=False, na=False)
+        ]
+    
+    # Display orders
+    st.subheader(f"📋 Orders ({len(filtered_orders)} found)")
+    
+    if not filtered_orders.empty:
+        for _, order in filtered_orders.iterrows():
+            display_order_card(order)
+    else:
+        st.info("No orders match your filter criteria.")
+    
+    # Export section
+    st.markdown('<div class="export-section">', unsafe_allow_html=True)
+    st.subheader("📤 Export Orders Data")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        csv = filtered_orders.to_csv(index=False)
+        st.download_button(
+            label="📥 Download CSV",
+            data=csv,
+            file_name=f"{client}_orders_{datetime.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv",
+            use_container_width=True,
+            key="orders_csv"
+        )
+    
+    with col2:
+        st.download_button(
+            label="📄 Download Summary",
+            data=f"""
+{client} Orders Summary
+======================
+
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Total Orders: {len(filtered_orders)}
+Shipped: {shipped_orders}
+In Production: {production_orders}
+Pending: {pending_orders}
+
+Orders List:
+{chr(10).join([f"• {row['Order Number']} - {row['Status']} - Payment: {row['Payment Update']}" for _, row in filtered_orders.iterrows()])}
+            """,
+            file_name=f"{client}_orders_summary_{datetime.now().strftime('%Y%m%d')}.txt",
+            mime="text/plain",
+            use_container_width=True,
+            key="orders_summary"
+        )
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+def display_order_card(order):
+    """Display individual order card using Streamlit components only"""
+    
+    status = order.get('Status', 'Pending')
+    payment_status = order.get('Payment Update', 'Pending')
+    order_number = order.get('Order Number', 'N/A')
+    
+    with st.expander(f"📦 {order_number} - {status}", expanded=False):
+        
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            st.subheader(order_number)
+            st.write(f"**Status:** {status}")
+            
+        with col2:
+            if payment_status == 'Paid':
+                st.success(f"💳 {payment_status}")
+            elif payment_status == 'Due':
+                st.error(f"⚠️ {payment_status}")
+            else:
+                st.warning(f"⏳ {payment_status}")
+            
+            st.write(f"**ERP:** {order.get('ERP', 'N/A')}")
+        
+        st.write("---")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.write("**📋 Order Details**")
+            st.write(f"Manufacturer: {order.get('Manufacturer', 'N/A')}")
+            st.write(f"ETD: {order.get('ETD', 'N/A')}")
+            st.write(f"PI Issue: {order.get('Date of PI issue', 'N/A')}")
+            
+        with col2:
+            st.write("**💰 Financial Details**")
+            st.write(f"Payment Due: {order.get('Payment due date', 'N/A')}")
+            st.write(f"Invoice: {order.get('Invoice', 'N/A')}")
+            st.write(f"Client Signed: {order.get('Date of Client signing', 'N/A')}")
+        
+        notes = order.get('Notes', '')
+        if pd.notna(notes) and notes != '':
+            st.write("---")
+            st.write("**📝 Notes**")
+            st.info(notes)
 
 def palletizing_tab():
     """Quick Pallet Calculator for CDC Items"""
@@ -3709,489 +5710,636 @@ def quick_pallet_calculator():
         st.info("For bulk analysis of your existing Palletizing_Data sheet, use the main data import features.")
         st.write("The Quick Calculator above is designed for instant pallet calculations!")
 
+def load_palletizing_data(client):
+    """Load palletizing data from Google Sheets"""
+    try:
+        sheet_name = CLIENT_SHEETS[client]["palletizing"]
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{CDC_SHEET_ID}/values/{sheet_name}!A:Z?key={API_KEY}"
+        response = requests.get(url)
+        
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if values and len(values) > 1:
+                headers = values[0]
+                rows = values[1:]
+                
+                df = pd.DataFrame(rows, columns=headers)
+                
+                required_cols = ['Client', 'Item Code', 'Item Name', 'Unit/KG', 'Unit/Carton', 
+                               'Unit Pack/Pallet', 'Total Unit', 'Pallet Order', 'Total Weight', 'Factory']
+                
+                missing_cols = [col for col in required_cols if col not in df.columns]
+                if missing_cols:
+                    st.error(f"Missing columns in palletizing data: {', '.join(missing_cols)}")
+                    return pd.DataFrame()
+                
+                numeric_cols = ['Unit/KG', 'Unit/Carton', 'Unit Pack/Pallet', 'Total Unit', 'Pallet Order', 'Total Weight']
+                for col in numeric_cols:
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+                
+                return df
+                
+        return pd.DataFrame()
+        
+    except Exception as e:
+        st.error(f"Error loading palletizing data for {client}: {str(e)}")
+        return pd.DataFrame()
+
 # ============================================
-# SAMPLES REQUEST TAB FUNCTION
+# PRICE MATCHING TAB FUNCTION
 # ============================================
 
-def samples_request_tab():
-    """
-    Samples Request Tab - Allows users to submit sample requests
-    Includes form with request details and multiple sample items
-    """
+def price_matching_tab():
+    """New Price Matching Tab for all clients"""
     st.markdown("""
-    <div class="clients-orders-header" style="background: linear-gradient(135deg, #DC2626, #B91C1C);">
-        <h2 style="margin:0;">🎁 Samples Request</h2>
-        <p style="margin:0; opacity:0.9;">Request Product Samples • Fill out the form below</p>
+    <div class="price-matching-header">
+        <h2 style="margin:0;">🔴 PI Price Validation Tool</h2>
+        <p style="margin:0; opacity:0.9;">Client-Specific Price Validation • Historical Price Comparison • Smart Matching</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Initialize session state for sample items
-    if 'sample_items' not in st.session_state:
-        st.session_state.sample_items = []
+    # Client selection
+    available_clients = st.session_state.user_clients
+    if not available_clients:
+        st.warning("No clients available for your account")
+        return
     
-    if 'sample_form_submitted' not in st.session_state:
-        st.session_state.sample_form_submitted = False
-    
-    # Load product catalog for suggestions
-    catalog_data = load_product_catalog()
-    
-    # Create two columns for the form layout
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("📋 Request Information")
-        
-        with st.container():
-            # Request Date
-            request_date = st.date_input(
-                "📅 Request Date",
-                value=datetime.now().date(),
-                key="sample_request_date"
-            )
-            
-            # Samples ETA
-            samples_eta = st.date_input(
-                "⏰ Samples ETA",
-                value=datetime.now().date(),
-                key="sample_eta"
-            )
-            
-            # Requested By
-            requested_by = st.text_input(
-                "👤 Requested By",
-                placeholder="Enter your full name",
-                key="sample_requested_by"
-            )
-            
-            # Department
-            department = st.selectbox(
-                "🏢 Department",
-                options=["Sales", "Marketing", "R&D", "Production", "Quality Control", "Procurement", "Other"],
-                key="sample_department"
-            )
-            
-            # Custom department if "Other" is selected
-            if department == "Other":
-                department = st.text_input(
-                    "Please specify department",
-                    placeholder="Enter department name",
-                    key="sample_department_other"
-                )
-    
-    with col2:
-        st.subheader("📍 Delivery Information")
-        
-        with st.container():
-            # Requester Title
-            requester_title = st.selectbox(
-                "💼 Requester Title",
-                options=["Manager", "Supervisor", "Specialist", "Coordinator", "Director", "Executive", "Other"],
-                key="sample_requester_title"
-            )
-            
-            if requester_title == "Other":
-                requester_title = st.text_input(
-                    "Please specify title",
-                    placeholder="Enter your title",
-                    key="sample_title_other"
-                )
-            
-            # Going to (Recipient Name)
-            going_to = st.text_input(
-                "👥 Going To (Recipient Name)",
-                placeholder="Enter recipient name",
-                key="sample_going_to"
-            )
-            
-            # Address
-            address = st.text_area(
-                "📍 Address",
-                placeholder="Enter complete delivery address",
-                height=100,
-                key="sample_address"
-            )
-            
-            # Delivery method
-            delivery_method = st.selectbox(
-                "🚚 Delivery Method",
-                options=["Courier", "Pickup", "Mail", "Express Delivery", "Freight", "Other"],
-                key="sample_delivery_method"
-            )
-            
-            if delivery_method == "Other":
-                delivery_method = st.text_input(
-                    "Please specify delivery method",
-                    placeholder="Enter delivery method",
-                    key="sample_delivery_other"
-                )
-    
-    # ============================================
-    # SAMPLES ITEMS SECTION
-    # ============================================
-    st.markdown("---")
-    st.subheader("📦 Sample Items")
-    st.info("Add the products you want to request as samples")
-    
-    # Function to add a sample item
-    def add_sample_item():
-        """Add current sample item to the list"""
-        article_num = st.session_state.get('sample_article', '')
-        product_name = st.session_state.get('sample_product', '')
-        item_type = st.session_state.get('sample_item_type', '')
-        pack_type = st.session_state.get('sample_pack_type', '')
-        unit_weight = st.session_state.get('sample_unit_weight', 0.0)
-        quantity = st.session_state.get('sample_quantity', 1)
-        logo_requirement = st.session_state.get('sample_logo', 'No')
-        
-        if article_num and product_name:
-            st.session_state.sample_items.append({
-                'article_number': article_num,
-                'product_name': product_name,
-                'item_type': item_type,
-                'pack_type': pack_type,
-                'unit_weight': unit_weight,
-                'quantity': quantity,
-                'logo_requirement': logo_requirement
-            })
-            # Clear the input fields after adding
-            st.session_state.sample_article = ''
-            st.session_state.sample_product = ''
-            st.session_state.sample_item_type = ''
-            st.session_state.sample_pack_type = ''
-            st.session_state.sample_unit_weight = 0.0
-            st.session_state.sample_quantity = 1
-            st.session_state.sample_logo = 'No'
-            st.success(f"✅ Added: {article_num} - {product_name}")
-        else:
-            st.error("❌ Please enter at least Article Number and Product Name")
-    
-    # Sample item input form
-    with st.form(key="sample_item_form", clear_on_submit=False):
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            # Article Number with autocomplete suggestions
-            article_input = st.text_input(
-                "🔢 Article Number *",
-                placeholder="e.g., 1-366, 1-367...",
-                key="sample_article"
-            )
-            
-            # Show suggestions if catalog data is available
-            if article_input and len(article_input) >= 2 and not catalog_data.empty:
-                matching_articles = catalog_data[
-                    catalog_data['Article_Number'].astype(str).str.contains(article_input, case=False, na=False)
-                ].head(5)
-                
-                if not matching_articles.empty:
-                    st.caption("💡 Suggestions:")
-                    for _, row in matching_articles.iterrows():
-                        if st.button(f"📦 {row['Article_Number']}", key=f"suggest_{row['Article_Number']}"):
-                            st.session_state.sample_article = row['Article_Number']
-                            st.session_state.sample_product = row.get('Product_Name', '')
-                            st.rerun()
-            
-            # Product Name
-            product_name = st.text_input(
-                "📝 Product Name *",
-                placeholder="Enter product name",
-                key="sample_product"
-            )
-            
-            # Item Type
-            item_type = st.selectbox(
-                "🏷️ Item Type",
-                options=["Raw Material", "Packaging", "Finished Good", "Semi-Finished", "Auxiliary Material", "Other"],
-                key="sample_item_type"
-            )
-        
-        with col2:
-            # Pack Type
-            pack_type = st.selectbox(
-                "📦 Pack Type",
-                options=["Bag", "Box", "Carton", "Drum", "Pallet", "Roll", "Tin", "Other"],
-                key="sample_pack_type"
-            )
-            
-            # Unit Weight
-            unit_weight = st.number_input(
-                "⚖️ Unit Weight (kg)",
-                min_value=0.0,
-                step=0.1,
-                format="%.2f",
-                key="sample_unit_weight"
-            )
-            
-            # Quantity
-            quantity = st.number_input(
-                "🔢 Total Quantity",
-                min_value=1,
-                step=1,
-                value=1,
-                key="sample_quantity"
-            )
-        
-        with col3:
-            # Logo Requirement
-            logo_requirement = st.radio(
-                "🎨 Logo Required?",
-                options=["No", "Yes - Standard", "Yes - Custom"],
-                key="sample_logo",
-                horizontal=True
-            )
-            
-            # Additional notes field
-            st.markdown("---")
-            item_notes = st.text_area(
-                "📝 Item Notes (Optional)",
-                placeholder="Any special requirements for this sample...",
-                key="sample_item_notes"
-            )
-        
-        # Add item button
-        submitted = st.form_submit_button("➕ Add Sample Item", use_container_width=True)
-        if submitted:
-            add_sample_item()
-
-# Add this to your samples_request_tab() function after the submission section
-
-# Print button for the summary
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    if st.button("🖨️ Print / Save as PDF", use_container_width=True, type="primary"):
-        st.markdown("""
-        <script>
-        window.print();
-        </script>
-        """, unsafe_allow_html=True)
-        st.info("Click Print in your browser dialog to save as PDF")
-        
-    # ============================================
-    # DISPLAY ADDED ITEMS
-    # ============================================
-    if st.session_state.sample_items:
-        st.subheader(f"📋 Sample Items Added ({len(st.session_state.sample_items)})")
-        
-        # Display items in a table format
-        items_df = pd.DataFrame(st.session_state.sample_items)
-        
-        # Add action buttons for each row
-        for idx, item in enumerate(st.session_state.sample_items):
-            col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([2, 2, 1.5, 1.5, 1.5, 1, 1, 0.5])
-            
-            with col1:
-                st.write(item['article_number'])
-            with col2:
-                st.write(item['product_name'][:30] + "..." if len(item['product_name']) > 30 else item['product_name'])
-            with col3:
-                st.write(item['item_type'])
-            with col4:
-                st.write(item['pack_type'])
-            with col5:
-                st.write(f"{item['unit_weight']} kg" if item['unit_weight'] > 0 else "N/A")
-            with col6:
-                st.write(item['quantity'])
-            with col7:
-                st.write(item['logo_requirement'])
-            with col8:
-                if st.button("🗑️", key=f"remove_{idx}"):
-                    st.session_state.sample_items.pop(idx)
-                    st.rerun()
-        
-        # Summary statistics
-        st.markdown("---")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            total_items = len(st.session_state.sample_items)
-            st.metric("Total Sample Items", total_items)
-        with col2:
-            total_quantity = sum(item['quantity'] for item in st.session_state.sample_items)
-            st.metric("Total Quantity", total_quantity)
-        with col3:
-            unique_articles = len(set(item['article_number'] for item in st.session_state.sample_items))
-            st.metric("Unique Articles", unique_articles)
-        
-        # Clear all button
-        if st.button("🗑️ Clear All Items", use_container_width=True, type="secondary"):
-            st.session_state.sample_items = []
-            st.rerun()
-    
-    # ============================================
-    # SUBMIT REQUEST
-    # ============================================
-    st.markdown("---")
-    
-    # Additional request notes
-    request_notes = st.text_area(
-        "📝 Additional Request Notes (Optional)",
-        placeholder="Any additional information about this sample request...",
-        height=100,
-        key="sample_request_notes"
+    client = st.selectbox(
+        "Select Client:",
+        available_clients,
+        key="price_matching_client"
     )
     
-    # Submit button
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if st.button("📤 SUBMIT SAMPLES REQUEST", use_container_width=True, type="primary"):
-            # Validate required fields
-            errors = []
+    st.markdown(f"""
+    <div class="price-matching-section">
+        <h3 style="color: #DC2626; margin-top: 0;">📊 {client} PI Price Validation</h3>
+        <p><strong>CRITICAL:</strong> Before sending PI to client, validate ALL prices here!</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Load client data
+    with st.spinner(f"📥 Loading historical data for {client}..."):
+        DATA = get_google_sheets_data(client)
+    
+    if not DATA.get("Backaldrin") and not DATA.get("Bateel"):
+        st.error(f"❌ No historical data found for {client}. Please ensure the client has data in Google Sheets.")
+        return
+    
+    st.success(f"✅ Connected to {client} historical data")
+    
+    # ============================================
+    # PRICE VALIDATION TOOL
+    # ============================================
+    st.subheader("📤 Upload Client PI Draft")
+    
+    # Supplier selection
+    supplier = st.radio(
+        "Select Supplier:",
+        ["Backaldrin", "Bateel"],
+        horizontal=True,
+        key="price_matching_supplier"
+    )
+    
+    # Upload options
+    upload_method = st.radio(
+        "Upload Method:",
+        ["Upload File", "Paste Data"],
+        horizontal=True,
+        key="price_matching_upload_method"
+    )
+    
+    pi_data = None
+    
+    if upload_method == "Upload File":
+        uploaded_file = st.file_uploader(
+            "Choose client's PI draft file (Excel/CSV)",
+            type=['csv', 'xlsx', 'xls'],
+            key="price_matching_upload"
+        )
+        
+        if uploaded_file is not None:
+            try:
+                if uploaded_file.name.endswith('.csv'):
+                    pi_data = pd.read_csv(uploaded_file)
+                else:
+                    pi_data = pd.read_excel(uploaded_file)
+                
+                st.success(f"✅ Loaded {len(pi_data)} items from client PI")
+                
+                # Show file preview
+                with st.expander("📊 Preview Client PI Items", expanded=False):
+                    st.dataframe(pi_data.head(10), use_container_width=True)
+                    
+            except Exception as e:
+                st.error(f"❌ Error loading file: {str(e)}")
+                st.info("Please ensure file has columns: Article Number, Product Name, Price, Quantity, etc.")
+    
+    else:  # Paste Data
+        st.info("📝 **Instructions:** Copy data from Excel (include headers) and paste below")
+        pasted_data = st.text_area(
+            "Paste tabular data from Excel (copy-paste):",
+            height=200,
+            placeholder="Article\tProduct Name\tPrice\tQuantity\n1-366\tChocolate Chips\t25.50\t100\n1-367\tDate Mix\t30.75\t50",
+            key="price_matching_paste_data"
+        )
+        
+        if pasted_data:
+            try:
+                from io import StringIO
+                pi_data = pd.read_csv(StringIO(pasted_data), sep='\t')
+                st.success(f"✅ Loaded {len(pi_data)} items from pasted data")
+            except:
+                try:
+                    pi_data = pd.read_csv(StringIO(pasted_data), sep=',')
+                    st.success(f"✅ Loaded {len(pi_data)} items from pasted data")
+                except Exception as e:
+                    st.error("❌ Could not parse pasted data. Use Excel copy-paste format (tab or comma separated).")
+    
+    # ============================================
+    # VALIDATION PROCESS
+    # ============================================
+    if pi_data is not None and not pi_data.empty:
+        # Auto-detect columns
+        article_column = None
+        price_column = None
+        product_column = None
+        
+        # Try to detect article column
+        for col in pi_data.columns:
+            col_lower = str(col).lower()
+            if any(keyword in col_lower for keyword in ['article', 'art', 'item', 'code', 'sku', 'no', 'num', 'number']):
+                article_column = col
+                break
+        
+        # Try to detect price column
+        for col in pi_data.columns:
+            col_lower = str(col).lower()
+            if any(keyword in col_lower for keyword in ['price', 'cost', 'rate', 'usd', '$', 'amount', 'value']):
+                price_column = col
+                break
+        
+        # Try to detect product name column
+        for col in pi_data.columns:
+            col_lower = str(col).lower()
+            if any(keyword in col_lower for keyword in ['product', 'name', 'description', 'item', 'product_name']):
+                product_column = col
+                break
+        
+        if not article_column:
+            st.error("❌ Could not detect article number column. Please ensure your data has an 'Article' or similar column.")
+            return
+        
+        if not price_column:
+            st.error("❌ Could not detect price column. Please ensure your data has a 'Price' or similar column.")
+            return
+        
+        if not product_column:
+            product_column = "Product"
+            pi_data[product_column] = "N/A"
+        
+        st.info(f"📋 **Detected columns:** Article: '{article_column}', Price: '{price_column}', Product: '{product_column}'")
+        
+        # Validate button
+        if st.button("🔍 VALIDATE ALL PRICES (Check vs Latest 2 Historical)", 
+                    type="primary", 
+                    use_container_width=True,
+                    key="validate_all_prices"):
             
-            if not requested_by:
-                errors.append("❌ Requested By is required")
-            if not going_to:
-                errors.append("❌ Going To (Recipient Name) is required")
-            if not address:
-                errors.append("❌ Address is required")
-            if not st.session_state.sample_items:
-                errors.append("❌ At least one sample item is required")
-            
-            if errors:
-                for error in errors:
-                    st.error(error)
-            else:
-                # Prepare the request data
-                request_data = {
-                    'request_date': request_date.strftime("%Y-%m-%d"),
-                    'samples_eta': samples_eta.strftime("%Y-%m-%d"),
-                    'requested_by': requested_by,
-                    'department': department,
-                    'requester_title': requester_title,
-                    'going_to': going_to,
-                    'address': address,
-                    'delivery_method': delivery_method,
-                    'request_notes': request_notes,
-                    'sample_items': st.session_state.sample_items,
-                    'submitted_by': st.session_state.username,
-                    'submission_time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            with st.spinner(f"🔄 Validating {len(pi_data)} items..."):
+                validation_results = []
+                items_not_found = []
+                
+                progress_bar = st.progress(0)
+                
+                for idx, row in pi_data.iterrows():
+                    article = str(row[article_column]).strip()
+                    product_name = str(row[product_column]).strip() if product_column in row else "N/A"
+                    
+                    # Try to extract client price
+                    client_price = None
+                    if price_column in row and pd.notna(row[price_column]):
+                        try:
+                            # Remove any currency symbols and convert to float
+                            price_str = str(row[price_column]).replace('$', '').replace(',', '').strip()
+                            client_price = float(price_str)
+                        except:
+                            client_price = None
+                    
+                    # Search in historical data
+                    historical_prices = []
+                    
+                    supplier_data = DATA.get(supplier, {})
+                    
+                    if article in supplier_data:
+                        article_data = supplier_data[article]
+                        
+                        # Get orders sorted by date (newest first)
+                        orders = article_data.get('orders', [])
+                        
+                        # Sort by date if available, otherwise use as is
+                        try:
+                            # Try to parse dates
+                            for order in orders:
+                                try:
+                                    if order.get('date'):
+                                        order['parsed_date'] = pd.to_datetime(order['date'], errors='coerce')
+                                except:
+                                    order['parsed_date'] = pd.NaT
+                            
+                            # Sort by date (newest first)
+                            orders.sort(key=lambda x: x.get('parsed_date', pd.NaT), reverse=True)
+                        except:
+                            # If date parsing fails, keep original order
+                            pass
+                        
+                        # Take latest 2 orders with prices
+                        valid_orders = []
+                        for order in orders[:10]:  # Check up to 10 latest
+                            try:
+                                price_str = order.get('price', '')
+                                if price_str:
+                                    # Clean price string
+                                    price_str_clean = str(price_str).replace('$', '').replace(',', '').strip()
+                                    price_val = float(price_str_clean)
+                                    valid_orders.append({
+                                        'order_no': order.get('order_no', 'N/A'),
+                                        'date': order.get('date', 'N/A'),
+                                        'price': price_val,
+                                        'year': order.get('year', ''),
+                                        'product_name': order.get('product_name', 'N/A'),
+                                        'hs_code': order.get('hs_code', ''),
+                                        'packaging': order.get('packaging', '')
+                                    })
+                            except:
+                                continue
+                        
+                        # Take latest 2
+                        historical_prices = valid_orders[:2]
+                    
+                    # Prepare result
+                    result = {
+                        'Article': article,
+                        'Product_Name': product_name,
+                        'Client_Price': f"${client_price:.2f}" if client_price else "N/A",
+                        'Client_Price_Value': client_price,
+                        'Status': '',
+                        'Decision': '❓ Pending',
+                        'Selected_Price': None,
+                        'Selected_Order': None,
+                        'Selected_Date': None,
+                        'Selected_Product_Name': None,
+                        'Price_Difference': None,
+                        'Price_Difference_Percent': None,
+                        'Notes': ''
+                    }
+                    
+                    if historical_prices:
+                        # Compare with historical prices
+                        if client_price is not None:
+                            latest_price = historical_prices[0]['price']
+                            price_diff = client_price - latest_price
+                            price_diff_percent = (price_diff / latest_price * 100) if latest_price != 0 else 0
+                            
+                            result['Price_Difference'] = price_diff
+                            result['Price_Difference_Percent'] = price_diff_percent
+                            
+                            if abs(price_diff) < 0.01:  # Less than 1 cent difference
+                                result['Status'] = f"✅ MATCH: ${latest_price:.2f}"
+                                result['Decision'] = '✅ Use Client Price'
+                                result['Selected_Price'] = client_price
+                                result['Selected_Order'] = historical_prices[0]['order_no']
+                                result['Selected_Date'] = historical_prices[0]['date']
+                                result['Selected_Product_Name'] = historical_prices[0]['product_name']
+                            elif price_diff > 0:
+                                result['Status'] = f"⚠️ HIGHER: +${price_diff:.2f} (+{price_diff_percent:.1f}%)"
+                            else:
+                                result['Status'] = f"⚠️ LOWER: -${abs(price_diff):.2f} ({price_diff_percent:.1f}%)"
+                        else:
+                            result['Status'] = "ℹ️ No client price provided"
+                        
+                        # Add historical price details
+                        for i, hist in enumerate(historical_prices, 1):
+                            result[f'Hist_Price_{i}'] = f"${hist['price']:.2f}"
+                            result[f'Hist_Order_{i}'] = hist['order_no']
+                            result[f'Hist_Date_{i}'] = hist['date']
+                            result[f'Hist_Product_{i}'] = hist['product_name']
+                            result[f'Hist_HS_Code_{i}'] = hist['hs_code']
+                            result[f'Hist_Packaging_{i}'] = hist['packaging']
+                            
+                            if i == 1:  # Latest price
+                                result['Latest_Price'] = f"${hist['price']:.2f}"
+                                result['Latest_Order'] = hist['order_no']
+                                result['Latest_Date'] = hist['date']
+                                result['Latest_Product'] = hist['product_name']
+                        
+                        # Add notes about historical data
+                        if len(historical_prices) == 1:
+                            result['Notes'] = f"Only 1 historical record found from {historical_prices[0]['date']}"
+                        elif len(historical_prices) == 2:
+                            result['Notes'] = f"2 historical records found ({historical_prices[0]['date']}, {historical_prices[1]['date']})"
+                        else:
+                            result['Notes'] = f"{len(historical_prices)} historical records found"
+                    
+                    else:
+                        result['Status'] = "❌ NO HISTORY: Never ordered before"
+                        result['Notes'] = "No historical pricing data found for this article"
+                        items_not_found.append(article)
+                    
+                    validation_results.append(result)
+                    progress_bar.progress((idx + 1) / len(pi_data))
+                
+                # Store results in session state
+                st.session_state.price_matching_results = {
+                    'client': client,
+                    'supplier': supplier,
+                    'results': validation_results,
+                    'items_not_found': items_not_found,
+                    'total_items': len(pi_data)
                 }
                 
-                # Store in session state for confirmation
-                st.session_state.last_sample_request = request_data
-                st.session_state.sample_form_submitted = True
+                # ============================================
+                # DISPLAY VALIDATION RESULTS
+                # ============================================
+                st.subheader("📊 VALIDATION RESULTS SUMMARY")
                 
-                # Display success message
-                st.balloons()
-                st.success("✅ Samples request submitted successfully!")
+                # Quick Stats
+                col1, col2, col3, col4 = st.columns(4)
                 
-                # Show summary
-                st.subheader("📋 Request Summary")
+                with col1:
+                    total_items = len(validation_results)
+                    st.metric("Total Items", total_items)
                 
-                # Create summary display
-                summary_col1, summary_col2 = st.columns(2)
+                with col2:
+                    matches = len([r for r in validation_results if '✅' in r['Status']])
+                    st.metric("✅ Matches", matches)
                 
-                with summary_col1:
-                    st.markdown(f"""
-                    **Request Information:**
-                    - **Request Date:** {request_date.strftime("%Y-%m-%d")}
-                    - **Samples ETA:** {samples_eta.strftime("%Y-%m-%d")}
-                    - **Requested By:** {requested_by}
-                    - **Department:** {department}
-                    - **Requester Title:** {requester_title}
-                    """)
+                with col3:
+                    mismatches = len([r for r in validation_results if '⚠️' in r['Status']])
+                    st.metric("⚠️ Mismatches", mismatches)
                 
-                with summary_col2:
-                    st.markdown(f"""
-                    **Delivery Information:**
-                    - **Going To:** {going_to}
-                    - **Address:** {address}
-                    - **Delivery Method:** {delivery_method}
-                    """)
+                with col4:
+                    no_history = len([r for r in validation_results if '❌' in r['Status']])
+                    st.metric("❌ No History", no_history)
                 
-                st.subheader("Sample Items Summary:")
-                summary_df = pd.DataFrame(st.session_state.sample_items)
-                st.dataframe(summary_df, use_container_width=True)
+                # ============================================
+                # INTERACTIVE VALIDATION TABLE
+                # ============================================
+                st.subheader("🎯 MAKE PRICE DECISIONS")
+                st.info("Review each item and make a final decision on which price to use")
                 
-                # Option to reset form
-                if st.button("🔄 Start New Request", use_container_width=True):
-                    # Reset all session state variables
-                    st.session_state.sample_items = []
-                    st.session_state.sample_form_submitted = False
-                    for key in list(st.session_state.keys()):
-                        if key.startswith('sample_'):
-                            del st.session_state[key]
-                    st.rerun()
-    
-    # ============================================
-    # HELPER SECTION - Product Search
-    # ============================================
-    with st.expander("🔍 Quick Product Search (Find Article Numbers)", expanded=False):
-        st.info("Use this search to find article numbers and product details from the catalog")
-        
-        if not catalog_data.empty:
-            search_col1, search_col2 = st.columns([3, 1])
-            with search_col1:
-                quick_search = st.text_input("Search products:", key="sample_quick_search")
-            with search_col2:
-                search_field = st.selectbox("Search in:", ["Article Number", "Product Name"], key="sample_search_field")
-            
-            if quick_search:
-                if search_field == "Article Number":
-                    results = catalog_data[
-                        catalog_data['Article_Number'].astype(str).str.contains(quick_search, case=False, na=False)
-                    ]
-                else:
-                    results = catalog_data[
-                        catalog_data['Product_Name'].astype(str).str.contains(quick_search, case=False, na=False)
-                    ]
+                # Store decisions in session state if not already
+                if 'price_decisions' not in st.session_state:
+                    st.session_state.price_decisions = {}
                 
-                if not results.empty:
-                    st.write(f"Found {len(results)} results:")
-                    for _, row in results.head(10).iterrows():
-                        col1, col2, col3 = st.columns([2, 3, 1])
+                for i, result in enumerate(validation_results):
+                    # Create unique key for this item
+                    item_key = f"{client}_{supplier}_{result['Article']}_{i}"
+                    
+                    # Initialize decision if not exists
+                    if item_key not in st.session_state.price_decisions:
+                        st.session_state.price_decisions[item_key] = result['Decision']
+                    
+                    # Display each item in an expander
+                    with st.expander(f"{result['Article']} - {result['Product_Name']} | {result['Status']}", expanded=True):
+                        
+                        # Badge for status
+                        if '✅' in result['Status']:
+                            st.markdown('<span class="match-badge">Match Found</span>', unsafe_allow_html=True)
+                        elif '⚠️' in result['Status']:
+                            st.markdown('<span class="mismatch-badge">Price Mismatch</span>', unsafe_allow_html=True)
+                        elif '❌' in result['Status']:
+                            st.markdown('<span class="no-history-badge">No History</span>', unsafe_allow_html=True)
+                        
+                        col1, col2 = st.columns([1, 1])
+                        
                         with col1:
-                            st.write(f"**{row['Article_Number']}**")
+                            st.write("**📋 Client PI Details**")
+                            st.write(f"**Article:** {result['Article']}")
+                            st.write(f"**Product:** {result['Product_Name']}")
+                            st.write(f"**Client Price:** {result['Client_Price']}")
+                            
+                            if result.get('Price_Difference') is not None:
+                                diff_color = "red" if result['Price_Difference'] > 0 else "green"
+                                diff_symbol = "+" if result['Price_Difference'] > 0 else ""
+                                st.write(f"**Price Difference:** <span style='color:{diff_color}'>{diff_symbol}${abs(result['Price_Difference']):.2f} ({result['Price_Difference_Percent']:.1f}%)</span>", unsafe_allow_html=True)
+                        
                         with col2:
-                            st.write(row.get('Product_Name', 'N/A'))
-                        with col3:
-                            if st.button("Select", key=f"select_{row['Article_Number']}"):
-                                st.session_state.sample_article = row['Article_Number']
-                                st.session_state.sample_product = row.get('Product_Name', '')
-                                st.rerun()
-                else:
-                    st.warning("No products found")
-        else:
-            st.warning("Product catalog not available. Please check your Google Sheets connection.")
-    
-    # ============================================
-    # REQUEST HISTORY (Optional)
-    # ============================================
-    with st.expander("📜 View My Recent Requests", expanded=False):
-        st.info("This section will show your recent sample requests (requires backend storage)")
-        
-        # You can add logic here to load and display previous requests
-        # from a database or Google Sheets
-        st.write("""
-        **Recent requests will appear here once connected to a database.**
-        
-        To enable request history:
-        1. Create a 'Sample_Requests' sheet in your Google Sheets
-        2. Add columns for all request fields
-        3. The system will automatically save submissions
-        """)
-    
-    # Instructions
-    with st.expander("ℹ️ How to Use This Form", expanded=False):
-        st.markdown("""
-        **📋 Samples Request Guide:**
-        
-        1. **Fill Request Information** - Date, ETA, requester details
-        2. **Enter Delivery Information** - Recipient, address, delivery method
-        3. **Add Sample Items** - Use the form to add products (minimum 1 item)
-        4. **Review Added Items** - Check the list of added samples
-        5. **Submit Request** - Click submit to send your request
-        
-        **Tips:**
-        - Use the Quick Product Search to find article numbers
-        - You can add multiple sample items before submitting
-        - Remove items using the 🗑️ button next to each item
-        - All fields marked with * are required
-        """)
+                            if 'Latest_Price' in result:
+                                st.write("**📊 Historical Data**")
+                                st.write(f"**Latest Price:** {result['Latest_Price']}")
+                                st.write(f"**Latest Order:** {result['Latest_Order']}")
+                                st.write(f"**Latest Date:** {result['Latest_Date']}")
+                                st.write(f"**Latest Product:** {result['Latest_Product']}")
+                            
+                            if 'Hist_Price_1' in result:
+                                st.write("**📈 All Historical Prices:**")
+                                for hist_num in [1, 2]:
+                                    if f'Hist_Price_{hist_num}' in result:
+                                        st.write(f"{hist_num}. **{result[f'Hist_Price_{hist_num}']}**")
+                                        st.caption(f"Order: {result[f'Hist_Order_{hist_num}']}")
+                                        st.caption(f"Date: {result[f'Hist_Date_{hist_num}']}")
+                                        if result[f'Hist_HS_Code_{hist_num}']:
+                                            st.caption(f"HS Code: {result[f'Hist_HS_Code_{hist_num}']}")
+                        
+                        # Decision Section
+                        st.markdown("---")
+                        st.write("**🤔 FINAL DECISION**")
+                        
+                        # Create decision options
+                        decision_options = [
+                            "❓ Pending",
+                            "✅ Use Client Price",
+                            "✅ Use Latest Historical",
+                            "✅ Use Historical #2",
+                            "✏️ Set Custom Price",
+                            "❌ Flag for Review",
+                            "⏸️ Skip for Now"
+                        ]
+                        
+                        # Create columns for decision
+                        dec_col1, dec_col2 = st.columns([2, 1])
+                        
+                        with dec_col1:
+                            selected_decision = st.selectbox(
+                                "Select your decision:",
+                                decision_options,
+                                index=decision_options.index(st.session_state.price_decisions.get(item_key, "❓ Pending")),
+                                key=f"decision_select_{item_key}"
+                            )
+                            
+                            # Update session state
+                            st.session_state.price_decisions[item_key] = selected_decision
+                            
+                            # If custom price selected
+                            if selected_decision == "✏️ Set Custom Price":
+                                custom_price = st.number_input(
+                                    "Enter custom price ($/kg):",
+                                    min_value=0.0,
+                                    value=float(result['Client_Price'].replace('$', '')) if result['Client_Price'] != 'N/A' else 0.0,
+                                    step=0.01,
+                                    key=f"custom_price_{item_key}"
+                                )
+                                # Store custom price
+                                validation_results[i]['Selected_Price'] = custom_price
+                                validation_results[i]['Selected_Order'] = "Custom"
+                                validation_results[i]['Selected_Date'] = datetime.now().strftime("%Y-%m-%d")
+                                validation_results[i]['Selected_Product_Name'] = result['Product_Name']
+                            
+                            elif selected_decision == "✅ Use Client Price" and result['Client_Price_Value']:
+                                validation_results[i]['Selected_Price'] = result['Client_Price_Value']
+                                validation_results[i]['Selected_Order'] = "Client PI"
+                                validation_results[i]['Selected_Date'] = datetime.now().strftime("%Y-%m-%d")
+                                validation_results[i]['Selected_Product_Name'] = result['Product_Name']
+                            
+                            elif selected_decision == "✅ Use Latest Historical" and 'Hist_Price_1' in result:
+                                hist_price = float(result['Hist_Price_1'].replace('$', ''))
+                                validation_results[i]['Selected_Price'] = hist_price
+                                validation_results[i]['Selected_Order'] = result['Hist_Order_1']
+                                validation_results[i]['Selected_Date'] = result['Hist_Date_1']
+                                validation_results[i]['Selected_Product_Name'] = result['Hist_Product_1']
+                            
+                            elif selected_decision == "✅ Use Historical #2" and 'Hist_Price_2' in result:
+                                hist_price = float(result['Hist_Price_2'].replace('$', ''))
+                                validation_results[i]['Selected_Price'] = hist_price
+                                validation_results[i]['Selected_Order'] = result['Hist_Order_2']
+                                validation_results[i]['Selected_Date'] = result['Hist_Date_2']
+                                validation_results[i]['Selected_Product_Name'] = result['Hist_Product_2']
+                        
+                        with dec_col2:
+                            if validation_results[i]['Selected_Price']:
+                                st.success(f"**Selected Price:**")
+                                st.markdown(f"# **${validation_results[i]['Selected_Price']:.2f}**")
+                                st.caption(f"Reference: {validation_results[i]['Selected_Order']}")
+                                st.caption(f"Date: {validation_results[i]['Selected_Date']}")
+                
+                # ============================================
+                # FINAL PI GENERATION
+                # ============================================
+                st.subheader("📄 GENERATE VALIDATED PI")
+                
+                # Create final PI DataFrame
+                final_pi_data = []
+                for result in validation_results:
+                    final_item = {
+                        'Article': result['Article'],
+                        'Product_Name': result['Product_Name'],
+                        'Original_Client_Price': result['Client_Price'],
+                        'Validation_Status': result['Status'],
+                        'Final_Decision': st.session_state.price_decisions.get(f"{client}_{supplier}_{result['Article']}_{validation_results.index(result)}", "❓ Pending"),
+                        'Final_Price': f"${result.get('Selected_Price', ''):.2f}" if result.get('Selected_Price') else '',
+                        'Reference_Order': result.get('Selected_Order', ''),
+                        'Reference_Date': result.get('Selected_Date', ''),
+                        'Price_Difference': f"${result.get('Price_Difference', ''):.2f}" if result.get('Price_Difference') is not None else '',
+                        'Price_Difference_Percent': f"{result.get('Price_Difference_Percent', ''):.1f}%" if result.get('Price_Difference_Percent') is not None else '',
+                        'Notes': result.get('Notes', '')
+                    }
+                    final_pi_data.append(final_item)
+                
+                final_pi_df = pd.DataFrame(final_pi_data)
+                
+                # Export Section
+                st.markdown('<div class="export-section">', unsafe_allow_html=True)
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    # Download Validation Report (CSV)
+                    csv = final_pi_df.to_csv(index=False)
+                    st.download_button(
+                        label="📥 Download Validation Report (CSV)",
+                        data=csv,
+                        file_name=f"{client}_PI_Validation_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                        mime="text/csv",
+                        use_container_width=True,
+                        key="validation_csv"
+                    )
+                
+                with col2:
+                    # Generate Excel Report
+                    try:
+                        output = BytesIO()
+                        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                            final_pi_df.to_excel(writer, index=False, sheet_name='Validated_PI')
+                        excel_data = output.getvalue()
+                        
+                        st.download_button(
+                            label="📊 Download Excel Report",
+                            data=excel_data,
+                            file_name=f"{client}_PI_Validation_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                            mime="application/vnd.ms-excel",
+                            use_container_width=True,
+                            key="validation_excel"
+                        )
+                    except:
+                        st.info("📊 Excel export requires openpyxl package")
+                
+                with col3:
+                    # Generate PI Summary
+                    summary_text = f"""
+{client} PI PRICE VALIDATION REPORT
+====================================
 
-# ============================================
-# UPDATE THE TABS LIST IN MAIN_DASHBOARD
-# ============================================
-# Add this to your tabs list in the main_dashboard() function
-# Add "🎁 SAMPLES REQUEST" to the tabs list
+Client: {client}
+Supplier: {supplier}
+Validated By: {st.session_state.username}
+Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+SUMMARY:
+• Total Items: {total_items}
+• ✅ Matched Prices: {matches}
+• ⚠️ Price Mismatches: {mismatches}
+• ❌ No History: {no_history}
+
+ITEMS REQUIRING ATTENTION ({mismatches + no_history}):
+{chr(10).join([f"• {r['Article']} - {r['Status']}" for r in validation_results if '⚠️' in r['Status'] or '❌' in r['Status']])}
+
+VALIDATED PRICES:
+{chr(10).join([f"• {r['Article']}: ${r.get('Selected_Price', 'N/A')} ({st.session_state.price_decisions.get(f'{client}_{supplier}_{r['Article']}_{validation_results.index(r)}', 'Pending')})" for r in validation_results if r.get('Selected_Price')])}
+
+GENERAL NOTES:
+1. This validation compares client PI prices with the latest 2 historical prices
+2. Green check (✅) indicates price matches historical data within $0.01
+3. Warning (⚠️) indicates price differs from historical by more than $0.01
+4. Red cross (❌) indicates no historical pricing data found
+                    """
+                    
+                    st.download_button(
+                        label="📋 Download Summary Report",
+                        data=summary_text,
+                        file_name=f"{client}_PI_Validation_Summary_{datetime.now().strftime('%Y%m%d')}.txt",
+                        mime="text/plain",
+                        use_container_width=True,
+                        key="validation_summary"
+                    )
+                
+                # Items not found warning
+                if items_not_found:
+                    st.warning(f"⚠️ **{len(items_not_found)} items not found in historical data**")
+                    with st.expander("View items with no history"):
+                        st.write(", ".join(items_not_found[:20]))
+                        if len(items_not_found) > 20:
+                            st.write(f"... and {len(items_not_found) - 20} more")
+                
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+                # Quick Actions
+                st.subheader("⚡ Quick Actions")
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("🔄 Validate Another PI", use_container_width=True):
+                        # Clear previous results
+                        if 'price_matching_results' in st.session_state:
+                            del st.session_state.price_matching_results
+                        if 'price_decisions' in st.session_state:
+                            del st.session_state.price_decisions
+                        st.rerun()
+                
+                with col2:
+                    if st.button("📊 View Raw Results", use_container_width=True):
+                        with st.expander("Raw Validation Results", expanded=True):
+                            st.dataframe(final_pi_df, use_container_width=True)
 
 # ============================================
 # MAIN EXECUTION
