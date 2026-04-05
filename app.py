@@ -1325,6 +1325,8 @@ def samples_request_tab():
         st.session_state.sample_request_submitted = False
     if 'last_submission_data' not in st.session_state:
         st.session_state.last_submission_data = None
+    if 'show_confirmation' not in st.session_state:
+        st.session_state.show_confirmation = False
     
     catalog_data = load_product_catalog()
     
@@ -1340,25 +1342,49 @@ def samples_request_tab():
                 article_to_product[article] = product
                 product_to_article[product.lower()] = article
     
-    # Export options at the top
-    col_export1, col_export2, col_export3, col_export4 = st.columns(4)
-    with col_export1:
-        if st.button("📄 Print Form", use_container_width=True, help="Print the current form"):
-            st.markdown("""
-            <script>
-                window.print();
-            </script>
-            """, unsafe_allow_html=True)
-    with col_export2:
-        if st.session_state.sample_items and st.button("📥 Download as Excel", use_container_width=True, help="Download sample request as Excel"):
-            export_samples_to_excel()
-    with col_export3:
-        if st.session_state.sample_items and st.button("📋 Copy to Clipboard", use_container_width=True, help="Copy form data to clipboard"):
-            copy_to_clipboard()
-    with col_export4:
-        if st.session_state.sample_request_submitted and st.session_state.last_submission_data:
-            if st.button("📧 Export as Email", use_container_width=True, help="Generate email format"):
-                generate_email_format()
+    # Show confirmation if recently submitted
+    if st.session_state.show_confirmation and st.session_state.last_submission_data:
+        display_submission_confirmation()
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("📥 Download Excel", use_container_width=True, key="download_excel_confirmation"):
+                export_samples_to_excel(st.session_state.last_submission_data, st.session_state.sample_items)
+        with col2:
+            if st.button("📄 Print", use_container_width=True, key="print_confirmation"):
+                st.markdown('<script>window.print();</script>', unsafe_allow_html=True)
+        with col3:
+            if st.button("🔄 New Request", use_container_width=True, key="new_request"):
+                reset_sample_form()
+                st.rerun()
+        
+        # Don't show the form again
+        return
+    
+    # Export options at the top (only show if there are items)
+    if st.session_state.sample_items:
+        st.markdown("### 📎 Export Options")
+        col_export1, col_export2, col_export3 = st.columns(3)
+        with col_export1:
+            if st.button("📥 Download Excel", use_container_width=True, key="download_excel_top"):
+                # Create export data from current items
+                export_data = {
+                    'items': st.session_state.sample_items,
+                    'requested_by': st.session_state.get('sample_requested_by', ''),
+                    'going_to': st.session_state.get('sample_going_to', ''),
+                    'address': st.session_state.get('sample_address', ''),
+                    'request_date': st.session_state.get('sample_request_date', datetime.now().date()),
+                    'department': st.session_state.get('sample_department', ''),
+                    'delivery_method': st.session_state.get('sample_delivery_method', '')
+                }
+                export_samples_to_excel(export_data, st.session_state.sample_items)
+        with col_export2:
+            if st.button("📄 Print Form", use_container_width=True, key="print_form"):
+                st.markdown('<script>window.print();</script>', unsafe_allow_html=True)
+        with col_export3:
+            if st.button("📋 Copy Summary", use_container_width=True, key="copy_summary"):
+                copy_to_clipboard(st.session_state.sample_items, st.session_state)
+        st.markdown("---")
     
     col1, col2 = st.columns(2)
     
@@ -1369,21 +1395,27 @@ def samples_request_tab():
         samples_eta = st.date_input("Samples ETA", value=datetime.now().date(), key="sample_eta")
         requested_by = st.text_input("Requested By", placeholder="Enter your full name", key="sample_requested_by")
         department = st.selectbox("Department", ["Sales", "Marketing", "R&D", "Production", "Quality Control", "Procurement", "Other"], key="sample_department")
+        department_value = department
         if department == "Other":
-            department = st.text_input("Please specify department", placeholder="Enter department name", key="sample_department_other")
+            department_other = st.text_input("Please specify department", placeholder="Enter department name", key="sample_department_other")
+            department_value = department_other if department_other else department
     
     with col2:
         st.markdown("<div class='subsection-header'>📍 Delivery Information</div>", unsafe_allow_html=True)
         
         requester_title = st.selectbox("Requester Title", ["Manager", "Supervisor", "Specialist", "Coordinator", "Director", "Executive", "Other"], key="sample_requester_title")
+        requester_title_value = requester_title
         if requester_title == "Other":
-            requester_title = st.text_input("Please specify title", placeholder="Enter your title", key="sample_title_other")
+            title_other = st.text_input("Please specify title", placeholder="Enter your title", key="sample_title_other")
+            requester_title_value = title_other if title_other else requester_title
         
         going_to = st.text_input("Recipient Name", placeholder="Enter recipient name", key="sample_going_to")
         address = st.text_area("Address", placeholder="Enter complete delivery address", height=80, key="sample_address")
         delivery_method = st.selectbox("Delivery Method", ["Courier", "Pickup", "Mail", "Express Delivery", "Freight", "Other"], key="sample_delivery_method")
+        delivery_method_value = delivery_method
         if delivery_method == "Other":
-            delivery_method = st.text_input("Please specify delivery method", placeholder="Enter delivery method", key="sample_delivery_other")
+            delivery_other = st.text_input("Please specify delivery method", placeholder="Enter delivery method", key="sample_delivery_other")
+            delivery_method_value = delivery_other if delivery_other else delivery_method
     
     st.markdown("---")
     st.markdown("<div class='subsection-header'>📦 Sample Items</div>", unsafe_allow_html=True)
@@ -1413,18 +1445,15 @@ def samples_request_tab():
                             st.rerun()
             
             # Auto-fill product when article is entered
+            default_product = ""
             if article_input:
                 if article_input in article_to_product:
                     default_product = article_to_product[article_input]
                 else:
-                    # Try partial match
-                    default_product = ""
                     for art, prod in article_to_product.items():
                         if article_input.lower() in art.lower():
                             default_product = prod
                             break
-            else:
-                default_product = ""
             
             product_input = st.text_input(
                 "Product Name *", 
@@ -1460,10 +1489,10 @@ def samples_request_tab():
                 }
                 st.session_state.sample_items.append(new_item)
                 st.success(f"✅ Added: {article_input} - {product_input}")
-                # Clear inputs by resetting session state
+                # Clear inputs
                 for key in ['sample_article_input', 'sample_product_input', 'sample_item_notes']:
                     if key in st.session_state:
-                        del st.session_state[key]
+                        st.session_state[key] = ""
                 st.rerun()
             else:
                 st.error("❌ Please enter both Article Number and Product Name")
@@ -1476,7 +1505,6 @@ def samples_request_tab():
         items_df = pd.DataFrame(st.session_state.sample_items)
         display_cols = ['article_number', 'product_name', 'item_type', 'pack_type', 'unit_weight', 'quantity', 'logo_requirement']
         if all(col in items_df.columns for col in display_cols):
-            # Format the dataframe for display
             display_df = items_df[display_cols].copy()
             display_df['unit_weight'] = display_df['unit_weight'].apply(lambda x: f"{x:.2f} kg" if x > 0 else "N/A")
             st.dataframe(display_df, use_container_width=True, hide_index=True)
@@ -1556,30 +1584,9 @@ def samples_request_tab():
                 'submitted_by': st.session_state.username,
                 'submission_time': datetime.now()
             }
-            st.session_state.sample_request_submitted = True
-            
-            st.balloons()
-            st.success("✅ Samples request submitted successfully!")
-            
-            # Display confirmation
-            display_submission_confirmation()
-            
-            # Offer download options after submission
-            col_dl1, col_dl2, col_dl3 = st.columns(3)
-            with col_dl1:
-                if st.button("📥 Download as Excel", use_container_width=True):
-                    export_samples_to_excel()
-            with col_dl2:
-                if st.button("📄 Print Confirmation", use_container_width=True):
-                    st.markdown("""
-                    <script>
-                        window.print();
-                    </script>
-                    """, unsafe_allow_html=True)
-            with col_dl3:
-                if st.button("🔄 Start New Request", use_container_width=True):
-                    reset_sample_form()
-                    st.rerun()
+            st.session_state.show_confirmation = True
+            st.rerun()
+
 
 def display_submission_confirmation():
     """Display the submission confirmation"""
@@ -1587,8 +1594,16 @@ def display_submission_confirmation():
     if not data:
         return
     
-    st.markdown("### 📋 SAMPLES REQUEST FORM")
-    st.markdown(f"**Request ID:** {data['request_id']}")
+    st.markdown("### ✅ SAMPLES REQUEST CONFIRMATION")
+    st.balloons()
+    
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
+        <h3 style="margin:0; color: white;">✓ Request Submitted Successfully!</h3>
+        <p style="margin:0; opacity:0.9; color: white;">Request ID: {data['request_id']}</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
     st.markdown(f"**Submitted By:** {data['submitted_by']}")
     st.markdown(f"**Submission Time:** {data['submission_time'].strftime('%Y-%m-%d %H:%M:%S')}")
     st.markdown("---")
@@ -1596,7 +1611,7 @@ def display_submission_confirmation():
     col1, col2 = st.columns(2)
     with col1:
         st.markdown(f"""
-        **Request Information:**
+        **📋 Request Information:**
         - **Request Date:** {data['request_date'].strftime('%Y-%m-%d') if hasattr(data['request_date'], 'strftime') else data['request_date']}
         - **Samples ETA:** {data['samples_eta'].strftime('%Y-%m-%d') if hasattr(data['samples_eta'], 'strftime') else data['samples_eta']}
         - **Requested By:** {data['requested_by']}
@@ -1605,64 +1620,68 @@ def display_submission_confirmation():
         """)
     with col2:
         st.markdown(f"""
-        **Delivery Information:**
+        **📍 Delivery Information:**
         - **Recipient:** {data['going_to']}
         - **Address:** {data['address']}
         - **Delivery Method:** {data['delivery_method']}
         """)
     
-    st.markdown("**Sample Items:**")
+    st.markdown("**📦 Sample Items:**")
     summary_df = pd.DataFrame(data['items'])
     st.dataframe(summary_df, use_container_width=True, hide_index=True)
     
     if data['notes']:
-        st.markdown(f"**Additional Notes:** {data['notes']}")
-
-def export_samples_to_excel():
-    """Export sample request to Excel file"""
-    if not st.session_state.last_submission_data and not st.session_state.sample_items:
-        st.warning("No data to export")
-        return
+        st.markdown(f"**📝 Additional Notes:** {data['notes']}")
     
+    st.markdown("---")
+
+
+def export_samples_to_excel(data, items):
+    """Export sample request to Excel file"""
     from io import BytesIO
     
-    # Create Excel file in memory
     output = BytesIO()
     
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         # Export items
-        if st.session_state.sample_items:
-            items_df = pd.DataFrame(st.session_state.sample_items)
+        if items:
+            items_df = pd.DataFrame(items)
             items_df.to_excel(writer, sheet_name='Sample Items', index=False)
         
-        # Export summary if submitted
-        if st.session_state.last_submission_data:
-            data = st.session_state.last_submission_data
+        # Export summary if data is a dict with form data
+        if isinstance(data, dict) and 'request_id' in data:
             summary_data = {
                 'Field': ['Request ID', 'Request Date', 'Samples ETA', 'Requested By', 'Department', 
                          'Requester Title', 'Recipient Name', 'Address', 'Delivery Method', 
                          'Submitted By', 'Submission Time', 'Additional Notes'],
                 'Value': [
-                    data['request_id'],
-                    data['request_date'].strftime('%Y-%m-%d') if hasattr(data['request_date'], 'strftime') else str(data['request_date']),
-                    data['samples_eta'].strftime('%Y-%m-%d') if hasattr(data['samples_eta'], 'strftime') else str(data['samples_eta']),
-                    data['requested_by'],
-                    data['department'],
-                    data['requester_title'],
-                    data['going_to'],
-                    data['address'],
-                    data['delivery_method'],
-                    data['submitted_by'],
-                    data['submission_time'].strftime('%Y-%m-%d %H:%M:%S'),
-                    data['notes']
+                    data.get('request_id', ''),
+                    data.get('request_date', ''),
+                    data.get('samples_eta', ''),
+                    data.get('requested_by', ''),
+                    data.get('department', ''),
+                    data.get('requester_title', ''),
+                    data.get('going_to', ''),
+                    data.get('address', ''),
+                    data.get('delivery_method', ''),
+                    data.get('submitted_by', ''),
+                    data.get('submission_time', ''),
+                    data.get('notes', '')
                 ]
             }
             summary_df = pd.DataFrame(summary_data)
             summary_df.to_excel(writer, sheet_name='Request Summary', index=False)
+        else:
+            # Simple export with just items and basic info
+            basic_info = {
+                'Field': ['Export Date', 'Total Items', 'Total Quantity'],
+                'Value': [datetime.now().strftime('%Y-%m-%d %H:%M:%S'), len(items), sum(item.get('quantity', 0) for item in items)]
+            }
+            basic_df = pd.DataFrame(basic_info)
+            basic_df.to_excel(writer, sheet_name='Summary', index=False)
     
     output.seek(0)
     
-    # Create filename
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     filename = f"samples_request_{timestamp}.xlsx"
     
@@ -1674,25 +1693,21 @@ def export_samples_to_excel():
         use_container_width=True
     )
 
-def copy_to_clipboard():
-    """Copy form data to clipboard using JavaScript"""
-    if not st.session_state.sample_items:
-        st.warning("No items to copy")
-        return
-    
-    # Generate text representation
+
+def copy_to_clipboard(items, session_state):
+    """Copy form data to clipboard"""
     lines = []
     lines.append("=" * 60)
     lines.append("SAMPLES REQUEST FORM")
     lines.append("=" * 60)
     lines.append(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    lines.append(f"User: {st.session_state.username}")
+    lines.append(f"User: {session_state.get('username', 'Unknown')}")
     lines.append("")
     
     # Get form data
-    req_by = st.session_state.get('sample_requested_by', '')
-    going_to = st.session_state.get('sample_going_to', '')
-    address = st.session_state.get('sample_address', '')
+    req_by = session_state.get('sample_requested_by', '')
+    going_to = session_state.get('sample_going_to', '')
+    address = session_state.get('sample_address', '')
     
     lines.append("REQUEST INFORMATION:")
     lines.append(f"  Requested By: {req_by}")
@@ -1701,7 +1716,7 @@ def copy_to_clipboard():
     lines.append("")
     
     lines.append("SAMPLE ITEMS:")
-    for i, item in enumerate(st.session_state.sample_items, 1):
+    for i, item in enumerate(items, 1):
         lines.append(f"  {i}. {item['article_number']} - {item['product_name']}")
         lines.append(f"     Type: {item['item_type']}, Pack: {item['pack_type']}")
         lines.append(f"     Weight: {item['unit_weight']} kg, Quantity: {item['quantity']}")
@@ -1717,92 +1732,22 @@ def copy_to_clipboard():
     # JavaScript to copy to clipboard
     copy_js = f"""
     <script>
-        function copyToClipboard() {{
-            const text = `{text_to_copy.replace('`', '\\`')}`;
-            navigator.clipboard.writeText(text).then(function() {{
-                alert('Form data copied to clipboard!');
-            }}, function(err) {{
-                alert('Failed to copy: ', err);
-            }});
-        }}
-        copyToClipboard();
+        const text = `{text_to_copy.replace('`', '\\`')}`;
+        navigator.clipboard.writeText(text).then(function() {{
+            alert('Form data copied to clipboard!');
+        }});
     </script>
     """
     st.markdown(copy_js, unsafe_allow_html=True)
     st.success("✅ Data copied to clipboard!")
 
-def generate_email_format():
-    """Generate email format for the sample request"""
-    if not st.session_state.last_submission_data:
-        st.warning("Please submit the form first")
-        return
-    
-    data = st.session_state.last_submission_data
-    
-    email_subject = f"SAMPLES REQUEST - {data['request_id']} - {data['requested_by']}"
-    
-    email_body = []
-    email_body.append(f"Dear Team,")
-    email_body.append("")
-    email_body.append(f"Please find below the samples request details:")
-    email_body.append("")
-    email_body.append("-" * 40)
-    email_body.append(f"Request ID: {data['request_id']}")
-    email_body.append(f"Request Date: {data['request_date'].strftime('%Y-%m-%d') if hasattr(data['request_date'], 'strftime') else data['request_date']}")
-    email_body.append(f"Samples ETA: {data['samples_eta'].strftime('%Y-%m-%d') if hasattr(data['samples_eta'], 'strftime') else data['samples_eta']}")
-    email_body.append(f"Requested By: {data['requested_by']} ({data['requester_title']})")
-    email_body.append(f"Department: {data['department']}")
-    email_body.append("")
-    email_body.append("DELIVERY INFORMATION:")
-    email_body.append(f"  Recipient: {data['going_to']}")
-    email_body.append(f"  Address: {data['address']}")
-    email_body.append(f"  Delivery Method: {data['delivery_method']}")
-    email_body.append("")
-    email_body.append("SAMPLE ITEMS:")
-    
-    for i, item in enumerate(data['items'], 1):
-        email_body.append(f"  {i}. {item['article_number']} - {item['product_name']}")
-        email_body.append(f"     - Item Type: {item['item_type']}")
-        email_body.append(f"     - Pack Type: {item['pack_type']}")
-        email_body.append(f"     - Unit Weight: {item['unit_weight']} kg")
-        email_body.append(f"     - Quantity: {item['quantity']}")
-        email_body.append(f"     - Logo Required: {item['logo_requirement']}")
-        if item.get('notes'):
-            email_body.append(f"     - Notes: {item['notes']}")
-        email_body.append("")
-    
-    if data['notes']:
-        email_body.append("ADDITIONAL NOTES:")
-        email_body.append(f"  {data['notes']}")
-        email_body.append("")
-    
-    email_body.append("-" * 40)
-    email_body.append(f"Submitted by: {data['submitted_by']}")
-    email_body.append(f"Submission Time: {data['submission_time'].strftime('%Y-%m-%d %H:%M:%S')}")
-    
-    # Display email format
-    with st.expander("📧 Email Format (Copy and paste into your email client)", expanded=True):
-        st.code(f"Subject: {email_subject}\n\n{chr(10).join(email_body)}", language="text")
-    
-    # Copy to clipboard button for email
-    if st.button("📋 Copy Email to Clipboard", use_container_width=True):
-        email_full = f"Subject: {email_subject}\n\n{chr(10).join(email_body)}"
-        copy_js = f"""
-        <script>
-            const text = `{email_full.replace('`', '\\`')}`;
-            navigator.clipboard.writeText(text).then(function() {{
-                alert('Email copied to clipboard! You can now paste it into your email client.');
-            }});
-        </script>
-        """
-        st.markdown(copy_js, unsafe_allow_html=True)
-        st.success("✅ Email copied to clipboard!")
 
 def reset_sample_form():
     """Reset the sample request form"""
     st.session_state.sample_items = []
     st.session_state.sample_request_submitted = False
     st.session_state.last_submission_data = None
+    st.session_state.show_confirmation = False
     
     # Clear all input fields
     keys_to_clear = [
