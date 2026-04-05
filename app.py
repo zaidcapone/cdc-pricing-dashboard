@@ -1318,14 +1318,9 @@ def samples_request_tab():
     </div>
     """, unsafe_allow_html=True)
     
+    # Initialize session state
     if 'sample_items' not in st.session_state:
         st.session_state.sample_items = []
-    if 'sample_form_submitted' not in st.session_state:
-        st.session_state.sample_form_submitted = False
-    if 'temp_article' not in st.session_state:
-        st.session_state.temp_article = ""
-    if 'temp_product' not in st.session_state:
-        st.session_state.temp_product = ""
     
     catalog_data = load_product_catalog()
     
@@ -1369,41 +1364,15 @@ def samples_request_tab():
     st.markdown("---")
     st.markdown("<div class='subsection-header'>📦 Sample Items</div>", unsafe_allow_html=True)
     
-    # Function to handle article input change (auto-fill product)
-    def on_article_change():
-        article = st.session_state.get('sample_article_input', '')
-        if article and article in article_to_product:
-            st.session_state.sample_product_input = article_to_product[article]
-        elif article:
-            # Try partial match
-            for art, prod in article_to_product.items():
-                if article.lower() in art.lower():
-                    st.session_state.sample_product_input = prod
-                    break
-    
-    # Function to handle product input change (auto-fill article)
-    def on_product_change():
-        product = st.session_state.get('sample_product_input', '')
-        if product:
-            product_lower = product.lower()
-            if product_lower in product_to_article:
-                st.session_state.sample_article_input = product_to_article[product_lower]
-            else:
-                # Try partial match
-                for prod, art in product_to_article.items():
-                    if product_lower in prod:
-                        st.session_state.sample_article_input = art
-                        break
-    
-    with st.form(key="sample_item_form", clear_on_submit=False):
+    # Use a separate container for the form
+    with st.container():
         col1, col2, col3 = st.columns(3)
         
         with col1:
             article_input = st.text_input(
                 "Article Number *", 
                 placeholder="e.g., 1-366, 1-367...", 
-                key="sample_article_input",
-                on_change=on_article_change
+                key="sample_article_input"
             )
             
             # Show suggestions while typing
@@ -1413,21 +1382,33 @@ def samples_request_tab():
                 ].head(5)
                 if not matching_articles.empty:
                     st.caption("💡 Suggestions (click to use):")
-                    suggestion_cols = st.columns(min(3, len(matching_articles)))
-                    for idx, (_, row) in enumerate(matching_articles.iterrows()):
-                        col_idx = idx % 3
-                        with suggestion_cols[col_idx]:
-                            if st.button(f"📦 {row['Article_Number']}", key=f"suggest_{row['Article_Number']}"):
-                                st.session_state.sample_article_input = row['Article_Number']
-                                st.session_state.sample_product_input = row.get('Product_Name', '')
-                                st.rerun()
+                    for _, row in matching_articles.iterrows():
+                        if st.button(f"📦 {row['Article_Number']}", key=f"suggest_{row['Article_Number']}"):
+                            st.session_state.sample_article_input = row['Article_Number']
+                            st.session_state.sample_product_input = row.get('Product_Name', '')
+                            st.rerun()
+            
+            # Auto-fill product when article is entered
+            if article_input:
+                if article_input in article_to_product:
+                    default_product = article_to_product[article_input]
+                else:
+                    # Try partial match
+                    default_product = ""
+                    for art, prod in article_to_product.items():
+                        if article_input.lower() in art.lower():
+                            default_product = prod
+                            break
+            else:
+                default_product = ""
             
             product_input = st.text_input(
                 "Product Name *", 
                 placeholder="Enter product name", 
-                key="sample_product_input",
-                on_change=on_product_change
+                value=default_product,
+                key="sample_product_input"
             )
+            
             item_type = st.selectbox("Item Type", ["Raw Material", "Packaging", "Finished Good", "Semi-Finished", "Auxiliary Material", "Other"], key="sample_item_type")
         
         with col2:
@@ -1440,61 +1421,61 @@ def samples_request_tab():
             st.markdown("---")
             item_notes = st.text_area("Item Notes (Optional)", placeholder="Any special requirements...", key="sample_item_notes")
         
-        submitted = st.form_submit_button("➕ Add Sample Item", use_container_width=True)
-        
-        if submitted:
-            article_num = article_input
-            product_name = product_input
-            
-            if article_num and product_name:
-                st.session_state.sample_items.append({
-                    'article_number': article_num,
-                    'product_name': product_name,
+        # Add item button
+        if st.button("➕ Add Sample Item", use_container_width=True, key="add_sample_item_btn"):
+            if article_input and product_input:
+                new_item = {
+                    'article_number': article_input,
+                    'product_name': product_input,
                     'item_type': item_type,
                     'pack_type': pack_type,
                     'unit_weight': unit_weight,
                     'quantity': quantity,
                     'logo_requirement': logo_requirement,
                     'notes': item_notes
-                })
-                # Clear the form by resetting the input values
-                st.session_state.sample_article_input = ""
-                st.session_state.sample_product_input = ""
-                st.success(f"✅ Added: {article_num} - {product_name}")
+                }
+                st.session_state.sample_items.append(new_item)
+                st.success(f"✅ Added: {article_input} - {product_input}")
+                # Clear inputs by resetting session state
+                for key in ['sample_article_input', 'sample_product_input', 'sample_item_notes']:
+                    if key in st.session_state:
+                        del st.session_state[key]
                 st.rerun()
             else:
                 st.error("❌ Please enter both Article Number and Product Name")
     
+    # Display existing items
     if st.session_state.sample_items:
         st.markdown(f"<div class='subsection-header'>📋 Sample Items ({len(st.session_state.sample_items)})</div>", unsafe_allow_html=True)
         
-        # Display items in a clean table format
+        # Display items in a table
         items_df = pd.DataFrame(st.session_state.sample_items)
         display_cols = ['article_number', 'product_name', 'item_type', 'pack_type', 'unit_weight', 'quantity', 'logo_requirement']
         if all(col in items_df.columns for col in display_cols):
-            st.dataframe(
-                items_df[display_cols].style.format({'unit_weight': '{:.2f} kg'}),
-                use_container_width=True,
-                hide_index=True
-            )
+            # Format the dataframe for display
+            display_df = items_df[display_cols].copy()
+            display_df['unit_weight'] = display_df['unit_weight'].apply(lambda x: f"{x:.2f} kg" if x > 0 else "N/A")
+            st.dataframe(display_df, use_container_width=True, hide_index=True)
         
-        # Delete buttons for each item
+        # Delete buttons
         st.markdown("**Remove items:**")
-        delete_cols = st.columns(min(5, len(st.session_state.sample_items)))
+        cols = st.columns(min(4, len(st.session_state.sample_items)))
         for idx, item in enumerate(st.session_state.sample_items):
-            col_idx = idx % 5
-            with delete_cols[col_idx]:
-                if st.button(f"🗑️ {item['article_number']}", key=f"remove_{idx}"):
+            col_idx = idx % 4
+            with cols[col_idx]:
+                if st.button(f"🗑️ {item['article_number'][:15]}", key=f"remove_item_{idx}"):
                     st.session_state.sample_items.pop(idx)
                     st.rerun()
         
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("Total Sample Items", len(st.session_state.sample_items))
+            st.metric("Total Items", len(st.session_state.sample_items))
         with col2:
-            st.metric("Total Quantity", sum(item.get('quantity', 0) for item in st.session_state.sample_items))
+            total_qty = sum(item.get('quantity', 0) for item in st.session_state.sample_items)
+            st.metric("Total Quantity", total_qty)
         with col3:
-            st.metric("Unique Articles", len(set(item.get('article_number', '') for item in st.session_state.sample_items)))
+            unique_articles = len(set(item.get('article_number', '') for item in st.session_state.sample_items))
+            st.metric("Unique Articles", unique_articles)
         
         if st.button("🗑️ Clear All Items", use_container_width=True):
             st.session_state.sample_items = []
@@ -1503,8 +1484,9 @@ def samples_request_tab():
     st.markdown("---")
     request_notes = st.text_area("Additional Request Notes (Optional)", placeholder="Any additional information...", height=80, key="sample_request_notes")
     
+    # Submit button
     if st.button("📤 SUBMIT SAMPLES REQUEST", use_container_width=True, type="primary"):
-        # Get all form values
+        # Get all form values safely
         req_date = st.session_state.get('sample_request_date', datetime.now().date())
         samples_eta_val = st.session_state.get('sample_eta', datetime.now().date())
         req_by = st.session_state.get('sample_requested_by', '')
@@ -1537,6 +1519,7 @@ def samples_request_tab():
             st.balloons()
             st.success("✅ Samples request submitted successfully!")
             
+            # Display confirmation
             st.markdown("### 📋 SAMPLES REQUEST FORM")
             st.markdown(f"**Request ID:** SAMP-{datetime.now().strftime('%Y%m%d-%H%M%S')}")
             st.markdown(f"**Submitted By:** {st.session_state.username}")
@@ -1570,9 +1553,11 @@ def samples_request_tab():
             
             if st.button("🔄 Start New Request", use_container_width=True):
                 st.session_state.sample_items = []
-                st.session_state.sample_form_submitted = False
-                st.session_state.sample_article_input = ""
-                st.session_state.sample_product_input = ""
+                # Clear all sample-related session state
+                keys_to_clear = ['sample_article_input', 'sample_product_input', 'sample_item_notes']
+                for key in keys_to_clear:
+                    if key in st.session_state:
+                        del st.session_state[key]
                 st.rerun()
 
 # ============================================
