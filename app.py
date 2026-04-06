@@ -1825,15 +1825,23 @@ def clients_orders_tab():
             if search_term:
                 add_to_search_history(search_term, client, supplier)
     
-    # ===== NEW DATE FILTER SECTION - ADD THIS =====
+    # Initialize supplier_data before using it
+    supplier_data = DATA.get(supplier, {})
+    
+    # ===== DATE FILTER SECTION =====
     st.markdown("<div class='subsection-header'>📅 Date Filter (Optional)</div>", unsafe_allow_html=True)
+    
+    # Initialize filter variables
+    filter_type = "All Time"
+    selected_year = None
+    start_date = None
+    end_date = None
     
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         filter_type = st.radio("Filter by:", ["All Time", "Year", "Date Range"], horizontal=False, key="clients_orders_filter_type")
     
     with col2:
-        selected_year = None
         if filter_type == "Year":
             # Get available years from orders
             available_years = set()
@@ -1841,7 +1849,6 @@ def clients_orders_tab():
                 for order in article_data.get('orders', []):
                     year = order.get('year', '')
                     if year and year != 'nan':
-                        # Extract year from various formats
                         year_str = str(year).strip()
                         if year_str.isdigit() and len(year_str) == 4:
                             available_years.add(year_str)
@@ -1856,8 +1863,6 @@ def clients_orders_tab():
                 st.info("No year data available")
     
     with col3:
-        start_date = None
-        end_date = None
         if filter_type == "Date Range":
             start_date = st.date_input("From Date:", value=datetime.now().date() - pd.Timedelta(days=365), key="clients_orders_start_date")
     
@@ -1867,8 +1872,6 @@ def clients_orders_tab():
     
     if 'clients_orders_results' not in st.session_state:
         st.session_state.clients_orders_results = None
-    
-    supplier_data = DATA.get(supplier, {})
     
     if search_term:
         search_results = []
