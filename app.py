@@ -178,6 +178,28 @@ st.markdown("""
         color: #1e293b;
     }
     
+    /* ===== FIX FOR CLIENT'S ORDERS TEXT COLOR ===== */
+    .price-card-primary,
+    .price-card-secondary,
+    .price-card-info {
+        color: #1e293b !important;
+    }
+    
+    .price-card-primary div,
+    .price-card-secondary div,
+    .price-card-info div,
+    .price-card-primary p,
+    .price-card-secondary p,
+    .price-card-info p,
+    .price-card-primary strong,
+    .price-card-secondary strong,
+    .price-card-info strong,
+    .price-card-primary span,
+    .price-card-secondary span,
+    .price-card-info span {
+        color: #1e293b !important;
+    }
+    
     /* ===== TABLE STYLES ===== */
     .dataframe-container {
         border-radius: 12px;
