@@ -1825,6 +1825,46 @@ def clients_orders_tab():
             if search_term:
                 add_to_search_history(search_term, client, supplier)
     
+    # ===== NEW DATE FILTER SECTION - ADD THIS =====
+    st.markdown("<div class='subsection-header'>📅 Date Filter (Optional)</div>", unsafe_allow_html=True)
+    
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        filter_type = st.radio("Filter by:", ["All Time", "Year", "Date Range"], horizontal=False, key="clients_orders_filter_type")
+    
+    with col2:
+        selected_year = None
+        if filter_type == "Year":
+            # Get available years from orders
+            available_years = set()
+            for article_num, article_data in supplier_data.items():
+                for order in article_data.get('orders', []):
+                    year = order.get('year', '')
+                    if year and year != 'nan':
+                        # Extract year from various formats
+                        year_str = str(year).strip()
+                        if year_str.isdigit() and len(year_str) == 4:
+                            available_years.add(year_str)
+                        elif '-' in year_str:
+                            parts = year_str.split('-')
+                            if parts[0].isdigit() and len(parts[0]) == 4:
+                                available_years.add(parts[0])
+            available_years = sorted(list(available_years), reverse=True)
+            if available_years:
+                selected_year = st.selectbox("Select Year:", available_years, key="clients_orders_year")
+            else:
+                st.info("No year data available")
+    
+    with col3:
+        start_date = None
+        end_date = None
+        if filter_type == "Date Range":
+            start_date = st.date_input("From Date:", value=datetime.now().date() - pd.Timedelta(days=365), key="clients_orders_start_date")
+    
+    with col4:
+        if filter_type == "Date Range":
+            end_date = st.date_input("To Date:", value=datetime.now().date(), key="clients_orders_end_date")
+    
     if 'clients_orders_results' not in st.session_state:
         st.session_state.clients_orders_results = None
     
@@ -1904,43 +1944,113 @@ def clients_orders_tab():
             col3.metric("Price Range", f"${min(all_prices):.2f} - ${max(all_prices):.2f}")
         
         for result in search_results:
-            with st.expander(f"📦 {result['article']} - {result['product_name']} | {result['orders_count']} orders | Found by: {result['match_type']}", expanded=False):
+            # Filter orders by date if selected
+            filtered_orders = result['article_data'].get('orders', []).copy()
+            
+            if filter_type == "Year" and selected_year:
+                filtered_orders = []
+                for order in result['article_data'].get('orders', []):
+                    order_year = order.get('year', '')
+                    if order_year and order_year != 'nan':
+                        year_str = str(order_year).strip()
+                        if year_str.isdigit() and len(year_str) == 4:
+                            if year_str == selected_year:
+                                filtered_orders.append(order)
+                        elif '-' in year_str:
+                            parts = year_str.split('-')
+                            if parts[0].isdigit() and len(parts[0]) == 4 and parts[0] == selected_year:
+                                filtered_orders.append(order)
+                    # Also try to extract year from date field
+                    elif order.get('date', ''):
+                        date_str = str(order.get('date', '')).strip()
+                        for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d']:
+                            try:
+                                date_obj = datetime.strptime(date_str, fmt)
+                                if str(date_obj.year) == selected_year:
+                                    filtered_orders.append(order)
+                                break
+                            except:
+                                continue
+            
+            elif filter_type == "Date Range" and start_date and end_date:
+                filtered_orders = []
+                for order in result['article_data'].get('orders', []):
+                    date_str = str(order.get('date', '')).strip()
+                    if date_str and date_str != 'nan':
+                        for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d']:
+                            try:
+                                date_obj = datetime.strptime(date_str, fmt)
+                                if start_date <= date_obj.date() <= end_date:
+                                    filtered_orders.append(order)
+                                break
+                            except:
+                                continue
+            
+            # Calculate filtered stats
+            filtered_prices = []
+            for order in filtered_orders:
+                price_str = order.get('price', '')
+                try:
+                    price_val = float(str(price_str).replace('$', '').replace(',', '').strip())
+                    filtered_prices.append(price_val)
+                except:
+                    pass
+            
+            filtered_min_price = min(filtered_prices) if filtered_prices else None
+            filtered_max_price = max(filtered_prices) if filtered_prices else None
+            filtered_count = len(filtered_orders)
+            
+            # Show filter info in expander title
+            filter_info = ""
+            if filter_type == "Year" and selected_year:
+                filter_info = f" | Filtered: {selected_year}"
+            elif filter_type == "Date Range" and start_date and end_date:
+                filter_info = f" | Filtered: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}"
+            
+            with st.expander(f"📦 {result['article']} - {result['product_name']} | {filtered_count} orders (of {result['orders_count']}){filter_info} | Found by: {result['match_type']}", expanded=False):
                 col1, col2 = st.columns(2)
                 with col1:
                     st.markdown(f"**Article Number:** {result['article']}")
                     st.markdown(f"**Product Name:** {result['product_name']}")
                 with col2:
-                    st.markdown(f"**Total Orders:** {result['orders_count']}")
-                    if result['min_price'] and result['max_price']:
-                        st.markdown(f"**Price Range:** ${result['min_price']:.2f} - ${result['max_price']:.2f}/kg")
+                    st.markdown(f"**Orders in Filter:** {filtered_count}")
+                    if filtered_min_price and filtered_max_price:
+                        st.markdown(f"**Price Range:** ${filtered_min_price:.2f} - ${filtered_max_price:.2f}/kg")
+                    elif result['min_price'] and result['max_price'] and filtered_count == 0:
+                        st.markdown(f"**Price Range:** No orders in selected date range")
+                    elif result['min_price'] and result['max_price']:
+                        st.markdown(f"**Price Range:** ${result['min_price']:.2f} - ${result['max_price']:.2f}/kg (all time)")
                 
-                st.markdown("---")
-                st.markdown("**Order History**")
-                
-                for idx, order in enumerate(result['article_data'].get('orders', [])):
-                    price_display = order.get('price', 'N/A')
-                    try:
-                        price_value = float(str(price_display).replace('$', '').replace(',', '').strip())
-                        price_display = f"${price_value:.2f}"
-                    except:
-                        price_display = f"${price_display}" if price_display != 'N/A' else 'N/A'
+                if not filtered_orders:
+                    st.info(f"No orders found in the selected date range. Total orders available: {result['orders_count']}")
+                else:
+                    st.markdown("---")
+                    st.markdown("**Order History (Filtered)**")
                     
-                    st.markdown(f"""
-                    <div class="price-card-primary" style="margin-bottom: 0.5rem;">
-                        <div style="display: flex; justify-content: space-between;">
-                            <div>
-                                <strong>Order:</strong> {order.get('order_no', 'N/A')}<br>
-                                <strong>Date:</strong> {order.get('date', 'N/A')}
+                    for idx, order in enumerate(filtered_orders):
+                        price_display = order.get('price', 'N/A')
+                        try:
+                            price_value = float(str(price_display).replace('$', '').replace(',', '').strip())
+                            price_display = f"${price_value:.2f}"
+                        except:
+                            price_display = f"${price_display}" if price_display != 'N/A' else 'N/A'
+                        
+                        st.markdown(f"""
+                        <div class="price-card-primary" style="margin-bottom: 0.5rem;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <div>
+                                    <strong>Order:</strong> {order.get('order_no', 'N/A')}<br>
+                                    <strong>Date:</strong> {order.get('date', 'N/A')}
+                                </div>
+                                <div>
+                                    <strong>Price:</strong> {price_display}/kg
+                                </div>
                             </div>
-                            <div>
-                                <strong>Price:</strong> {price_display}/kg
+                            <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
+                                {order.get('quantity', 'N/A')} units • {order.get('total_weight', 'N/A')} kg
                             </div>
                         </div>
-                        <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #64748b;">
-                            {order.get('quantity', 'N/A')} units • {order.get('total_weight', 'N/A')} kg
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                        """, unsafe_allow_html=True)
     
     elif not search_term:
         st.info("Enter a search term above to find order history")
