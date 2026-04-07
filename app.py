@@ -29,6 +29,13 @@ st.set_page_config(
 # ============================================
 st.markdown("""
 <style>
+    /* Hide Streamlit default header */
+    header {display: none !important;}
+    .main .block-container {padding-top: 0rem !important;}
+    footer {display: none !important;}
+    
+    /* ===== GLOBAL STYLES ===== */
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
     .main { padding: 0rem 1rem; }
