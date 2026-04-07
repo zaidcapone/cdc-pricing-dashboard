@@ -2,7 +2,7 @@
 # MULTI-CLIENT PRICING DASHBOARD - CONSOLIDATED EDITION
 # ============================================
 # Author: Zaid F. Al-Shami
-# Version: 6.0 (Consolidated - 5 Tabs)
+# Version: 6.1 (Consolidated - 6 Tabs + Price Tracking)
 # Last Updated: 07 April 2026
 # ============================================
 
@@ -13,6 +13,8 @@ import json
 from datetime import datetime
 from io import BytesIO
 import re
+import plotly.express as px
+import plotly.graph_objects as go
 
 # ===== HIDE STREAMLIT DEFAULT HEADER - MUST BE FIRST =====
 hide_streamlit_style = """
@@ -41,11 +43,6 @@ st.set_page_config(
 
 # ============================================
 # PROFESSIONAL CSS
-# ============================================
-# Add this to your CSS section (after the existing styles or replace the whole CSS)
-
-# ============================================
-# PROFESSIONAL CSS (with animations only)
 # ============================================
 st.markdown("""
 <style>
@@ -203,7 +200,7 @@ st.markdown("""
         color: #1e293b !important;
     }
     
-    /* ===== ANIMATIONS ONLY (Added) ===== */
+    /* ===== ANIMATIONS ONLY ===== */
     
     /* Expander slide animation */
     .streamlit-expanderContent {
@@ -1413,13 +1410,285 @@ def order_tracking_tab():
                     st.rerun()
 
 # ============================================
+# TAB 6: PRICE TRACKING (NEW)
+# ============================================
+
+def price_tracking_tab():
+    """Track price changes over time for any item"""
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #dc2626, #b91c1c); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
+        <h2 style="margin:0; color: white;">📈 Price Tracking</h2>
+        <p style="margin:0; opacity:0.9; color: white;">Track historical price changes • Visualize trends • Compare across clients and suppliers</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    available_clients = st.session_state.user_clients
+    
+    # Selection area
+    col1, col2, col3 = st.columns([2, 1, 1])
+    
+    with col1:
+        search_item = st.text_input("🔍 Search for an item (Article Number or Product Name):", 
+                                    placeholder="e.g., 1-366, Vermicelli, Chocolate...",
+                                    key="price_track_search")
+    
+    with col2:
+        selected_client = st.selectbox("Select Client:", available_clients, key="price_track_client")
+    
+    with col3:
+        selected_supplier = st.selectbox("Select Supplier:", ["Both", "Backaldrin", "Bateel"], key="price_track_supplier")
+    
+    # Advanced options
+    with st.expander("📊 Advanced Options"):
+        col1, col2 = st.columns(2)
+        with col1:
+            group_by = st.selectbox("Group By:", ["Year", "Month", "Quarter", "All Orders"], key="price_track_group")
+        with col2:
+            show_statistics = st.checkbox("Show Statistics", value=True, key="price_track_stats")
+    
+    if search_item:
+        with st.spinner(f"Analyzing price history for '{search_item}'..."):
+            # Collect price data across all orders
+            price_data = []
+            
+            # Load client data
+            client_data = get_google_sheets_data(selected_client)
+            
+            suppliers_to_check = []
+            if selected_supplier == "Both":
+                suppliers_to_check = ["Backaldrin", "Bateel"]
+            else:
+                suppliers_to_check = [selected_supplier]
+            
+            for supplier in suppliers_to_check:
+                supplier_data = client_data.get(supplier, {})
+                
+                for article_num, article_data in supplier_data.items():
+                    # Check if item matches search
+                    article_match = search_item.lower() in article_num.lower()
+                    product_match = any(search_item.lower() in name.lower() for name in article_data.get('names', []))
+                    
+                    if article_match or product_match:
+                        product_name = article_data.get('names', ['N/A'])[0]
+                        
+                        # Process each order
+                        for order in article_data.get('orders', []):
+                            price_str = order.get('price', '')
+                            date_str = order.get('date', '')
+                            
+                            # Parse price
+                            price_value = None
+                            try:
+                                price_value = float(str(price_str).replace('$', '').replace(',', '').strip())
+                            except:
+                                continue
+                            
+                            # Parse date
+                            order_date = None
+                            year = None
+                            month = None
+                            quarter = None
+                            
+                            # First try year field
+                            year_str = order.get('year', '')
+                            if year_str and year_str != 'nan':
+                                try:
+                                    year = int(str(year_str).strip())
+                                    # Try to get month from date if available
+                                    if date_str and date_str != 'nan':
+                                        for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d']:
+                                            try:
+                                                date_obj = datetime.strptime(str(date_str).strip(), fmt)
+                                                month = date_obj.month
+                                                order_date = date_obj
+                                                break
+                                            except:
+                                                continue
+                                except:
+                                    pass
+                            
+                            # If no year, try to parse from date
+                            if not year and date_str and date_str != 'nan':
+                                for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d']:
+                                    try:
+                                        date_obj = datetime.strptime(str(date_str).strip(), fmt)
+                                        year = date_obj.year
+                                        month = date_obj.month
+                                        order_date = date_obj
+                                        break
+                                    except:
+                                        continue
+                            
+                            if year:
+                                # Calculate quarter
+                                if month:
+                                    quarter = (month - 1) // 3 + 1
+                                
+                                price_data.append({
+                                    'article': article_num,
+                                    'product': product_name,
+                                    'supplier': supplier,
+                                    'client': selected_client,
+                                    'price': price_value,
+                                    'year': year,
+                                    'month': month,
+                                    'quarter': quarter,
+                                    'date': order_date,
+                                    'order_no': order.get('order_no', 'N/A'),
+                                    'quantity': order.get('quantity', 'N/A'),
+                                    'total_weight': order.get('total_weight', 'N/A')
+                                })
+            
+            if price_data:
+                df = pd.DataFrame(price_data)
+                
+                # Sort by date/year
+                if 'date' in df.columns:
+                    df = df.sort_values('date')
+                else:
+                    df = df.sort_values('year')
+                
+                # Display summary metrics
+                if show_statistics:
+                    st.markdown("### 📊 Price Statistics")
+                    
+                    col1, col2, col3, col4, col5 = st.columns(5)
+                    with col1:
+                        st.metric("First Recorded Price", f"${df['price'].iloc[0]:.2f}" if len(df) > 0 else "N/A")
+                    with col2:
+                        st.metric("Latest Price", f"${df['price'].iloc[-1]:.2f}" if len(df) > 0 else "N/A")
+                    with col3:
+                        price_change = df['price'].iloc[-1] - df['price'].iloc[0] if len(df) > 0 else 0
+                        change_pct = (price_change / df['price'].iloc[0] * 100) if len(df) > 0 and df['price'].iloc[0] > 0 else 0
+                        st.metric("Total Change", f"${price_change:.2f}", delta=f"{change_pct:.1f}%")
+                    with col4:
+                        st.metric("Min Price", f"${df['price'].min():.2f}")
+                    with col5:
+                        st.metric("Max Price", f"${df['price'].max():.2f}")
+                
+                # Create visualization based on grouping
+                st.markdown("### 📈 Price Trend Visualization")
+                
+                if group_by == "Year":
+                    yearly_avg = df.groupby('year')['price'].agg(['mean', 'min', 'max']).reset_index()
+                    
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(
+                        x=yearly_avg['year'],
+                        y=yearly_avg['mean'],
+                        mode='lines+markers',
+                        name='Average Price',
+                        line=dict(color='#dc2626', width=3),
+                        marker=dict(size=10)
+                    ))
+                    fig.add_trace(go.Scatter(
+                        x=yearly_avg['year'],
+                        y=yearly_avg['min'],
+                        mode='lines+markers',
+                        name='Min Price',
+                        line=dict(color='#f59e0b', width=2, dash='dash'),
+                        marker=dict(size=8)
+                    ))
+                    fig.add_trace(go.Scatter(
+                        x=yearly_avg['year'],
+                        y=yearly_avg['max'],
+                        mode='lines+markers',
+                        name='Max Price',
+                        line=dict(color='#10b981', width=2, dash='dash'),
+                        marker=dict(size=8)
+                    ))
+                    
+                    fig.update_layout(
+                        title=f"Price Trends for {search_item} - {selected_client}",
+                        xaxis_title="Year",
+                        yaxis_title="Price (USD/kg)",
+                        hovermode='x unified',
+                        template='plotly_white',
+                        height=500
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                    # Display yearly data table
+                    st.markdown("### 📅 Yearly Price Summary")
+                    yearly_display = yearly_avg.copy()
+                    yearly_display['mean'] = yearly_display['mean'].apply(lambda x: f"${x:.2f}")
+                    yearly_display['min'] = yearly_display['min'].apply(lambda x: f"${x:.2f}")
+                    yearly_display['max'] = yearly_display['max'].apply(lambda x: f"${x:.2f}")
+                    yearly_display.columns = ['Year', 'Avg Price', 'Min Price', 'Max Price']
+                    st.dataframe(yearly_display, use_container_width=True, hide_index=True)
+                    
+                elif group_by == "Month" and 'date' in df.columns and df['date'].notna().any():
+                    df['year_month'] = df['date'].dt.strftime('%Y-%m')
+                    monthly_avg = df.groupby('year_month')['price'].mean().reset_index()
+                    
+                    fig = px.line(monthly_avg, x='year_month', y='price', 
+                                  title=f"Monthly Price Trends for {search_item} - {selected_client}",
+                                  labels={'year_month': 'Month', 'price': 'Price (USD/kg)'})
+                    fig.update_traces(line=dict(color='#dc2626', width=3), marker=dict(size=8))
+                    fig.update_layout(template='plotly_white', height=500)
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                elif group_by == "Quarter":
+                    df['year_quarter'] = df['year'].astype(str) + '-Q' + df['quarter'].astype(str)
+                    quarterly_avg = df.groupby('year_quarter')['price'].mean().reset_index()
+                    
+                    fig = px.bar(quarterly_avg, x='year_quarter', y='price',
+                                 title=f"Quarterly Price Trends for {search_item} - {selected_client}",
+                                 labels={'year_quarter': 'Quarter', 'price': 'Price (USD/kg)'},
+                                 color_discrete_sequence=['#dc2626'])
+                    fig.update_layout(template='plotly_white', height=500)
+                    st.plotly_chart(fig, use_container_width=True)
+                
+                # Show all price records
+                st.markdown("### 📋 Detailed Price History")
+                
+                display_df = df[['year', 'date', 'price', 'order_no', 'quantity', 'total_weight', 'supplier']].copy()
+                display_df['price'] = display_df['price'].apply(lambda x: f"${x:.2f}")
+                display_df.columns = ['Year', 'Date', 'Price (USD/kg)', 'Order No', 'Quantity', 'Weight (kg)', 'Supplier']
+                
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
+                
+                # Export option
+                csv = df.to_csv(index=False)
+                st.download_button(
+                    label="📥 Export Price History to CSV",
+                    data=csv,
+                    file_name=f"price_history_{search_item}_{selected_client}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+                
+            else:
+                st.warning(f"No price data found for '{search_item}' in {selected_client}")
+    else:
+        st.info("👆 Enter an article number or product name above to start tracking price history")
+        
+        # Show example
+        with st.expander("💡 Example Usage"):
+            st.markdown("""
+            **How to use the Price Tracking feature:**
+            
+            1. **Search for an item** - Enter an article number (e.g., "1-366") or product name (e.g., "Vermicelli")
+            2. **Select a client** - Choose which client's data to analyze
+            3. **Choose a supplier** - Filter by Backaldrin, Bateel, or view both
+            4. **View the trend** - See price changes over time visualized in charts
+            5. **Export data** - Download the complete price history as CSV
+            
+            **Example items you can track:**
+            - CDC Vermicelli products
+            - Chocolate Chips
+            - Vanilla Powder
+            - Date Mix
+            
+            The system will automatically extract price data from all orders and show you how prices have changed over months and years.
+            """)
+
+# ============================================
 # MAIN DASHBOARD
 # ============================================
 
 def main_dashboard():
-    """Main dashboard with 5 consolidated tabs"""
-    
-
+    """Main dashboard with 6 consolidated tabs"""
     
     with st.sidebar:
         st.markdown("### 📋 Navigation")
@@ -1429,7 +1698,8 @@ def main_dashboard():
             "💰 PRICING HUB", 
             "⭐ SPECIAL PRICES",
             "📦 PRODUCTS & LOGISTICS",
-            "📅 ORDER TRACKING"
+            "📅 ORDER TRACKING",
+            "📈 PRICE TRACKING"  # New tab added
         ]
         
         for tab in tabs:
@@ -1458,9 +1728,10 @@ def main_dashboard():
         st.markdown("---")
         st.markdown("### 📢 Updates")
         announcements = [
-            "✅ Dashboard consolidated to 5 tabs!",
-            "🚀 Faster navigation and loading",
-            "⭐ Save time with smarter organization"
+            "✅ NEW! Price Tracking tab added!",
+            "📈 Track price changes over time",
+            "📊 Visualize historical price trends",
+            "🚀 Export price data to CSV"
         ]
         for announcement in announcements:
             st.markdown(f'<div class="announcement-item">{announcement}</div>', unsafe_allow_html=True)
@@ -1480,10 +1751,12 @@ def main_dashboard():
         products_logistics_tab()
     elif st.session_state.active_tab == "📅 ORDER TRACKING":
         order_tracking_tab()
+    elif st.session_state.active_tab == "📈 PRICE TRACKING":
+        price_tracking_tab()
     
     st.markdown(f"""
     <div class="dashboard-footer">
-        Multi-Client Dashboard v6.0 (Consolidated) | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        Multi-Client Dashboard v6.1 (with Price Tracking) | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
     </div>
     """, unsafe_allow_html=True)
 
