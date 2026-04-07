@@ -13,8 +13,7 @@ import json
 from datetime import datetime
 from io import BytesIO
 import re
-import plotly.express as px
-import plotly.graph_objects as go
+import altair as alt  # Using Altair instead of Plotly (built into Streamlit)
 
 # ===== HIDE STREAMLIT DEFAULT HEADER - MUST BE FIRST =====
 hide_streamlit_style = """
@@ -1410,11 +1409,11 @@ def order_tracking_tab():
                     st.rerun()
 
 # ============================================
-# TAB 6: PRICE TRACKING (NEW)
+# TAB 6: PRICE TRACKING (UPDATED - No Plotly)
 # ============================================
 
 def price_tracking_tab():
-    """Track price changes over time for any item"""
+    """Track price changes over time for any item - Using Altair instead of Plotly"""
     st.markdown("""
     <div style="background: linear-gradient(135deg, #dc2626, #b91c1c); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
         <h2 style="margin:0; color: white;">📈 Price Tracking</h2>
@@ -1566,47 +1565,28 @@ def price_tracking_tab():
                     with col5:
                         st.metric("Max Price", f"${df['price'].max():.2f}")
                 
-                # Create visualization based on grouping
+                # Create visualization based on grouping using Altair
                 st.markdown("### 📈 Price Trend Visualization")
                 
                 if group_by == "Year":
                     yearly_avg = df.groupby('year')['price'].agg(['mean', 'min', 'max']).reset_index()
                     
-                    fig = go.Figure()
-                    fig.add_trace(go.Scatter(
-                        x=yearly_avg['year'],
-                        y=yearly_avg['mean'],
-                        mode='lines+markers',
-                        name='Average Price',
-                        line=dict(color='#dc2626', width=3),
-                        marker=dict(size=10)
-                    ))
-                    fig.add_trace(go.Scatter(
-                        x=yearly_avg['year'],
-                        y=yearly_avg['min'],
-                        mode='lines+markers',
-                        name='Min Price',
-                        line=dict(color='#f59e0b', width=2, dash='dash'),
-                        marker=dict(size=8)
-                    ))
-                    fig.add_trace(go.Scatter(
-                        x=yearly_avg['year'],
-                        y=yearly_avg['max'],
-                        mode='lines+markers',
-                        name='Max Price',
-                        line=dict(color='#10b981', width=2, dash='dash'),
-                        marker=dict(size=8)
-                    ))
+                    # Create line chart with Altair
+                    line_chart = alt.Chart(yearly_avg).mark_line(point=True, strokeWidth=3).encode(
+                        x=alt.X('year:Q', title='Year'),
+                        y=alt.Y('mean:Q', title='Price (USD/kg)'),
+                        tooltip=['year', alt.Tooltip('mean', format='.2f')]
+                    ).properties(height=400)
                     
-                    fig.update_layout(
-                        title=f"Price Trends for {search_item} - {selected_client}",
-                        xaxis_title="Year",
-                        yaxis_title="Price (USD/kg)",
-                        hovermode='x unified',
-                        template='plotly_white',
-                        height=500
+                    # Add points
+                    points = alt.Chart(yearly_avg).mark_circle(size=100).encode(
+                        x='year:Q',
+                        y='mean:Q',
+                        color=alt.value('#dc2626'),
+                        tooltip=['year', alt.Tooltip('mean', format='.2f')]
                     )
-                    st.plotly_chart(fig, use_container_width=True)
+                    
+                    st.altair_chart(line_chart + points, use_container_width=True)
                     
                     # Display yearly data table
                     st.markdown("### 📅 Yearly Price Summary")
@@ -1621,23 +1601,40 @@ def price_tracking_tab():
                     df['year_month'] = df['date'].dt.strftime('%Y-%m')
                     monthly_avg = df.groupby('year_month')['price'].mean().reset_index()
                     
-                    fig = px.line(monthly_avg, x='year_month', y='price', 
-                                  title=f"Monthly Price Trends for {search_item} - {selected_client}",
-                                  labels={'year_month': 'Month', 'price': 'Price (USD/kg)'})
-                    fig.update_traces(line=dict(color='#dc2626', width=3), marker=dict(size=8))
-                    fig.update_layout(template='plotly_white', height=500)
-                    st.plotly_chart(fig, use_container_width=True)
+                    # Create bar chart with Altair
+                    bars = alt.Chart(monthly_avg).mark_bar(color='#dc2626').encode(
+                        x=alt.X('year_month:N', title='Month', sort=None),
+                        y=alt.Y('price:Q', title='Price (USD/kg)'),
+                        tooltip=['year_month', alt.Tooltip('price', format='.2f')]
+                    ).properties(height=400)
+                    
+                    st.altair_chart(bars, use_container_width=True)
                     
                 elif group_by == "Quarter":
                     df['year_quarter'] = df['year'].astype(str) + '-Q' + df['quarter'].astype(str)
                     quarterly_avg = df.groupby('year_quarter')['price'].mean().reset_index()
                     
-                    fig = px.bar(quarterly_avg, x='year_quarter', y='price',
-                                 title=f"Quarterly Price Trends for {search_item} - {selected_client}",
-                                 labels={'year_quarter': 'Quarter', 'price': 'Price (USD/kg)'},
-                                 color_discrete_sequence=['#dc2626'])
-                    fig.update_layout(template='plotly_white', height=500)
-                    st.plotly_chart(fig, use_container_width=True)
+                    # Create bar chart for quarterly data
+                    bars = alt.Chart(quarterly_avg).mark_bar(color='#dc2626').encode(
+                        x=alt.X('year_quarter:N', title='Quarter', sort=None),
+                        y=alt.Y('price:Q', title='Price (USD/kg)'),
+                        tooltip=['year_quarter', alt.Tooltip('price', format='.2f')]
+                    ).properties(height=400)
+                    
+                    st.altair_chart(bars, use_container_width=True)
+                
+                elif group_by == "All Orders" and 'date' in df.columns:
+                    # Create scatter plot for individual orders
+                    scatter = alt.Chart(df).mark_circle(size=60, color='#dc2626').encode(
+                        x=alt.X('date:T', title='Order Date'),
+                        y=alt.Y('price:Q', title='Price (USD/kg)'),
+                        tooltip=['date', alt.Tooltip('price', format='.2f'), 'order_no', 'supplier']
+                    ).properties(height=400)
+                    
+                    # Add trend line
+                    trend = scatter.transform_regression('date', 'price').mark_line(color='#f59e0b', strokeWidth=2)
+                    
+                    st.altair_chart(scatter + trend, use_container_width=True)
                 
                 # Show all price records
                 st.markdown("### 📋 Detailed Price History")
@@ -1699,7 +1696,7 @@ def main_dashboard():
             "⭐ SPECIAL PRICES",
             "📦 PRODUCTS & LOGISTICS",
             "📅 ORDER TRACKING",
-            "📈 PRICE TRACKING"  # New tab added
+            "📈 PRICE TRACKING"
         ]
         
         for tab in tabs:
