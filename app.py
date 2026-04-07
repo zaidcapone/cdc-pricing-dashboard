@@ -14,6 +14,21 @@ from datetime import datetime
 from io import BytesIO
 import re
 
+# ===== HIDE STREAMLIT DEFAULT HEADER - MUST BE FIRST =====
+hide_streamlit_style = """
+    <style>
+        #MainMenu {visibility: hidden;}
+        header {visibility: hidden;}
+        footer {visibility: hidden;}
+        .stAppDeployButton {display: none;}
+        [data-testid="stHeader"] {display: none;}
+        [data-testid="stToolbar"] {display: none;}
+        .st-emotion-cache-1avcm0n {display: none;}
+        .st-emotion-cache-18ni7ap {display: none;}
+    </style>
+"""
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
 # ============================================
 # PAGE CONFIG
 # ============================================
@@ -25,17 +40,11 @@ st.set_page_config(
 )
 
 # ============================================
-# PROFESSIONAL CSS (Condensed but保留了所有重要样式)
+# PROFESSIONAL CSS
 # ============================================
 st.markdown("""
 <style>
-    /* Hide Streamlit default header */
-    header {display: none !important;}
-    .main .block-container {padding-top: 0rem !important;}
-    footer {display: none !important;}
-    
     /* ===== GLOBAL STYLES ===== */
-
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
     .main { padding: 0rem 1rem; }
@@ -469,8 +478,7 @@ def check_login():
     return st.session_state.logged_in
 
 def login_page():
-    """Login page - Compact version"""
-    # Create a simple centered container
+    """Login page - Compact centered version"""
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
@@ -529,11 +537,11 @@ def logout_button():
         st.rerun()
 
 # ============================================
-# TAB 1: CLIENT ORDERS (Merged: CLIENTS + CLIENT'S ORDERS)
+# TAB 1: CLIENT ORDERS
 # ============================================
 
 def client_orders_tab():
-    """Consolidated Client Orders Tab - Search orders by client"""
+    """Consolidated Client Orders Tab"""
     st.markdown("""
     <div style="background: linear-gradient(135deg, #0891b2, #0e7c8c); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
         <h2 style="margin:0; color: white;">📋 Client Orders</h2>
@@ -646,7 +654,6 @@ def client_orders_tab():
         if search_results:
             st.success(f"Found {len(search_results)} matching items")
             
-            # Display stats
             col1, col2, col3 = st.columns(3)
             col1.metric("Items Found", len(search_results))
             total_orders = sum(r['orders_count'] for r in search_results)
@@ -661,9 +668,7 @@ def client_orders_tab():
             if all_prices:
                 col3.metric("Price Range", f"${min(all_prices):.2f} - ${max(all_prices):.2f}")
             
-            # Display each result
             for result in search_results:
-                # Filter orders by date
                 filtered_orders = result['article_data'].get('orders', []).copy()
                 
                 if filter_type == "Year" and selected_year:
@@ -690,7 +695,7 @@ def client_orders_tab():
                     for order in result['article_data'].get('orders', []):
                         date_str = str(order.get('date', '')).strip()
                         if date_str and date_str != 'nan':
-                            for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%m', '%Y-%m-%d']:
+                            for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d']:
                                 try:
                                     date_obj = datetime.strptime(date_str, fmt)
                                     if start_date <= date_obj.date() <= end_date:
@@ -739,11 +744,11 @@ def client_orders_tab():
         st.info("Enter a search term above to find order history")
 
 # ============================================
-# TAB 2: PRICING HUB (Merged: PRICES + ALL PRICES + PRICE INTELLIGENCE)
+# TAB 2: PRICING HUB
 # ============================================
 
 def pricing_hub_tab():
-    """Consolidated Pricing Hub - Customer prices, General prices, and Price Intelligence"""
+    """Consolidated Pricing Hub"""
     st.markdown("""
     <div style="background: linear-gradient(135deg, #7c3aed, #6d28d9); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
         <h2 style="margin:0; color: white;">💰 Pricing Hub</h2>
@@ -751,10 +756,8 @@ def pricing_hub_tab():
     </div>
     """, unsafe_allow_html=True)
     
-    # Create sub-tabs within Pricing Hub
     sub_tab1, sub_tab2, sub_tab3 = st.tabs(["🏢 Customer Prices", "📊 General Price List", "🔍 Price Intelligence"])
     
-    # SUB-TAB 1: Customer Prices
     with sub_tab1:
         st.markdown("<div class='subsection-header'>🏢 Customer Price Database</div>", unsafe_allow_html=True)
         
@@ -772,7 +775,6 @@ def pricing_hub_tab():
             col3.metric("Unique Items", prices_data['Item Code'].nunique())
             col4.metric("Avg Price", f"${prices_data['Price'].mean():.2f}")
             
-            # Filters
             col1, col2 = st.columns(2)
             with col1:
                 customers = ["All"] + sorted(prices_data['Customer'].dropna().unique().tolist())
@@ -807,7 +809,6 @@ def pricing_hub_tab():
                 if len(filtered_data) > 50:
                     st.info(f"Showing 50 of {len(filtered_data)} records. Use filters to narrow down.")
     
-    # SUB-TAB 2: General Price List
     with sub_tab2:
         st.markdown("<div class='subsection-header'>📊 General Price List (All Items)</div>", unsafe_allow_html=True)
         
@@ -860,7 +861,6 @@ def pricing_hub_tab():
                             st.markdown(f"**Unit Weight:** {item.get('UNT WGT', 'N/A')} kg")
                             st.markdown(f"**UOM:** {item.get('UOM', 'N/A')}")
     
-    # SUB-TAB 3: Price Intelligence
     with sub_tab3:
         st.markdown("<div class='subsection-header'>🔍 Cross-Client Price Intelligence</div>", unsafe_allow_html=True)
         
@@ -906,7 +906,6 @@ def pricing_hub_tab():
                         results_df = pd.DataFrame(all_results)
                         st.dataframe(results_df, use_container_width=True, hide_index=True)
                         
-                        # Summary stats
                         st.markdown("---")
                         st.markdown("**Summary Statistics**")
                         col1, col2, col3 = st.columns(3)
@@ -925,7 +924,7 @@ def pricing_hub_tab():
                         st.error("Please select at least one client")
 
 # ============================================
-# TAB 3: SPECIAL PRICES (CEO Special Prices)
+# TAB 3: SPECIAL PRICES
 # ============================================
 
 def special_prices_tab():
@@ -996,11 +995,11 @@ def special_prices_tab():
             """, unsafe_allow_html=True)
 
 # ============================================
-# TAB 4: PRODUCTS & LOGISTICS (Merged: PRODUCT CATALOG + PALLETIZING)
+# TAB 4: PRODUCTS & LOGISTICS
 # ============================================
 
 def products_logistics_tab():
-    """Consolidated Products & Logistics - Product catalog and pallet calculator"""
+    """Consolidated Products & Logistics"""
     st.markdown("""
     <div style="background: linear-gradient(135deg, #0ea5e9, #0284c7); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
         <h2 style="margin:0; color: white;">📦 Products & Logistics</h2>
@@ -1010,7 +1009,6 @@ def products_logistics_tab():
     
     sub_tab1, sub_tab2 = st.tabs(["📋 Product Catalog", "📦 Pallet Calculator"])
     
-    # SUB-TAB 1: Product Catalog
     with sub_tab1:
         st.markdown("<div class='subsection-header'>📋 Complete Product Catalog</div>", unsafe_allow_html=True)
         
@@ -1071,11 +1069,9 @@ def products_logistics_tab():
                 if len(filtered_catalog) > 30:
                     st.info(f"Showing 30 of {len(filtered_catalog)} products. Use filters to narrow down.")
     
-    # SUB-TAB 2: Pallet Calculator
     with sub_tab2:
         st.markdown("<div class='subsection-header'>📦 Quick Pallet Calculator</div>", unsafe_allow_html=True)
         
-        # Standard items for quick calculation
         standard_items = {
             "Vermicelli Color": {"packing": "5kg", "cartons_per_pallet": 100, "weight_per_carton": 5},
             "Vermicelli Dark": {"packing": "5kg", "cartons_per_pallet": 100, "weight_per_carton": 5},
@@ -1146,11 +1142,11 @@ def products_logistics_tab():
             st.info(f"**Container Info:** A 40ft container holds approximately 30 pallets max. Your order fills {(full_pallets / 30 * 100):.1f}% of container capacity.")
 
 # ============================================
-# TAB 5: ORDER TRACKING (Merged: ETD SHEET + SAMPLES REQUEST)
+# TAB 5: ORDER TRACKING
 # ============================================
 
 def order_tracking_tab():
-    """Consolidated Order Tracking - ETD management and sample requests"""
+    """Consolidated Order Tracking"""
     st.markdown("""
     <div style="background: linear-gradient(135deg, #059669, #047857); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
         <h2 style="margin:0; color: white;">📅 Order Tracking</h2>
@@ -1160,7 +1156,6 @@ def order_tracking_tab():
     
     sub_tab1, sub_tab2 = st.tabs(["🚢 ETD Management", "🎁 Samples Request"])
     
-    # SUB-TAB 1: ETD Management
     with sub_tab1:
         st.markdown("<div class='subsection-header'>🚢 ETD Dashboard</div>", unsafe_allow_html=True)
         
@@ -1177,7 +1172,6 @@ def order_tracking_tab():
         else:
             st.success(f"Loaded {len(etd_data)} orders for {selected_month}")
             
-            # Stats
             col1, col2, col3, col4 = st.columns(4)
             col1.metric("Total Orders", len(etd_data))
             if 'Status' in etd_data.columns:
@@ -1186,7 +1180,6 @@ def order_tracking_tab():
                 production = len(etd_data[etd_data['Status'].str.lower().str.contains('production', na=False)])
                 col3.metric("In Production", production)
             
-            # Filters
             col1, col2 = st.columns(2)
             with col1:
                 if 'Client Name' in etd_data.columns:
@@ -1235,11 +1228,9 @@ def order_tracking_tab():
                             else:
                                 st.markdown(f"**{supplier}:** 📅 {etd_value}")
     
-    # SUB-TAB 2: Samples Request
     with sub_tab2:
         st.markdown("<div class='subsection-header'>🎁 Samples Request Form</div>", unsafe_allow_html=True)
         
-        # Initialize session state for samples
         if 'sample_items' not in st.session_state:
             st.session_state.sample_items = []
         
@@ -1253,7 +1244,6 @@ def order_tracking_tab():
                 if article and article != 'nan' and product and product != 'nan':
                     article_to_product[article] = product
         
-        # Request form
         col1, col2 = st.columns(2)
         
         with col1:
@@ -1295,7 +1285,6 @@ def order_tracking_tab():
             else:
                 st.error("Please enter both Article Number and Product Name")
         
-        # Display current items
         if st.session_state.sample_items:
             st.markdown(f"**Sample Items ({len(st.session_state.sample_items)}):**")
             for idx, item in enumerate(st.session_state.sample_items):
@@ -1315,7 +1304,6 @@ def order_tracking_tab():
                 st.session_state.sample_items = []
                 st.rerun()
         
-        # Submit button
         if st.button("📤 SUBMIT SAMPLES REQUEST", use_container_width=True, type="primary", key="submit_samples"):
             if not requested_by:
                 st.error("Please enter Requested By")
@@ -1329,14 +1317,12 @@ def order_tracking_tab():
                 st.balloons()
                 st.success(f"✅ Samples request submitted successfully! Request ID: SAMP-{datetime.now().strftime('%Y%m%d-%H%M%S')}")
                 
-                # Display summary
                 st.markdown("### Request Summary")
                 st.markdown(f"**Requested By:** {requested_by}")
                 st.markdown(f"**Recipient:** {going_to}")
                 st.markdown(f"**Address:** {address}")
                 st.markdown(f"**Total Items:** {len(st.session_state.sample_items)}")
                 
-                # Option to reset
                 if st.button("📋 New Request", key="new_sample"):
                     st.session_state.sample_items = []
                     st.rerun()
@@ -1348,7 +1334,6 @@ def order_tracking_tab():
 def main_dashboard():
     """Main dashboard with 5 consolidated tabs"""
     
-    # Header
     st.markdown(f"""
     <div class="dashboard-header">
         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -1367,7 +1352,6 @@ def main_dashboard():
     </div>
     """, unsafe_allow_html=True)
     
-    # Sidebar Navigation - 5 consolidated tabs
     with st.sidebar:
         st.markdown("### 📋 Navigation")
         
@@ -1394,7 +1378,6 @@ def main_dashboard():
         
         st.markdown("---")
         
-        # Recent Searches
         if st.session_state.get('search_history'):
             st.markdown("### 🔍 Recent Searches")
             for i, history_item in enumerate(st.session_state.search_history[:5]):
@@ -1416,7 +1399,6 @@ def main_dashboard():
         st.markdown("---")
         logout_button()
     
-    # Main Content - Display selected tab
     st.markdown(f"<div class='section-header'>{st.session_state.active_tab}</div>", unsafe_allow_html=True)
     
     if st.session_state.active_tab == "📋 CLIENT ORDERS":
@@ -1430,7 +1412,6 @@ def main_dashboard():
     elif st.session_state.active_tab == "📅 ORDER TRACKING":
         order_tracking_tab()
     
-    # Footer
     st.markdown(f"""
     <div class="dashboard-footer">
         Multi-Client Dashboard v6.0 (Consolidated) | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
