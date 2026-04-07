@@ -462,17 +462,58 @@ def check_login():
     return st.session_state.logged_in
 
 def login_page():
-    """Login page"""
+    """Login page - Compact version"""
     st.markdown("""
-    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-        <div style="background: white; border-radius: 24px; padding: 2.5rem; width: 100%; max-width: 420px; box-shadow: 0 20px 40px rgba(0,0,0,0.15);">
-            <h1 style="font-size: 1.75rem; font-weight: 700; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center;">📊 Multi-Client Dashboard</h1>
-            <p style="text-align: center; color: #64748b; margin-bottom: 1.5rem;">Sign in to access your dashboard</p>
+    <style>
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 1rem;
+        }
+        .login-card {
+            background: white;
+            border-radius: 20px;
+            padding: 1.75rem;
+            width: 100%;
+            max-width: 360px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        .login-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            margin-bottom: 0.25rem;
+        }
+        .login-subtitle {
+            text-align: center;
+            color: #64748b;
+            font-size: 0.8rem;
+            margin-bottom: 1.25rem;
+        }
+        .login-card .stTextInput > div > div > input {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.9rem;
+        }
+        .login-card .stButton button {
+            padding: 0.5rem;
+            font-size: 0.9rem;
+        }
+    </style>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-title">📊 Multi-Client Dashboard</div>
+            <div class="login-subtitle">Sign in to access your dashboard</div>
     """, unsafe_allow_html=True)
     
     with st.form("login_form"):
-        username = st.text_input("Username", placeholder="Enter your username")
-        password = st.text_input("Password", type="password", placeholder="Enter your password")
+        username = st.text_input("Username", placeholder="Enter your username", label_visibility="collapsed")
+        password = st.text_input("Password", type="password", placeholder="Enter your password", label_visibility="collapsed")
         submit = st.form_submit_button("Sign In", use_container_width=True)
         
         if submit:
