@@ -44,61 +44,170 @@ st.set_page_config(
 # ============================================
 # Add this to your CSS section (after the existing styles or replace the whole CSS)
 
+# ============================================
+# PROFESSIONAL CSS (with animations only)
+# ============================================
 st.markdown("""
 <style>
-    /* ===== EXISTING GLOBAL STYLES KEEP HERE ===== */
+    /* ===== GLOBAL STYLES ===== */
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    
     .main { padding: 0rem 1rem; }
     
-    /* ===== 1. ANIMATED TRANSITIONS ===== */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
     
-    /* Tab transitions */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 0.5rem;
-        background: rgba(248, 250, 252, 0.5);
-        padding: 0.5rem;
+    .dashboard-header {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        padding: 1.5rem 2rem;
+        border-radius: 16px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    
+    .dashboard-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: white;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .dashboard-subtitle {
+        color: #94a3b8;
+        margin: 0.5rem 0 0 0;
+        font-size: 0.9rem;
+    }
+    
+    .modern-card {
+        background: white;
         border-radius: 12px;
-        backdrop-filter: blur(10px);
+        padding: 1.25rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        border: 1px solid #e2e8f0;
+        margin-bottom: 1rem;
     }
     
-    .stTabs [data-baseweb="tab"] {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        border-radius: 8px;
-        padding: 0.5rem 1.25rem;
-        font-weight: 500;
-        transform: scale(1);
-    }
-    
-    .stTabs [data-baseweb="tab"]:hover {
-        transform: translateY(-2px);
-        background: rgba(255, 255, 255, 0.3);
-    }
-    
-    .stTabs [aria-selected="true"] {
+    .stat-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white !important;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        transform: scale(1.02);
+        border-radius: 16px;
+        padding: 1.25rem;
+        color: white;
+        text-align: center;
     }
     
-    /* Expander animations */
-    .streamlit-expanderHeader {
-        transition: all 0.3s ease;
+    .stat-value { font-size: 2rem; font-weight: 700; margin: 0.5rem 0; }
+    .stat-label { font-size: 0.85rem; opacity: 0.9; text-transform: uppercase; }
+    
+    .section-header {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 1.5rem 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .subsection-header {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #475569;
+        margin: 1rem 0 0.75rem 0;
+    }
+    
+    .price-card-primary {
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+        border-left: 4px solid #dc2626;
         border-radius: 12px;
-        background: rgba(248, 250, 252, 0.8);
-        backdrop-filter: blur(8px);
-        border: 1px solid rgba(226, 232, 240, 0.5);
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        color: #1e293b !important;
     }
     
-    .streamlit-expanderHeader:hover {
-        transform: translateX(5px);
-        background: rgba(255, 255, 255, 0.95);
-        border-color: #667eea;
+    .price-card-secondary {
+        background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        border-left: 4px solid #f59e0b;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        color: #1e293b !important;
     }
     
+    .price-card-info {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border-left: 4px solid #3b82f6;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        color: #1e293b !important;
+    }
+    
+    .badge-success { background: #d1fae5; color: #065f46; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; }
+    .badge-warning { background: #fed7aa; color: #9a3412; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; }
+    .badge-danger { background: #fee2e2; color: #991b1b; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; }
+    .badge-info { background: #dbeafe; color: #1e40af; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; }
+    
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
+        border-right: 1px solid #334155 !important;
+    }
+    
+    [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, [data-testid="stSidebar"] p {
+        color: #f1f5f9 !important;
+    }
+    
+    [data-testid="stSidebar"] .stButton button {
+        background: transparent !important;
+        color: #cbd5e1 !important;
+        border: 1px solid #334155 !important;
+        text-align: left !important;
+    }
+    
+    [data-testid="stSidebar"] .stButton button:hover {
+        background: #334155 !important;
+        color: white !important;
+    }
+    
+    [data-testid="stSidebar"] .stButton button[kind="primary"] {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+        color: white !important;
+        border: none !important;
+    }
+    
+    .announcement-item {
+        background: linear-gradient(135deg, #1e3a5f 0%, #1e293b 100%) !important;
+        border-left: 3px solid #3b82f6 !important;
+        padding: 0.75rem;
+        border-radius: 10px;
+        margin: 0.5rem 0;
+        color: #bae6fd !important;
+    }
+    
+    .dashboard-footer {
+        text-align: center;
+        padding: 1.5rem;
+        color: #94a3b8;
+        font-size: 0.8rem;
+        border-top: 1px solid #e2e8f0;
+        margin-top: 2rem;
+    }
+    
+    /* Fix for card text colors */
+    .price-card-primary div, .price-card-primary p, .price-card-primary strong, .price-card-primary span,
+    .price-card-secondary div, .price-card-secondary p, .price-card-secondary strong, .price-card-secondary span,
+    .price-card-info div, .price-card-info p, .price-card-info strong, .price-card-info span {
+        color: #1e293b !important;
+    }
+    
+    /* ===== ANIMATIONS ONLY (Added) ===== */
+    
+    /* Expander slide animation */
     .streamlit-expanderContent {
-        animation: slideDown 0.4s ease-out;
-        transform-origin: top;
+        animation: slideDown 0.3s ease-out;
     }
     
     @keyframes slideDown {
@@ -112,44 +221,9 @@ st.markdown("""
         }
     }
     
-    /* Button animations */
-    .stButton button {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .stButton button::before {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 0;
-        height: 0;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.3);
-        transform: translate(-50%, -50%);
-        transition: width 0.6s, height 0.6s;
-    }
-    
-    .stButton button:hover::before {
-        width: 300px;
-        height: 300px;
-    }
-    
-    .stButton button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-    }
-    
-    .stButton button:active {
-        transform: translateY(1px);
-    }
-    
-    /* Card animations */
-    .modern-card, .price-card-primary, .price-card-secondary, .price-card-info {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        animation: fadeInUp 0.5s ease-out;
+    /* Card fade-in animation */
+    .modern-card, .price-card-primary, .price-card-secondary, .price-card-info, .stat-card {
+        animation: fadeInUp 0.4s ease-out;
     }
     
     @keyframes fadeInUp {
@@ -163,211 +237,50 @@ st.markdown("""
         }
     }
     
-    .modern-card:hover, .price-card-primary:hover, .price-card-secondary:hover, .price-card-info:hover {
-        transform: translateY(-5px) scale(1.01);
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
-    }
-    
-    /* Sidebar navigation animations */
-    [data-testid="stSidebar"] .stButton button {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    }
-    
-    [data-testid="stSidebar"] .stButton button:hover {
-        transform: translateX(8px);
-        background: rgba(59, 130, 246, 0.2) !important;
-    }
-    
-    /* ===== 2. GLASSMORPHISM EFFECT (Frosted Glass Cards) ===== */
-    
-    /* Main glass cards */
-    .modern-card, .stat-card {
-        background: rgba(255, 255, 255, 0.85) !important;
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    }
-    
-    /* Price cards with glass effect */
-    .price-card-primary {
-        background: rgba(254, 242, 242, 0.85) !important;
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(220, 38, 38, 0.3);
-        box-shadow: 0 4px 15px rgba(220, 38, 38, 0.1);
-    }
-    
-    .price-card-secondary {
-        background: rgba(255, 251, 235, 0.85) !important;
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(245, 158, 11, 0.3);
-        box-shadow: 0 4px 15px rgba(245, 158, 11, 0.1);
-    }
-    
-    .price-card-info {
-        background: rgba(239, 246, 255, 0.85) !important;
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(59, 130, 246, 0.3);
-        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.1);
-    }
-    
-    /* Dashboard header with glass effect */
-    .dashboard-header {
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9)) !important;
-        backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    }
-    
-    /* Sidebar glass effect */
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95)) !important;
-        backdrop-filter: blur(16px);
-        border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
-    }
-    
-    /* Expander glass effect */
-    .streamlit-expanderHeader {
-        background: rgba(248, 250, 252, 0.7) !important;
-        backdrop-filter: blur(8px);
-    }
-    
-    /* Login card glass effect */
-    .compact-login {
-        background: rgba(255, 255, 255, 0.95) !important;
-        backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-    }
-    
-    /* ===== 3. NEUMORPHIC DESIGN ===== */
-    
-    /* Neumorphic stat cards */
-    .stat-card {
-        background: linear-gradient(135deg, #667eea, #764ba2) !important;
-        border-radius: 20px;
-        box-shadow: 9px 9px 16px rgba(0, 0, 0, 0.2),
-                   -5px -5px 12px rgba(255, 255, 255, 0.1),
-                   inset 0px 0px 0px rgba(0, 0, 0, 0),
-                   inset 0px 0px 0px rgba(255, 255, 255, 0);
-        transition: all 0.3s ease;
-    }
-    
-    .stat-card:hover {
-        box-shadow: 5px 5px 12px rgba(0, 0, 0, 0.25),
-                   -3px -3px 8px rgba(255, 255, 255, 0.15);
-        transform: translateY(-3px);
-    }
-    
-    /* Neumorphic buttons */
+    /* Button hover animation */
     .stButton button {
-        background: linear-gradient(145deg, #f0f0f0, #e0e0e0) !important;
-        border: none !important;
-        border-radius: 12px !important;
-        box-shadow: 6px 6px 12px rgba(0, 0, 0, 0.1),
-                   -3px -3px 8px rgba(255, 255, 255, 0.8) !important;
-        color: #1e293b !important;
-        font-weight: 600 !important;
+        transition: all 0.2s ease !important;
     }
     
     .stButton button:hover {
-        box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.15),
-                   -1px -1px 4px rgba(255, 255, 255, 0.9) !important;
+        transform: translateY(-2px);
+        transition: all 0.2s ease !important;
+    }
+    
+    /* Card hover animation */
+    .modern-card:hover, .price-card-primary:hover, .price-card-secondary:hover, .price-card-info:hover {
+        transform: translateY(-3px);
+        transition: all 0.2s ease;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    
+    /* Sidebar button hover animation */
+    [data-testid="stSidebar"] .stButton button {
+        transition: all 0.2s ease !important;
+    }
+    
+    [data-testid="stSidebar"] .stButton button:hover {
+        transform: translateX(5px);
+        transition: all 0.2s ease !important;
+    }
+    
+    /* Tab transitions */
+    .stTabs [data-baseweb="tab"] {
+        transition: all 0.2s ease;
+    }
+    
+    .stTabs [data-baseweb="tab"]:hover {
         transform: translateY(-2px);
     }
     
-    .stButton button:active {
-        box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.1),
-                   inset -2px -2px 4px rgba(255, 255, 255, 0.8) !important;
-        transform: translateY(2px);
-    }
-    
-    /* Primary button neumorphic */
-    .stButton button[kind="primary"] {
-        background: linear-gradient(145deg, #3b82f6, #2563eb) !important;
-        box-shadow: 6px 6px 12px rgba(0, 0, 0, 0.2),
-                   -3px -3px 8px rgba(255, 255, 255, 0.2) !important;
-        color: white !important;
-    }
-    
-    /* Neumorphic cards */
-    .modern-card, .price-card-primary, .price-card-secondary, .price-card-info {
-        border-radius: 20px;
-        box-shadow: 8px 8px 16px rgba(0, 0, 0, 0.08),
-                   -4px -4px 12px rgba(255, 255, 255, 0.6);
-    }
-    
-    .modern-card:hover, .price-card-primary:hover, .price-card-secondary:hover, .price-card-info:hover {
-        box-shadow: 12px 12px 20px rgba(0, 0, 0, 0.12),
-                   -6px -6px 16px rgba(255, 255, 255, 0.7);
-    }
-    
-    /* Neumorphic input fields */
-    .stTextInput input, .stSelectbox div[data-baseweb="select"], .stNumberInput input, .stDateInput input {
-        border-radius: 12px !important;
-        box-shadow: inset 3px 3px 8px rgba(0, 0, 0, 0.05),
-                   inset -2px -2px 5px rgba(255, 255, 255, 0.8),
-                   2px 2px 5px rgba(0, 0, 0, 0.02) !important;
-        border: none !important;
-        background: rgba(255, 255, 255, 0.9) !important;
-        transition: all 0.3s ease;
-    }
-    
-    .stTextInput input:focus, .stSelectbox div[data-baseweb="select"]:focus {
-        box-shadow: inset 2px 2px 6px rgba(0, 0, 0, 0.08),
-                   inset -1px -1px 4px rgba(255, 255, 255, 0.9),
-                   0px 0px 0px 2px rgba(102, 126, 234, 0.3) !important;
-    }
-    
-    /* Neumorphic sidebar navigation */
-    [data-testid="stSidebar"] .stButton button {
-        background: rgba(30, 41, 59, 0.8) !important;
-        box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.2),
-                   -2px -2px 5px rgba(255, 255, 255, 0.05) !important;
-        backdrop-filter: blur(10px);
-    }
-    
-    [data-testid="stSidebar"] .stButton button[kind="primary"] {
-        background: linear-gradient(145deg, #3b82f6, #2563eb) !important;
-        box-shadow: 5px 5px 12px rgba(0, 0, 0, 0.3),
-                   -2px -2px 6px rgba(255, 255, 255, 0.1) !important;
-    }
-    
-    /* Scrollbar neumorphic */
-    ::-webkit-scrollbar-track {
-        background: #e2e8f0;
-        border-radius: 10px;
-        box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.05);
-    }
-    
-    ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 10px;
-        box-shadow: inset -1px -1px 3px rgba(0, 0, 0, 0.1),
-                   inset 1px 1px 3px rgba(255, 255, 255, 0.5);
-    }
-    
-    /* ===== ADDITIONAL POLISH ===== */
-    
-    /* Smooth page transitions */
+    /* Page fade-in */
     .main > div {
-        animation: fadeIn 0.6s ease-out;
+        animation: fadeIn 0.4s ease-out;
     }
     
     @keyframes fadeIn {
         from { opacity: 0; }
         to { opacity: 1; }
-    }
-    
-    /* Loading animation for cards */
-    @keyframes shimmer {
-        0% { background-position: -1000px 0; }
-        100% { background-position: 1000px 0; }
-    }
-    
-    /* Hover glow effect on cards */
-    .modern-card:hover, .price-card-primary:hover, .price-card-secondary:hover, .price-card-info:hover {
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
 </style>
 """, unsafe_allow_html=True)
