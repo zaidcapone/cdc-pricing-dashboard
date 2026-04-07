@@ -1419,23 +1419,7 @@ def order_tracking_tab():
 def main_dashboard():
     """Main dashboard with 5 consolidated tabs"""
     
-    st.markdown(f"""
-    <div class="dashboard-header">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <div class="dashboard-title">
-                    <span>📊</span> Multi-Client Command Center
-                </div>
-                <div class="dashboard-subtitle">
-                    Consolidated Dashboard • Real-time pricing intelligence • Order tracking
-                </div>
-            </div>
-            <div>
-                <span class="badge-info">👤 {st.session_state.username}</span>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+
     
     with st.sidebar:
         st.markdown("### 📋 Navigation")
