@@ -289,8 +289,8 @@ CDC_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"
 
 # User authentication
 USERS = {
-    "admin": {"password": "123456", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse", "Cameron", "Qzine", "MEPT"]},
-    "ceo": {"password": "123456", "clients": ["CDC", "CoteDivoire", "CakeArt", "SweetHouse", "Cameron", "Qzine", "MEPT"]},
+    "admin": {"password": "123456", "clients": "ALL"},  # Changed to "ALL"
+    "ceo": {"password": "123456", "clients": "ALL"},    # Changed to "ALL"
     "zaid": {"password": "123456", "clients": ["CDC"]},
     "mohammad": {"password": "123456", "clients": ["CoteDivoire"]},
     "Khalid": {"password": "123456", "clients": ["CakeArt", "SweetHouse"]},
@@ -556,6 +556,15 @@ def check_login():
         st.session_state.user_clients = []
     if 'active_tab' not in st.session_state:
         st.session_state.active_tab = "📋 CLIENT ORDERS"
+    
+    # If logged in and user_clients is "ALL", load all clients from sheet
+    if st.session_state.logged_in and st.session_state.user_clients == "ALL":
+        # Load all unique clients from the sheet
+        master_df = load_sheet_data("Clients_CoC")
+        if not master_df.empty and 'Client' in master_df.columns:
+            all_clients = sorted(master_df['Client'].dropna().unique().tolist())
+            st.session_state.user_clients = all_clients
+    
     return st.session_state.logged_in
 
 def login_page():
@@ -598,12 +607,12 @@ def login_page():
             password = st.text_input("Password", type="password", placeholder="Enter your password", key="login_password")
             submit = st.form_submit_button("Sign In", use_container_width=True)
             
-            if submit:
-                if username in USERS and USERS[username]["password"] == password:
-                    st.session_state.logged_in = True
-                    st.session_state.username = username
-                    st.session_state.user_clients = USERS[username]["clients"]
-                    st.rerun()
+if submit:
+    if username in USERS and USERS[username]["password"] == password:
+        st.session_state.logged_in = True
+        st.session_state.username = username
+        st.session_state.user_clients = USERS[username]["clients"]  # This can be "ALL" now
+        st.rerun()
                 else:
                     st.error("Invalid username or password")
         
