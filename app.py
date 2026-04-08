@@ -2,7 +2,7 @@
 # MULTI-CLIENT PRICING DASHBOARD - CONSOLIDATED EDITION
 # ============================================
 # Author: Zaid F. Al-Shami
-# Version: 6.1 (Consolidated - 6 Tabs + Price Tracking)
+# Version: 6.2 (CEO can access ALL clients from sheet)
 # Last Updated: 07 April 2026
 # ============================================
 
@@ -13,7 +13,7 @@ import json
 from datetime import datetime
 from io import BytesIO
 import re
-import altair as alt  # Using Altair instead of Plotly (built into Streamlit)
+import altair as alt
 
 # ===== HIDE STREAMLIT DEFAULT HEADER - MUST BE FIRST =====
 hide_streamlit_style = """
@@ -192,16 +192,12 @@ st.markdown("""
         margin-top: 2rem;
     }
     
-    /* Fix for card text colors */
     .price-card-primary div, .price-card-primary p, .price-card-primary strong, .price-card-primary span,
     .price-card-secondary div, .price-card-secondary p, .price-card-secondary strong, .price-card-secondary span,
     .price-card-info div, .price-card-info p, .price-card-info strong, .price-card-info span {
         color: #1e293b !important;
     }
     
-    /* ===== ANIMATIONS ONLY ===== */
-    
-    /* Expander slide animation */
     .streamlit-expanderContent {
         animation: slideDown 0.3s ease-out;
     }
@@ -217,7 +213,6 @@ st.markdown("""
         }
     }
     
-    /* Card fade-in animation */
     .modern-card, .price-card-primary, .price-card-secondary, .price-card-info, .stat-card {
         animation: fadeInUp 0.4s ease-out;
     }
@@ -233,7 +228,6 @@ st.markdown("""
         }
     }
     
-    /* Button hover animation */
     .stButton button {
         transition: all 0.2s ease !important;
     }
@@ -243,14 +237,12 @@ st.markdown("""
         transition: all 0.2s ease !important;
     }
     
-    /* Card hover animation */
     .modern-card:hover, .price-card-primary:hover, .price-card-secondary:hover, .price-card-info:hover {
         transform: translateY(-3px);
         transition: all 0.2s ease;
         box-shadow: 0 10px 30px rgba(0,0,0,0.1);
     }
     
-    /* Sidebar button hover animation */
     [data-testid="stSidebar"] .stButton button {
         transition: all 0.2s ease !important;
     }
@@ -260,7 +252,6 @@ st.markdown("""
         transition: all 0.2s ease !important;
     }
     
-    /* Tab transitions */
     .stTabs [data-baseweb="tab"] {
         transition: all 0.2s ease;
     }
@@ -269,7 +260,6 @@ st.markdown("""
         transform: translateY(-2px);
     }
     
-    /* Page fade-in */
     .main > div {
         animation: fadeIn 0.4s ease-out;
     }
@@ -287,10 +277,10 @@ st.markdown("""
 API_KEY = "AIzaSyA3P-ZpLjDdVtGB82_1kaWuO7lNbKDj9HU"
 CDC_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"
 
-# User authentication
+# User authentication - "ALL" means load all clients from sheet
 USERS = {
-    "admin": {"password": "123456", "clients": "ALL"},  # Changed to "ALL"
-    "ceo": {"password": "123456", "clients": "ALL"},    # Changed to "ALL"
+    "admin": {"password": "123456", "clients": "ALL"},
+    "ceo": {"password": "123456", "clients": "ALL"},
     "zaid": {"password": "123456", "clients": ["CDC"]},
     "mohammad": {"password": "123456", "clients": ["CoteDivoire"]},
     "Khalid": {"password": "123456", "clients": ["CakeArt", "SweetHouse"]},
@@ -547,7 +537,7 @@ def format_time_ago(timestamp):
     return "Just now"
 
 def check_login():
-    """Check login status"""
+    """Check login status and load clients if needed"""
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
     if 'username' not in st.session_state:
@@ -559,11 +549,11 @@ def check_login():
     
     # If logged in and user_clients is "ALL", load all clients from sheet
     if st.session_state.logged_in and st.session_state.user_clients == "ALL":
-        # Load all unique clients from the sheet
-        master_df = load_sheet_data("Clients_CoC")
-        if not master_df.empty and 'Client' in master_df.columns:
-            all_clients = sorted(master_df['Client'].dropna().unique().tolist())
+        all_clients = get_all_clients_from_master()
+        if all_clients:
             st.session_state.user_clients = all_clients
+        else:
+            st.session_state.user_clients = []
     
     return st.session_state.logged_in
 
@@ -607,12 +597,12 @@ def login_page():
             password = st.text_input("Password", type="password", placeholder="Enter your password", key="login_password")
             submit = st.form_submit_button("Sign In", use_container_width=True)
             
-if submit:
-    if username in USERS and USERS[username]["password"] == password:
-        st.session_state.logged_in = True
-        st.session_state.username = username
-        st.session_state.user_clients = USERS[username]["clients"]  # This can be "ALL" now
-        st.rerun()
+            if submit:
+                if username in USERS and USERS[username]["password"] == password:
+                    st.session_state.logged_in = True
+                    st.session_state.username = username
+                    st.session_state.user_clients = USERS[username]["clients"]
+                    st.rerun()
                 else:
                     st.error("Invalid username or password")
         
@@ -640,6 +630,10 @@ def client_orders_tab():
     """, unsafe_allow_html=True)
     
     available_clients = st.session_state.user_clients
+    if not available_clients:
+        st.warning("No clients available. Please check your Clients_CoC sheet.")
+        return
+    
     client = st.selectbox("Select Client:", available_clients, key="client_orders_client")
     
     if not client:
@@ -656,7 +650,6 @@ def client_orders_tab():
     supplier = st.radio("Select Supplier:", ["Backaldrin", "Bateel"], horizontal=True, key="client_orders_supplier")
     supplier_data = DATA.get(supplier, {})
     
-    # Search Section
     st.markdown("<div class='subsection-header'>🔍 Search Orders</div>", unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([2, 1, 1])
@@ -669,7 +662,6 @@ def client_orders_tab():
             if search_term:
                 add_to_search_history(search_term, client, supplier)
     
-    # Date Filter Section
     st.markdown("<div class='subsection-header'>📅 Date Filter (Optional)</div>", unsafe_allow_html=True)
     
     filter_type = st.radio("Filter by:", ["All Time", "Year", "Date Range"], horizontal=True, key="client_orders_filter_type")
@@ -698,7 +690,6 @@ def client_orders_tab():
         with col2:
             end_date = st.date_input("To Date:", value=datetime.now().date(), key="client_orders_end")
     
-    # Search and Display Results
     if search_term:
         search_results = []
         search_lower = search_term.lower()
@@ -1027,6 +1018,10 @@ def special_prices_tab():
     """, unsafe_allow_html=True)
     
     available_clients = st.session_state.user_clients
+    if not available_clients:
+        st.warning("No clients available")
+        return
+    
     client = st.selectbox("Select Client:", available_clients, key="special_client")
     
     if not client:
@@ -1418,11 +1413,11 @@ def order_tracking_tab():
                     st.rerun()
 
 # ============================================
-# TAB 6: PRICE TRACKING (UPDATED - No Plotly)
+# TAB 6: PRICE TRACKING
 # ============================================
 
 def price_tracking_tab():
-    """Track price changes over time for any item - Using Altair instead of Plotly"""
+    """Track price changes over time for any item"""
     st.markdown("""
     <div style="background: linear-gradient(135deg, #dc2626, #b91c1c); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
         <h2 style="margin:0; color: white;">📈 Price Tracking</h2>
@@ -1431,8 +1426,10 @@ def price_tracking_tab():
     """, unsafe_allow_html=True)
     
     available_clients = st.session_state.user_clients
+    if not available_clients:
+        st.warning("No clients available. Please check your Clients_CoC sheet.")
+        return
     
-    # Selection area
     col1, col2, col3 = st.columns([2, 1, 1])
     
     with col1:
@@ -1446,7 +1443,6 @@ def price_tracking_tab():
     with col3:
         selected_supplier = st.selectbox("Select Supplier:", ["Both", "Backaldrin", "Bateel"], key="price_track_supplier")
     
-    # Advanced options
     with st.expander("📊 Advanced Options"):
         col1, col2 = st.columns(2)
         with col1:
@@ -1456,10 +1452,8 @@ def price_tracking_tab():
     
     if search_item:
         with st.spinner(f"Analyzing price history for '{search_item}'..."):
-            # Collect price data across all orders
             price_data = []
             
-            # Load client data
             client_data = get_google_sheets_data(selected_client)
             
             suppliers_to_check = []
@@ -1472,37 +1466,31 @@ def price_tracking_tab():
                 supplier_data = client_data.get(supplier, {})
                 
                 for article_num, article_data in supplier_data.items():
-                    # Check if item matches search
                     article_match = search_item.lower() in article_num.lower()
                     product_match = any(search_item.lower() in name.lower() for name in article_data.get('names', []))
                     
                     if article_match or product_match:
                         product_name = article_data.get('names', ['N/A'])[0]
                         
-                        # Process each order
                         for order in article_data.get('orders', []):
                             price_str = order.get('price', '')
                             date_str = order.get('date', '')
                             
-                            # Parse price
                             price_value = None
                             try:
                                 price_value = float(str(price_str).replace('$', '').replace(',', '').strip())
                             except:
                                 continue
                             
-                            # Parse date
                             order_date = None
                             year = None
                             month = None
                             quarter = None
                             
-                            # First try year field
                             year_str = order.get('year', '')
                             if year_str and year_str != 'nan':
                                 try:
                                     year = int(str(year_str).strip())
-                                    # Try to get month from date if available
                                     if date_str and date_str != 'nan':
                                         for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d']:
                                             try:
@@ -1515,7 +1503,6 @@ def price_tracking_tab():
                                 except:
                                     pass
                             
-                            # If no year, try to parse from date
                             if not year and date_str and date_str != 'nan':
                                 for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d']:
                                     try:
@@ -1528,7 +1515,6 @@ def price_tracking_tab():
                                         continue
                             
                             if year:
-                                # Calculate quarter
                                 if month:
                                     quarter = (month - 1) // 3 + 1
                                 
@@ -1550,13 +1536,11 @@ def price_tracking_tab():
             if price_data:
                 df = pd.DataFrame(price_data)
                 
-                # Sort by date/year
                 if 'date' in df.columns:
                     df = df.sort_values('date')
                 else:
                     df = df.sort_values('year')
                 
-                # Display summary metrics
                 if show_statistics:
                     st.markdown("### 📊 Price Statistics")
                     
@@ -1574,20 +1558,17 @@ def price_tracking_tab():
                     with col5:
                         st.metric("Max Price", f"${df['price'].max():.2f}")
                 
-                # Create visualization based on grouping using Altair
                 st.markdown("### 📈 Price Trend Visualization")
                 
                 if group_by == "Year":
                     yearly_avg = df.groupby('year')['price'].agg(['mean', 'min', 'max']).reset_index()
                     
-                    # Create line chart with Altair
                     line_chart = alt.Chart(yearly_avg).mark_line(point=True, strokeWidth=3).encode(
                         x=alt.X('year:Q', title='Year'),
                         y=alt.Y('mean:Q', title='Price (USD/kg)'),
                         tooltip=['year', alt.Tooltip('mean', format='.2f')]
                     ).properties(height=400)
                     
-                    # Add points
                     points = alt.Chart(yearly_avg).mark_circle(size=100).encode(
                         x='year:Q',
                         y='mean:Q',
@@ -1597,7 +1578,6 @@ def price_tracking_tab():
                     
                     st.altair_chart(line_chart + points, use_container_width=True)
                     
-                    # Display yearly data table
                     st.markdown("### 📅 Yearly Price Summary")
                     yearly_display = yearly_avg.copy()
                     yearly_display['mean'] = yearly_display['mean'].apply(lambda x: f"${x:.2f}")
@@ -1610,7 +1590,6 @@ def price_tracking_tab():
                     df['year_month'] = df['date'].dt.strftime('%Y-%m')
                     monthly_avg = df.groupby('year_month')['price'].mean().reset_index()
                     
-                    # Create bar chart with Altair
                     bars = alt.Chart(monthly_avg).mark_bar(color='#dc2626').encode(
                         x=alt.X('year_month:N', title='Month', sort=None),
                         y=alt.Y('price:Q', title='Price (USD/kg)'),
@@ -1623,7 +1602,6 @@ def price_tracking_tab():
                     df['year_quarter'] = df['year'].astype(str) + '-Q' + df['quarter'].astype(str)
                     quarterly_avg = df.groupby('year_quarter')['price'].mean().reset_index()
                     
-                    # Create bar chart for quarterly data
                     bars = alt.Chart(quarterly_avg).mark_bar(color='#dc2626').encode(
                         x=alt.X('year_quarter:N', title='Quarter', sort=None),
                         y=alt.Y('price:Q', title='Price (USD/kg)'),
@@ -1633,19 +1611,16 @@ def price_tracking_tab():
                     st.altair_chart(bars, use_container_width=True)
                 
                 elif group_by == "All Orders" and 'date' in df.columns:
-                    # Create scatter plot for individual orders
                     scatter = alt.Chart(df).mark_circle(size=60, color='#dc2626').encode(
                         x=alt.X('date:T', title='Order Date'),
                         y=alt.Y('price:Q', title='Price (USD/kg)'),
                         tooltip=['date', alt.Tooltip('price', format='.2f'), 'order_no', 'supplier']
                     ).properties(height=400)
                     
-                    # Add trend line
                     trend = scatter.transform_regression('date', 'price').mark_line(color='#f59e0b', strokeWidth=2)
                     
                     st.altair_chart(scatter + trend, use_container_width=True)
                 
-                # Show all price records
                 st.markdown("### 📋 Detailed Price History")
                 
                 display_df = df[['year', 'date', 'price', 'order_no', 'quantity', 'total_weight', 'supplier']].copy()
@@ -1654,7 +1629,6 @@ def price_tracking_tab():
                 
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
                 
-                # Export option
                 csv = df.to_csv(index=False)
                 st.download_button(
                     label="📥 Export Price History to CSV",
@@ -1666,28 +1640,9 @@ def price_tracking_tab():
                 
             else:
                 st.warning(f"No price data found for '{search_item}' in {selected_client}")
+                st.info("💡 Make sure your Clients_CoC sheet has:\n- The correct Client name\n- Values in the 'Price' column\n- Values in the 'Year' or 'Order_Date' column")
     else:
         st.info("👆 Enter an article number or product name above to start tracking price history")
-        
-        # Show example
-        with st.expander("💡 Example Usage"):
-            st.markdown("""
-            **How to use the Price Tracking feature:**
-            
-            1. **Search for an item** - Enter an article number (e.g., "1-366") or product name (e.g., "Vermicelli")
-            2. **Select a client** - Choose which client's data to analyze
-            3. **Choose a supplier** - Filter by Backaldrin, Bateel, or view both
-            4. **View the trend** - See price changes over time visualized in charts
-            5. **Export data** - Download the complete price history as CSV
-            
-            **Example items you can track:**
-            - CDC Vermicelli products
-            - Chocolate Chips
-            - Vanilla Powder
-            - Date Mix
-            
-            The system will automatically extract price data from all orders and show you how prices have changed over months and years.
-            """)
 
 # ============================================
 # MAIN DASHBOARD
@@ -1734,7 +1689,7 @@ def main_dashboard():
         st.markdown("---")
         st.markdown("### 📢 Updates")
         announcements = [
-            "✅ NEW! Price Tracking tab added!",
+            "✅ CEO now sees ALL clients from sheet!",
             "📈 Track price changes over time",
             "📊 Visualize historical price trends",
             "🚀 Export price data to CSV"
@@ -1762,7 +1717,7 @@ def main_dashboard():
     
     st.markdown(f"""
     <div class="dashboard-footer">
-        Multi-Client Dashboard v6.1 (with Price Tracking) | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        Multi-Client Dashboard v6.2 (CEO sees ALL clients) | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
     </div>
     """, unsafe_allow_html=True)
 
