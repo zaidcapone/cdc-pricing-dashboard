@@ -1700,7 +1700,7 @@ def price_tracking_tab():
 # ============================================
 
 def commission_tab():
-    """Commission tracking tab"""
+    """Commission tracking tab with Excel export matching original format"""
     st.markdown("""
     <div style="background: linear-gradient(135deg, #059669, #047857); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
         <h2 style="margin:0; color: white;">💰 Commission Tracker</h2>
@@ -1719,8 +1719,8 @@ def commission_tab():
     
     st.info(f"👤 Logged in as: **{staff_name}**")
     
-    # Create tabs for different sections
-    tab1, tab2, tab3 = st.tabs(["➕ Add Commission", "📋 View Commissions", "📊 Summary & Export"])
+    # Create tabs
+    tab1, tab2, tab3 = st.tabs(["➕ Add Commission", "📋 View Commissions", "📊 Export Excel"])
     
     # ===== TAB 1: ADD COMMISSION =====
     with tab1:
@@ -1729,7 +1729,8 @@ def commission_tab():
         col1, col2 = st.columns(2)
         
         with col1:
-            currency_type = st.selectbox("Currency Type:", ["USD Sales", "Euro Sales"], key="commission_currency")
+            section_type = st.selectbox("Section:", ["Jordan Sales USD", "Cross-booking (Euro)", "Chocolate Spreads", "Rosellia Powder Cream"], key="commission_section")
+            currency_type = "USD" if "USD" in section_type else "Euro" if "Euro" in section_type else "USD"
             date = st.date_input("Date:", value=datetime.now().date(), key="commission_date")
             export_inv = st.text_input("Export Invoice #:", placeholder="e.g., INV-001", key="commission_inv")
             customer_name = st.text_input("Customer Name:", placeholder="Enter customer name", key="commission_customer")
@@ -1740,7 +1741,6 @@ def commission_tab():
                 client = st.selectbox("Client:", client_options, key="commission_client")
             else:
                 client = st.text_input("Client:", placeholder="Enter client name", key="commission_client")
-                st.caption("Note: You have no assigned clients. Please enter manually.")
             
             country = st.text_input("Country:", placeholder="e.g., Jordan, UAE, KSA", key="commission_country")
             weight_kg = st.number_input("Weight (KG):", min_value=0.0, step=0.1, format="%.2f", key="commission_weight")
@@ -1756,7 +1756,7 @@ def commission_tab():
         with col3:
             charges = st.number_input("Charges ($/€):", min_value=0.0, step=5.0, format="%.2f", key="commission_charges")
         
-        # Calculate values automatically
+        # Calculate values
         after_discount = amount - discount
         after_discount_jd = after_discount * 0.708
         net_amount = after_discount + charges
@@ -1765,9 +1765,7 @@ def commission_tab():
         com_amount = rate * amount
         com_jd = com_amount * 0.708
         
-        # Show calculations
         st.markdown("### 📊 Calculated Values")
-        
         calc_col1, calc_col2, calc_col3, calc_col4 = st.columns(4)
         with calc_col1:
             st.metric("After Discount", f"{after_discount:.2f}")
@@ -1786,11 +1784,11 @@ def commission_tab():
             elif amount <= 0:
                 st.error("Please enter Amount greater than 0")
             else:
-                # Prepare record
                 record = {
                     'date': date.strftime('%Y-%m-%d'),
                     'staff': staff_name,
                     'client': client,
+                    'section': section_type,
                     'export_inv': export_inv,
                     'customer_name': customer_name,
                     'country': country,
@@ -1809,7 +1807,6 @@ def commission_tab():
                     'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 }
                 
-                # Save to session state for now (will connect to Google Sheet)
                 if 'commission_records' not in st.session_state:
                     st.session_state.commission_records = []
                 
@@ -1824,91 +1821,142 @@ def commission_tab():
         if 'commission_records' in st.session_state and st.session_state.commission_records:
             df = pd.DataFrame(st.session_state.commission_records)
             
-            # Filters
             col1, col2, col3 = st.columns(3)
             with col1:
                 filter_staff = st.multiselect("Filter by Staff:", options=df['staff'].unique(), default=[])
             with col2:
                 filter_client = st.multiselect("Filter by Client:", options=df['client'].unique(), default=[])
             with col3:
-                filter_currency = st.multiselect("Filter by Currency:", options=df['currency_type'].unique(), default=[])
+                filter_section = st.multiselect("Filter by Section:", options=df['section'].unique(), default=[])
             
             filtered_df = df.copy()
             if filter_staff:
                 filtered_df = filtered_df[filtered_df['staff'].isin(filter_staff)]
             if filter_client:
                 filtered_df = filtered_df[filtered_df['client'].isin(filter_client)]
-            if filter_currency:
-                filtered_df = filtered_df[filtered_df['currency_type'].isin(filter_currency)]
+            if filter_section:
+                filtered_df = filtered_df[filtered_df['section'].isin(filter_section)]
             
             st.markdown(f"**Found {len(filtered_df)} records**")
             
-            # Display dataframe
-            display_cols = ['date', 'staff', 'client', 'customer_name', 'country', 'currency_type', 'amount', 'discount', 'net_amount', 'commission', 'commission_jd']
+            display_cols = ['date', 'staff', 'client', 'section', 'customer_name', 'country', 'currency_type', 'amount', 'discount', 'net_amount', 'commission', 'commission_jd']
             st.dataframe(filtered_df[display_cols], use_container_width=True, hide_index=True)
         else:
             st.info("No commission records yet. Use the 'Add Commission' tab to create your first record.")
     
-    # ===== TAB 3: SUMMARY & EXPORT =====
+    # ===== TAB 3: EXPORT EXCEL (Matches Original Format) =====
     with tab3:
-        st.markdown("<div class='subsection-header'>📊 Commission Summary</div>", unsafe_allow_html=True)
+        st.markdown("<div class='subsection-header'>📊 Export Commission Report</div>", unsafe_allow_html=True)
         
         if 'commission_records' in st.session_state and st.session_state.commission_records:
             df = pd.DataFrame(st.session_state.commission_records)
             
-            # Summary statistics
+            # Summary stats
             col1, col2, col3, col4 = st.columns(4)
             with col1:
-                total_commission_usd = df[df['currency_type'] == 'USD Sales']['commission'].sum() if 'USD Sales' in df['currency_type'].values else 0
-                st.metric("Total Commission (USD)", f"${total_commission_usd:.2f}")
+                total_usd = df[df['currency_type'] == 'USD']['commission'].sum() if 'USD' in df['currency_type'].values else 0
+                st.metric("Total Commission (USD)", f"${total_usd:.2f}")
             with col2:
-                total_commission_eur = df[df['currency_type'] == 'Euro Sales']['commission'].sum() if 'Euro Sales' in df['currency_type'].values else 0
-                st.metric("Total Commission (EUR)", f"€{total_commission_eur:.2f}")
+                total_eur = df[df['currency_type'] == 'Euro']['commission'].sum() if 'Euro' in df['currency_type'].values else 0
+                st.metric("Total Commission (EUR)", f"€{total_eur:.2f}")
             with col3:
-                total_commission_jd = df['commission_jd'].sum()
-                st.metric("Total Commission (JD)", f"{total_commission_jd:.2f} JD")
+                total_jd = df['commission_jd'].sum()
+                st.metric("Total Commission (JD)", f"{total_jd:.2f} JD")
             with col4:
                 total_sales = df['net_amount'].sum()
                 st.metric("Total Sales", f"${total_sales:.2f}")
             
-            # By staff
-            st.markdown("### 👤 Commission by Staff")
-            staff_summary = df.groupby('staff').agg({
-                'commission': 'sum',
-                'commission_jd': 'sum',
-                'net_amount': 'sum'
-            }).reset_index()
-            staff_summary.columns = ['Staff', 'Total Commission (USD)', 'Total Commission (JD)', 'Total Sales']
-            st.dataframe(staff_summary, use_container_width=True, hide_index=True)
+            st.markdown("### 📥 Download Excel Report (Original Format)")
             
-            # By client
-            st.markdown("### 🏢 Commission by Client")
-            client_summary = df.groupby('client').agg({
-                'commission': 'sum',
-                'commission_jd': 'sum',
-                'net_amount': 'sum'
-            }).reset_index()
-            client_summary.columns = ['Client', 'Total Commission (USD)', 'Total Commission (JD)', 'Total Sales']
-            st.dataframe(client_summary, use_container_width=True, hide_index=True)
-            
-            # Export option
-            st.markdown("### 📥 Export Data")
-            
-            excel_buffer = BytesIO()
-            with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-                df.to_excel(writer, sheet_name='Commissions', index=False)
-                staff_summary.to_excel(writer, sheet_name='Staff Summary', index=False)
-                client_summary.to_excel(writer, sheet_name='Client Summary', index=False)
-            
-            st.download_button(
-                label="📊 Download Commission Report (Excel)",
-                data=excel_buffer.getvalue(),
-                file_name=f"commission_report_{datetime.now().strftime('%Y%m%d')}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
-            )
+            if st.button("📊 Generate Excel Report", type="primary", use_container_width=True):
+                # Create Excel file matching original structure
+                excel_buffer = BytesIO()
+                
+                with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+                    # Split data by section
+                    usd_data = df[df['section'] == 'Jordan Sales USD']
+                    euro_data = df[df['section'] == 'Cross-booking (Euro)']
+                    chocolate_data = df[df['section'] == 'Chocolate Spreads']
+                    rosellia_data = df[df['section'] == 'Rosellia Powder Cream']
+                    
+                    # Sheet 1: Jordan Sales USD
+                    if not usd_data.empty:
+                        usd_export = usd_data[['date', 'export_inv', 'customer_name', 'country', 'weight_kg', 'amount', 'discount', 'after_discount', 'after_discount_jd', 'charges', 'net_amount', 'amount_jd', 'rate', 'commission', 'commission_jd']].copy()
+                        usd_export.columns = ['Date', 'Export Inv #', 'Customer Name', 'Country', 'WGT / KG', 'Amount / $', 'Discount', 'After Discount', 'After Disc. (JD)', 'Charges', 'Net Amount $', 'Amount JD', 'Rate', 'Com / $', 'Com / JD']
+                        usd_export.to_excel(writer, sheet_name='Jordan Sales USD', index=False)
+                    else:
+                        # Create empty template
+                        empty_template = pd.DataFrame(columns=['Date', 'Export Inv #', 'Customer Name', 'Country', 'WGT / KG', 'Amount / $', 'Discount', 'After Discount', 'After Disc. (JD)', 'Charges', 'Net Amount $', 'Amount JD', 'Rate', 'Com / $', 'Com / JD'])
+                        empty_template.to_excel(writer, sheet_name='Jordan Sales USD', index=False)
+                    
+                    # Sheet 2: Cross-booking (Euro)
+                    if not euro_data.empty:
+                        euro_export = euro_data[['date', 'export_inv', 'customer_name', 'country', 'weight_kg', 'amount', 'discount', 'after_discount', 'after_discount_jd', 'charges', 'net_amount', 'amount_jd', 'rate', 'commission', 'commission_jd']].copy()
+                        euro_export.columns = ['Date', 'Export Inv #', 'Customer Name', 'Country', 'WGT / KG', 'Amount / €', 'Discount', 'After Discount', 'After Disc. (JD)', 'Charges', 'Net Amount €', 'Amount JD', 'Rate', 'Com / €', 'Com / JD']
+                        euro_export.to_excel(writer, sheet_name='Cross-booking', index=False)
+                    else:
+                        empty_template = pd.DataFrame(columns=['Date', 'Export Inv #', 'Customer Name', 'Country', 'WGT / KG', 'Amount / €', 'Discount', 'After Discount', 'After Disc. (JD)', 'Charges', 'Net Amount €', 'Amount JD', 'Rate', 'Com / €', 'Com / JD'])
+                        empty_template.to_excel(writer, sheet_name='Cross-booking', index=False)
+                    
+                    # Sheet 3: Chocolate Spreads
+                    if not chocolate_data.empty:
+                        chocolate_export = chocolate_data[['date', 'export_inv', 'customer_name', 'country', 'weight_kg', 'amount', 'discount', 'after_discount', 'after_discount_jd', 'charges', 'net_amount', 'amount_jd', 'rate', 'commission', 'commission_jd']].copy()
+                        chocolate_export.columns = ['Date', 'Export Inv #', 'Customer Name', 'Country', 'WGT / KG', 'Amount / $', 'Discount', 'After Discount', 'After Disc. (JD)', 'Charges', 'Net Amount $', 'Amount JD', 'Rate', 'Com / $', 'Com / JD']
+                        chocolate_export.to_excel(writer, sheet_name='Chocolate Spreads', index=False)
+                    
+                    # Sheet 4: Rosellia Powder Cream
+                    if not rosellia_data.empty:
+                        rosellia_export = rosellia_data[['date', 'export_inv', 'customer_name', 'country', 'weight_kg', 'amount', 'discount', 'after_discount', 'after_discount_jd', 'charges', 'net_amount', 'amount_jd', 'rate', 'commission', 'commission_jd']].copy()
+                        rosellia_export.columns = ['Date', 'Export Inv #', 'Customer Name', 'Country', 'WGT / KG', 'Amount / $', 'Discount', 'After Discount', 'After Disc. (JD)', 'Charges', 'Net Amount $', 'Amount JD', 'Rate', 'Com / $', 'Com / JD']
+                        rosellia_export.to_excel(writer, sheet_name='Rosellia Powder Cream', index=False)
+                    
+                    # Sheet 5: Summary
+                    summary_data = []
+                    
+                    # Calculate totals
+                    usd_total = usd_data['commission'].sum() if not usd_data.empty else 0
+                    euro_total = euro_data['commission'].sum() if not euro_data.empty else 0
+                    chocolate_total = chocolate_data['commission'].sum() if not chocolate_data.empty else 0
+                    rosellia_total = rosellia_data['commission'].sum() if not rosellia_data.empty else 0
+                    
+                    summary_data = [
+                        ['Section', 'Total Commission (USD/Euro)', 'Total Commission (JD)'],
+                        ['Jordan Sales USD', f"${usd_total:.2f}", f"{usd_total * 0.708:.2f} JD"],
+                        ['Cross-booking (Euro)', f"€{euro_total:.2f}", f"{euro_total * 0.825:.2f} JD"],
+                        ['Chocolate Spreads', f"${chocolate_total:.2f}", f"{chocolate_total * 0.708:.2f} JD"],
+                        ['Rosellia Powder Cream', f"${rosellia_total:.2f}", f"{rosellia_total * 0.708:.2f} JD"],
+                        ['', '', ''],
+                        ['TOTAL COMMISSION', f"${usd_total + chocolate_total + rosellia_total:.2f} + €{euro_total:.2f}", f"{(usd_total + chocolate_total + rosellia_total) * 0.708 + euro_total * 0.825:.2f} JD"]
+                    ]
+                    
+                    summary_df = pd.DataFrame(summary_data)
+                    summary_df.to_excel(writer, sheet_name='Summary', index=False, header=False)
+                    
+                    # Auto-adjust column widths
+                    for sheet_name in writer.sheets:
+                        worksheet = writer.sheets[sheet_name]
+                        for column in worksheet.columns:
+                            max_length = 0
+                            column_letter = column[0].column_letter
+                            for cell in column:
+                                try:
+                                    if len(str(cell.value)) > max_length:
+                                        max_length = len(str(cell.value))
+                                except:
+                                    pass
+                            adjusted_width = min(max_length + 2, 30)
+                            worksheet.column_dimensions[column_letter].width = adjusted_width
+                
+                st.success("✅ Excel report generated successfully!")
+                st.download_button(
+                    label="📥 Download Commission Report (Excel)",
+                    data=excel_buffer.getvalue(),
+                    file_name=f"commission_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
         else:
-            st.info("No data available for summary. Add some commission records first.")
+            st.info("No data available. Add some commission records first to generate the Excel report.")
 
 # ============================================
 # MAIN DASHBOARD
