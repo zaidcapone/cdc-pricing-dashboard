@@ -1700,7 +1700,7 @@ def price_tracking_tab():
 # ============================================
 
 def commission_tab():
-    """Commission tracking tab with BEAUTIFUL Excel export"""
+    """Commission tracking tab with beautiful Excel export and data management"""
     st.markdown("""
     <div style="background: linear-gradient(135deg, #059669, #047857); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
         <h2 style="margin:0; color: white;">💰 Commission Tracker</h2>
@@ -1717,10 +1717,55 @@ def commission_tab():
     else:
         assigned_clients = []
     
-    st.info(f"👤 Logged in as: **{staff_name}**")
+    # Data Management Section at top
+    with st.expander("⚙️ Data Management Tools"):
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            if st.button("🗑️ Clear ALL Data", type="secondary", use_container_width=True):
+                if 'commission_records' in st.session_state:
+                    st.session_state.commission_records = []
+                    st.success("✅ All commission data has been cleared!")
+                    st.rerun()
+        
+        with col2:
+            if st.button("👤 Keep My Records Only", type="secondary", use_container_width=True):
+                if 'commission_records' in st.session_state:
+                    st.session_state.commission_records = [
+                        r for r in st.session_state.commission_records 
+                        if r.get('staff') == staff_name
+                    ]
+                    st.success(f"✅ Kept only {staff_name}'s records!")
+                    st.rerun()
+        
+        with col3:
+            if st.button("📅 Keep Last 30 Days", type="secondary", use_container_width=True):
+                if 'commission_records' in st.session_state:
+                    thirty_days_ago = datetime.now().date() - pd.Timedelta(days=30)
+                    original_count = len(st.session_state.commission_records)
+                    st.session_state.commission_records = [
+                        r for r in st.session_state.commission_records 
+                        if datetime.strptime(r['date'], '%Y-%m-%d').date() >= thirty_days_ago
+                    ]
+                    st.success(f"✅ Kept {len(st.session_state.commission_records)} records from last 30 days (removed {original_count - len(st.session_state.commission_records)})")
+                    st.rerun()
+        
+        with col4:
+            if st.button("📊 Keep This Year", type="secondary", use_container_width=True):
+                if 'commission_records' in st.session_state:
+                    current_year = datetime.now().year
+                    original_count = len(st.session_state.commission_records)
+                    st.session_state.commission_records = [
+                        r for r in st.session_state.commission_records 
+                        if int(r['date'].split('-')[0]) == current_year
+                    ]
+                    st.success(f"✅ Kept {len(st.session_state.commission_records)} records from {current_year} (removed {original_count - len(st.session_state.commission_records)})")
+                    st.rerun()
+    
+    st.info(f"👤 Logged in as: **{staff_name}** | 📊 Total Records: {len(st.session_state.get('commission_records', []))}")
     
     # Create tabs
-    tab1, tab2, tab3 = st.tabs(["➕ Add Commission", "📋 View Commissions", "📊 Export Excel Report"])
+    tab1, tab2, tab3 = st.tabs(["➕ Add Commission", "📋 View & Manage", "📊 Export Excel Report"])
     
     # ===== TAB 1: ADD COMMISSION =====
     with tab1:
@@ -1814,20 +1859,23 @@ def commission_tab():
                 st.success(f"✅ Commission record saved successfully!")
                 st.balloons()
     
-    # ===== TAB 2: VIEW COMMISSIONS =====
+    # ===== TAB 2: VIEW & MANAGE (WITH DELETE OPTIONS) =====
     with tab2:
-        st.markdown("<div class='subsection-header'>📋 Commission Records</div>", unsafe_allow_html=True)
+        st.markdown("<div class='subsection-header'>📋 View & Manage Commission Records</div>", unsafe_allow_html=True)
         
         if 'commission_records' in st.session_state and st.session_state.commission_records:
             df = pd.DataFrame(st.session_state.commission_records)
             
-            col1, col2, col3 = st.columns(3)
+            # Filters
+            col1, col2, col3, col4 = st.columns(4)
             with col1:
                 filter_staff = st.multiselect("Filter by Staff:", options=df['staff'].unique(), default=[])
             with col2:
                 filter_client = st.multiselect("Filter by Client:", options=df['client'].unique(), default=[])
             with col3:
                 filter_section = st.multiselect("Filter by Section:", options=df['section'].unique(), default=[])
+            with col4:
+                filter_year = st.multiselect("Filter by Year:", options=sorted(df['date'].str.split('-').str[0].unique()), default=[])
             
             filtered_df = df.copy()
             if filter_staff:
@@ -1836,11 +1884,53 @@ def commission_tab():
                 filtered_df = filtered_df[filtered_df['client'].isin(filter_client)]
             if filter_section:
                 filtered_df = filtered_df[filtered_df['section'].isin(filter_section)]
+            if filter_year:
+                filtered_df = filtered_df[filtered_df['date'].str.split('-').str[0].isin(filter_year)]
             
             st.markdown(f"**Found {len(filtered_df)} records**")
             
-            display_cols = ['date', 'staff', 'client', 'section', 'customer_name', 'country', 'currency_type', 'amount', 'discount', 'net_amount', 'commission', 'commission_jd']
-            st.dataframe(filtered_df[display_cols], use_container_width=True, hide_index=True)
+            # Display with delete buttons
+            st.markdown("### Records (Click ❌ to delete individual record)")
+            
+            for idx, record in filtered_df.iterrows():
+                with st.container():
+                    col1, col2, col3, col4, col5, col6, col7 = st.columns([1.5, 1.5, 2, 1.5, 1.5, 1.5, 0.5])
+                    with col1:
+                        st.write(record['date'])
+                    with col2:
+                        st.write(record['staff'])
+                    with col3:
+                        st.write(record['customer_name'][:20])
+                    with col4:
+                        st.write(record['section'][:15])
+                    with col5:
+                        st.write(f"${record['amount']:.2f}")
+                    with col6:
+                        st.write(f"${record['commission']:.2f}")
+                    with col7:
+                        if st.button("❌", key=f"del_{record['timestamp']}"):
+                            # Find and remove the actual record from session state
+                            original_idx = next((i for i, r in enumerate(st.session_state.commission_records) if r['timestamp'] == record['timestamp']), None)
+                            if original_idx is not None:
+                                st.session_state.commission_records.pop(original_idx)
+                                st.rerun()
+                    st.divider()
+            
+            # Batch delete option
+            st.markdown("---")
+            st.markdown("### Batch Delete")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("🗑️ Delete All Filtered Records", type="secondary", use_container_width=True):
+                    if filtered_df is not None and not filtered_df.empty:
+                        timestamps_to_delete = set(filtered_df['timestamp'].tolist())
+                        original_count = len(st.session_state.commission_records)
+                        st.session_state.commission_records = [
+                            r for r in st.session_state.comission_records 
+                            if r['timestamp'] not in timestamps_to_delete
+                        ]
+                        st.success(f"✅ Deleted {original_count - len(st.session_state.commission_records)} records!")
+                        st.rerun()
         else:
             st.info("No commission records yet. Use the 'Add Commission' tab to create your first record.")
     
@@ -1881,97 +1971,72 @@ def commission_tab():
                         'Jordan Sales USD': df[df['section'] == 'Jordan Sales USD'],
                         'Cross-booking (Euro)': df[df['section'] == 'Cross-booking (Euro)'],
                         'Chocolate Spreads': df[df['section'] == 'Chocolate Spreads'],
-                        'Rosellia Powder Cream': df[df['section'] == 'Rosellia Powder Cream'],
-                        'Summary': pd.DataFrame()  # Will create summary separately
+                        'Rosellia Powder Cream': df[df['section'] == 'Rosellia Powder Cream']
                     }
                     
-                    # Define column headers for each section
+                    # Define column headers
                     usd_headers = ['Date', 'Export Inv #', 'Customer Name', 'Country', 'WGT / KG', 'Amount / $', 'Discount', 'After Discount', 'After Disc. (JD)', 'Charges', 'Net Amount $', 'Amount JD', 'Rate', 'Com / $', 'Com / JD']
                     euro_headers = ['Date', 'Export Inv #', 'Customer Name', 'Country', 'WGT / KG', 'Amount / €', 'Discount', 'After Discount', 'After Disc. (JD)', 'Charges', 'Net Amount €', 'Amount JD', 'Rate', 'Com / €', 'Com / JD']
                     
+                    # Define styles
+                    header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+                    header_font = Font(color="FFFFFF", bold=True, size=11)
+                    header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+                    light_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+                    white_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
+                    thin_border = Border(
+                        left=Side(style='thin'),
+                        right=Side(style='thin'),
+                        top=Side(style='thin'),
+                        bottom=Side(style='thin')
+                    )
+                    
                     # Process each section
                     for section_name, section_data in sections.items():
-                        if section_name == 'Summary':
+                        if section_data.empty:
                             continue
                             
-                        # Create dataframe for this section
-                        if not section_data.empty:
-                            if 'Euro' in section_name:
-                                export_data = section_data[['date', 'export_inv', 'customer_name', 'country', 'weight_kg', 'amount', 'discount', 'after_discount', 'after_discount_jd', 'charges', 'net_amount', 'amount_jd', 'rate', 'commission', 'commission_jd']].copy()
-                                export_data.columns = euro_headers
-                            else:
-                                export_data = section_data[['date', 'export_inv', 'customer_name', 'country', 'weight_kg', 'amount', 'discount', 'after_discount', 'after_discount_jd', 'charges', 'net_amount', 'amount_jd', 'rate', 'commission', 'commission_jd']].copy()
-                                export_data.columns = usd_headers
-                            
-                            # Write to Excel
-                            export_data.to_excel(writer, sheet_name=section_name[:31], index=False)
-                            
-                            # Get the worksheet for formatting
-                            worksheet = writer.sheets[section_name[:31]]
-                            
-                            # ===== STYLING =====
-                            # Define styles
-                            header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")  # Dark blue
-                            header_font = Font(color="FFFFFF", bold=True, size=11)
-                            header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-                            
-                            # Alternating row colors
-                            light_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
-                            white_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
-                            
-                            # Borders
-                            thin_border = Border(
-                                left=Side(style='thin'),
-                                right=Side(style='thin'),
-                                top=Side(style='thin'),
-                                bottom=Side(style='thin')
-                            )
-                            
-                            # Format header row
+                        if 'Euro' in section_name:
+                            export_data = section_data[['date', 'export_inv', 'customer_name', 'country', 'weight_kg', 'amount', 'discount', 'after_discount', 'after_discount_jd', 'charges', 'net_amount', 'amount_jd', 'rate', 'commission', 'commission_jd']].copy()
+                            export_data.columns = euro_headers
+                        else:
+                            export_data = section_data[['date', 'export_inv', 'customer_name', 'country', 'weight_kg', 'amount', 'discount', 'after_discount', 'after_discount_jd', 'charges', 'net_amount', 'amount_jd', 'rate', 'commission', 'commission_jd']].copy()
+                            export_data.columns = usd_headers
+                        
+                        export_data.to_excel(writer, sheet_name=section_name[:31], index=False)
+                        worksheet = writer.sheets[section_name[:31]]
+                        
+                        # Format header row
+                        for col in range(1, len(export_data.columns) + 1):
+                            cell = worksheet.cell(row=1, column=col)
+                            cell.fill = header_fill
+                            cell.font = header_font
+                            cell.alignment = header_alignment
+                            cell.border = thin_border
+                        
+                        # Format data rows
+                        for row in range(2, len(export_data) + 2):
                             for col in range(1, len(export_data.columns) + 1):
-                                cell = worksheet.cell(row=1, column=col)
-                                cell.fill = header_fill
-                                cell.font = header_font
-                                cell.alignment = header_alignment
+                                cell = worksheet.cell(row=row, column=col)
+                                cell.fill = light_fill if row % 2 == 0 else white_fill
                                 cell.border = thin_border
-                            
-                            # Format data rows with alternating colors
-                            for row in range(2, len(export_data) + 2):
-                                for col in range(1, len(export_data.columns) + 1):
-                                    cell = worksheet.cell(row=row, column=col)
-                                    if row % 2 == 0:
-                                        cell.fill = light_fill
-                                    else:
-                                        cell.fill = white_fill
-                                    cell.border = thin_border
-                                    cell.alignment = Alignment(horizontal="left", vertical="center")
-                                    
-                                    # Format currency columns
-                                    col_letter = get_column_letter(col)
-                                    if col_letter in ['F', 'G', 'H', 'K', 'N']:  # Currency columns
-                                        cell.number_format = '#,##0.00'
-                                    elif col_letter in ['I', 'L', 'O']:  # JD columns
-                                        cell.number_format = '#,##0.00'
-                            
-                            # Freeze header row
-                            worksheet.freeze_panes = 'A2'
-                            
-                            # Auto-fit column widths
-                            for col in worksheet.columns:
-                                max_length = 0
-                                col_letter = get_column_letter(col[0].column)
-                                for cell in col:
-                                    try:
-                                        if len(str(cell.value)) > max_length:
-                                            max_length = len(str(cell.value))
-                                    except:
-                                        pass
-                                adjusted_width = min(max_length + 2, 25)
-                                worksheet.column_dimensions[col_letter].width = adjusted_width
+                                cell.alignment = Alignment(horizontal="left", vertical="center")
+                        
+                        worksheet.freeze_panes = 'A2'
+                        
+                        # Auto-fit columns
+                        for col in worksheet.columns:
+                            max_length = 0
+                            col_letter = get_column_letter(col[0].column)
+                            for cell in col:
+                                try:
+                                    if len(str(cell.value)) > max_length:
+                                        max_length = len(str(cell.value))
+                                except:
+                                    pass
+                            worksheet.column_dimensions[col_letter].width = min(max_length + 2, 25)
                     
                     # Create Summary sheet
-                    summary_data = []
-                    
                     usd_total = sections['Jordan Sales USD']['commission'].sum() if not sections['Jordan Sales USD'].empty else 0
                     euro_total = sections['Cross-booking (Euro)']['commission'].sum() if not sections['Cross-booking (Euro)'].empty else 0
                     chocolate_total = sections['Chocolate Spreads']['commission'].sum() if not sections['Chocolate Spreads'].empty else 0
@@ -1989,38 +2054,30 @@ def commission_tab():
                         ['TOTAL COMMISSION', f"${usd_total + chocolate_total + rosellia_total:.2f} + €{euro_total:.2f}", f"{(usd_total + chocolate_total + rosellia_total) * 0.708 + euro_total * 0.825:.2f} JD"],
                         ['', '', ''],
                         [f'Report Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', '', ''],
-                        [f'Generated by: {staff_name}', '', '']
+                        [f'Generated by: {staff_name}', '', ''],
+                        [f'Total Records: {len(df)}', '', '']
                     ]
                     
                     summary_df = pd.DataFrame(summary_data)
                     summary_df.to_excel(writer, sheet_name='Summary', index=False, header=False)
                     
-                    # Style Summary sheet
                     summary_ws = writer.sheets['Summary']
-                    
-                    # Title formatting
                     title_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
                     title_font = Font(color="FFFFFF", bold=True, size=14)
-                    
                     title_cell = summary_ws['A1']
                     title_cell.fill = title_fill
                     title_cell.font = title_font
                     title_cell.alignment = Alignment(horizontal="center", vertical="center")
-                    
-                    # Merge title cells
                     summary_ws.merge_cells('A1:C1')
                     
-                    # Header row formatting
                     header_fill_light = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
                     header_font_bold = Font(bold=True)
-                    
                     for col in range(1, 4):
                         cell = summary_ws.cell(row=4, column=col)
                         cell.fill = header_fill_light
                         cell.font = header_font_bold
                         cell.border = thin_border
                     
-                    # Auto-fit summary sheet
                     for col in summary_ws.columns:
                         max_length = 0
                         col_letter = get_column_letter(col[0].column)
@@ -2030,8 +2087,7 @@ def commission_tab():
                                     max_length = len(str(cell.value))
                             except:
                                 pass
-                        adjusted_width = min(max_length + 2, 30)
-                        summary_ws.column_dimensions[col_letter].width = adjusted_width
+                        summary_ws.column_dimensions[col_letter].width = min(max_length + 2, 30)
                 
                 st.success("✅ Beautiful Excel report generated successfully!")
                 st.download_button(
