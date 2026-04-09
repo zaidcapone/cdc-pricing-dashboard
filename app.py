@@ -1700,11 +1700,11 @@ def price_tracking_tab():
 # ============================================
 
 def commission_tab():
-    """Commission tracking tab with Excel export matching original format"""
+    """Commission tracking tab with BEAUTIFUL Excel export"""
     st.markdown("""
     <div style="background: linear-gradient(135deg, #059669, #047857); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
         <h2 style="margin:0; color: white;">💰 Commission Tracker</h2>
-        <p style="margin:0; opacity:0.9; color: white;">Track sales commissions • Add new commission entries • Download reports</p>
+        <p style="margin:0; opacity:0.9; color: white;">Track sales commissions • Add new commission entries • Download professional Excel reports</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -1720,7 +1720,7 @@ def commission_tab():
     st.info(f"👤 Logged in as: **{staff_name}**")
     
     # Create tabs
-    tab1, tab2, tab3 = st.tabs(["➕ Add Commission", "📋 View Commissions", "📊 Export Excel"])
+    tab1, tab2, tab3 = st.tabs(["➕ Add Commission", "📋 View Commissions", "📊 Export Excel Report"])
     
     # ===== TAB 1: ADD COMMISSION =====
     with tab1:
@@ -1844,9 +1844,9 @@ def commission_tab():
         else:
             st.info("No commission records yet. Use the 'Add Commission' tab to create your first record.")
     
-    # ===== TAB 3: EXPORT EXCEL (Matches Original Format) =====
+    # ===== TAB 3: EXPORT BEAUTIFUL EXCEL =====
     with tab3:
-        st.markdown("<div class='subsection-header'>📊 Export Commission Report</div>", unsafe_allow_html=True)
+        st.markdown("<div class='subsection-header'>📊 Export Professional Excel Report</div>", unsafe_allow_html=True)
         
         if 'commission_records' in st.session_state and st.session_state.commission_records:
             df = pd.DataFrame(st.session_state.commission_records)
@@ -1866,90 +1866,176 @@ def commission_tab():
                 total_sales = df['net_amount'].sum()
                 st.metric("Total Sales", f"${total_sales:.2f}")
             
-            st.markdown("### 📥 Download Excel Report (Original Format)")
+            st.markdown("### 📥 Download Beautiful Excel Report")
+            st.caption("The Excel file will have: bold colored headers, alternating row colors, professional borders, and auto-fitted columns")
             
-            if st.button("📊 Generate Excel Report", type="primary", use_container_width=True):
-                # Create Excel file matching original structure
+            if st.button("🎨 Generate Beautiful Excel Report", type="primary", use_container_width=True):
+                from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+                from openpyxl.utils import get_column_letter
+                
                 excel_buffer = BytesIO()
                 
                 with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
                     # Split data by section
-                    usd_data = df[df['section'] == 'Jordan Sales USD']
-                    euro_data = df[df['section'] == 'Cross-booking (Euro)']
-                    chocolate_data = df[df['section'] == 'Chocolate Spreads']
-                    rosellia_data = df[df['section'] == 'Rosellia Powder Cream']
+                    sections = {
+                        'Jordan Sales USD': df[df['section'] == 'Jordan Sales USD'],
+                        'Cross-booking (Euro)': df[df['section'] == 'Cross-booking (Euro)'],
+                        'Chocolate Spreads': df[df['section'] == 'Chocolate Spreads'],
+                        'Rosellia Powder Cream': df[df['section'] == 'Rosellia Powder Cream'],
+                        'Summary': pd.DataFrame()  # Will create summary separately
+                    }
                     
-                    # Sheet 1: Jordan Sales USD
-                    if not usd_data.empty:
-                        usd_export = usd_data[['date', 'export_inv', 'customer_name', 'country', 'weight_kg', 'amount', 'discount', 'after_discount', 'after_discount_jd', 'charges', 'net_amount', 'amount_jd', 'rate', 'commission', 'commission_jd']].copy()
-                        usd_export.columns = ['Date', 'Export Inv #', 'Customer Name', 'Country', 'WGT / KG', 'Amount / $', 'Discount', 'After Discount', 'After Disc. (JD)', 'Charges', 'Net Amount $', 'Amount JD', 'Rate', 'Com / $', 'Com / JD']
-                        usd_export.to_excel(writer, sheet_name='Jordan Sales USD', index=False)
-                    else:
-                        # Create empty template
-                        empty_template = pd.DataFrame(columns=['Date', 'Export Inv #', 'Customer Name', 'Country', 'WGT / KG', 'Amount / $', 'Discount', 'After Discount', 'After Disc. (JD)', 'Charges', 'Net Amount $', 'Amount JD', 'Rate', 'Com / $', 'Com / JD'])
-                        empty_template.to_excel(writer, sheet_name='Jordan Sales USD', index=False)
+                    # Define column headers for each section
+                    usd_headers = ['Date', 'Export Inv #', 'Customer Name', 'Country', 'WGT / KG', 'Amount / $', 'Discount', 'After Discount', 'After Disc. (JD)', 'Charges', 'Net Amount $', 'Amount JD', 'Rate', 'Com / $', 'Com / JD']
+                    euro_headers = ['Date', 'Export Inv #', 'Customer Name', 'Country', 'WGT / KG', 'Amount / €', 'Discount', 'After Discount', 'After Disc. (JD)', 'Charges', 'Net Amount €', 'Amount JD', 'Rate', 'Com / €', 'Com / JD']
                     
-                    # Sheet 2: Cross-booking (Euro)
-                    if not euro_data.empty:
-                        euro_export = euro_data[['date', 'export_inv', 'customer_name', 'country', 'weight_kg', 'amount', 'discount', 'after_discount', 'after_discount_jd', 'charges', 'net_amount', 'amount_jd', 'rate', 'commission', 'commission_jd']].copy()
-                        euro_export.columns = ['Date', 'Export Inv #', 'Customer Name', 'Country', 'WGT / KG', 'Amount / €', 'Discount', 'After Discount', 'After Disc. (JD)', 'Charges', 'Net Amount €', 'Amount JD', 'Rate', 'Com / €', 'Com / JD']
-                        euro_export.to_excel(writer, sheet_name='Cross-booking', index=False)
-                    else:
-                        empty_template = pd.DataFrame(columns=['Date', 'Export Inv #', 'Customer Name', 'Country', 'WGT / KG', 'Amount / €', 'Discount', 'After Discount', 'After Disc. (JD)', 'Charges', 'Net Amount €', 'Amount JD', 'Rate', 'Com / €', 'Com / JD'])
-                        empty_template.to_excel(writer, sheet_name='Cross-booking', index=False)
+                    # Process each section
+                    for section_name, section_data in sections.items():
+                        if section_name == 'Summary':
+                            continue
+                            
+                        # Create dataframe for this section
+                        if not section_data.empty:
+                            if 'Euro' in section_name:
+                                export_data = section_data[['date', 'export_inv', 'customer_name', 'country', 'weight_kg', 'amount', 'discount', 'after_discount', 'after_discount_jd', 'charges', 'net_amount', 'amount_jd', 'rate', 'commission', 'commission_jd']].copy()
+                                export_data.columns = euro_headers
+                            else:
+                                export_data = section_data[['date', 'export_inv', 'customer_name', 'country', 'weight_kg', 'amount', 'discount', 'after_discount', 'after_discount_jd', 'charges', 'net_amount', 'amount_jd', 'rate', 'commission', 'commission_jd']].copy()
+                                export_data.columns = usd_headers
+                            
+                            # Write to Excel
+                            export_data.to_excel(writer, sheet_name=section_name[:31], index=False)
+                            
+                            # Get the worksheet for formatting
+                            worksheet = writer.sheets[section_name[:31]]
+                            
+                            # ===== STYLING =====
+                            # Define styles
+                            header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")  # Dark blue
+                            header_font = Font(color="FFFFFF", bold=True, size=11)
+                            header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+                            
+                            # Alternating row colors
+                            light_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+                            white_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
+                            
+                            # Borders
+                            thin_border = Border(
+                                left=Side(style='thin'),
+                                right=Side(style='thin'),
+                                top=Side(style='thin'),
+                                bottom=Side(style='thin')
+                            )
+                            
+                            # Format header row
+                            for col in range(1, len(export_data.columns) + 1):
+                                cell = worksheet.cell(row=1, column=col)
+                                cell.fill = header_fill
+                                cell.font = header_font
+                                cell.alignment = header_alignment
+                                cell.border = thin_border
+                            
+                            # Format data rows with alternating colors
+                            for row in range(2, len(export_data) + 2):
+                                for col in range(1, len(export_data.columns) + 1):
+                                    cell = worksheet.cell(row=row, column=col)
+                                    if row % 2 == 0:
+                                        cell.fill = light_fill
+                                    else:
+                                        cell.fill = white_fill
+                                    cell.border = thin_border
+                                    cell.alignment = Alignment(horizontal="left", vertical="center")
+                                    
+                                    # Format currency columns
+                                    col_letter = get_column_letter(col)
+                                    if col_letter in ['F', 'G', 'H', 'K', 'N']:  # Currency columns
+                                        cell.number_format = '#,##0.00'
+                                    elif col_letter in ['I', 'L', 'O']:  # JD columns
+                                        cell.number_format = '#,##0.00'
+                            
+                            # Freeze header row
+                            worksheet.freeze_panes = 'A2'
+                            
+                            # Auto-fit column widths
+                            for col in worksheet.columns:
+                                max_length = 0
+                                col_letter = get_column_letter(col[0].column)
+                                for cell in col:
+                                    try:
+                                        if len(str(cell.value)) > max_length:
+                                            max_length = len(str(cell.value))
+                                    except:
+                                        pass
+                                adjusted_width = min(max_length + 2, 25)
+                                worksheet.column_dimensions[col_letter].width = adjusted_width
                     
-                    # Sheet 3: Chocolate Spreads
-                    if not chocolate_data.empty:
-                        chocolate_export = chocolate_data[['date', 'export_inv', 'customer_name', 'country', 'weight_kg', 'amount', 'discount', 'after_discount', 'after_discount_jd', 'charges', 'net_amount', 'amount_jd', 'rate', 'commission', 'commission_jd']].copy()
-                        chocolate_export.columns = ['Date', 'Export Inv #', 'Customer Name', 'Country', 'WGT / KG', 'Amount / $', 'Discount', 'After Discount', 'After Disc. (JD)', 'Charges', 'Net Amount $', 'Amount JD', 'Rate', 'Com / $', 'Com / JD']
-                        chocolate_export.to_excel(writer, sheet_name='Chocolate Spreads', index=False)
-                    
-                    # Sheet 4: Rosellia Powder Cream
-                    if not rosellia_data.empty:
-                        rosellia_export = rosellia_data[['date', 'export_inv', 'customer_name', 'country', 'weight_kg', 'amount', 'discount', 'after_discount', 'after_discount_jd', 'charges', 'net_amount', 'amount_jd', 'rate', 'commission', 'commission_jd']].copy()
-                        rosellia_export.columns = ['Date', 'Export Inv #', 'Customer Name', 'Country', 'WGT / KG', 'Amount / $', 'Discount', 'After Discount', 'After Disc. (JD)', 'Charges', 'Net Amount $', 'Amount JD', 'Rate', 'Com / $', 'Com / JD']
-                        rosellia_export.to_excel(writer, sheet_name='Rosellia Powder Cream', index=False)
-                    
-                    # Sheet 5: Summary
+                    # Create Summary sheet
                     summary_data = []
                     
-                    # Calculate totals
-                    usd_total = usd_data['commission'].sum() if not usd_data.empty else 0
-                    euro_total = euro_data['commission'].sum() if not euro_data.empty else 0
-                    chocolate_total = chocolate_data['commission'].sum() if not chocolate_data.empty else 0
-                    rosellia_total = rosellia_data['commission'].sum() if not rosellia_data.empty else 0
+                    usd_total = sections['Jordan Sales USD']['commission'].sum() if not sections['Jordan Sales USD'].empty else 0
+                    euro_total = sections['Cross-booking (Euro)']['commission'].sum() if not sections['Cross-booking (Euro)'].empty else 0
+                    chocolate_total = sections['Chocolate Spreads']['commission'].sum() if not sections['Chocolate Spreads'].empty else 0
+                    rosellia_total = sections['Rosellia Powder Cream']['commission'].sum() if not sections['Rosellia Powder Cream'].empty else 0
                     
                     summary_data = [
-                        ['Section', 'Total Commission (USD/Euro)', 'Total Commission (JD)'],
+                        ['COMMISSION SUMMARY REPORT'],
+                        [''],
+                        ['Section', 'Total Commission', 'Total Commission (JD)'],
                         ['Jordan Sales USD', f"${usd_total:.2f}", f"{usd_total * 0.708:.2f} JD"],
                         ['Cross-booking (Euro)', f"€{euro_total:.2f}", f"{euro_total * 0.825:.2f} JD"],
                         ['Chocolate Spreads', f"${chocolate_total:.2f}", f"{chocolate_total * 0.708:.2f} JD"],
                         ['Rosellia Powder Cream', f"${rosellia_total:.2f}", f"{rosellia_total * 0.708:.2f} JD"],
                         ['', '', ''],
-                        ['TOTAL COMMISSION', f"${usd_total + chocolate_total + rosellia_total:.2f} + €{euro_total:.2f}", f"{(usd_total + chocolate_total + rosellia_total) * 0.708 + euro_total * 0.825:.2f} JD"]
+                        ['TOTAL COMMISSION', f"${usd_total + chocolate_total + rosellia_total:.2f} + €{euro_total:.2f}", f"{(usd_total + chocolate_total + rosellia_total) * 0.708 + euro_total * 0.825:.2f} JD"],
+                        ['', '', ''],
+                        [f'Report Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', '', ''],
+                        [f'Generated by: {staff_name}', '', '']
                     ]
                     
                     summary_df = pd.DataFrame(summary_data)
                     summary_df.to_excel(writer, sheet_name='Summary', index=False, header=False)
                     
-                    # Auto-adjust column widths
-                    for sheet_name in writer.sheets:
-                        worksheet = writer.sheets[sheet_name]
-                        for column in worksheet.columns:
-                            max_length = 0
-                            column_letter = column[0].column_letter
-                            for cell in column:
-                                try:
-                                    if len(str(cell.value)) > max_length:
-                                        max_length = len(str(cell.value))
-                                except:
-                                    pass
-                            adjusted_width = min(max_length + 2, 30)
-                            worksheet.column_dimensions[column_letter].width = adjusted_width
+                    # Style Summary sheet
+                    summary_ws = writer.sheets['Summary']
+                    
+                    # Title formatting
+                    title_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+                    title_font = Font(color="FFFFFF", bold=True, size=14)
+                    
+                    title_cell = summary_ws['A1']
+                    title_cell.fill = title_fill
+                    title_cell.font = title_font
+                    title_cell.alignment = Alignment(horizontal="center", vertical="center")
+                    
+                    # Merge title cells
+                    summary_ws.merge_cells('A1:C1')
+                    
+                    # Header row formatting
+                    header_fill_light = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+                    header_font_bold = Font(bold=True)
+                    
+                    for col in range(1, 4):
+                        cell = summary_ws.cell(row=4, column=col)
+                        cell.fill = header_fill_light
+                        cell.font = header_font_bold
+                        cell.border = thin_border
+                    
+                    # Auto-fit summary sheet
+                    for col in summary_ws.columns:
+                        max_length = 0
+                        col_letter = get_column_letter(col[0].column)
+                        for cell in col:
+                            try:
+                                if len(str(cell.value)) > max_length:
+                                    max_length = len(str(cell.value))
+                            except:
+                                pass
+                        adjusted_width = min(max_length + 2, 30)
+                        summary_ws.column_dimensions[col_letter].width = adjusted_width
                 
-                st.success("✅ Excel report generated successfully!")
+                st.success("✅ Beautiful Excel report generated successfully!")
                 st.download_button(
-                    label="📥 Download Commission Report (Excel)",
+                    label="📥 Download Professional Excel Report",
                     data=excel_buffer.getvalue(),
                     file_name=f"commission_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
