@@ -1209,37 +1209,37 @@ def products_logistics_tab():
                         with product_tab2:
                             st.markdown("### 📄 Product Datasheet")
                             
-                            # Check if datasheet info exists in your catalog
-                            datasheet_cols = ['Technical_Info', 'Storage_Conditions', 'Shelf_Life', 'Allergens', 'Nutritional_Info', 'Country_of_Origin', 'HS_Code']
+                            # Check for datasheet link in the catalog
+                            datasheet_link = None
+                            if 'Datasheet_Link' in product and pd.notna(product['Datasheet_Link']) and product['Datasheet_Link']:
+                                datasheet_link = product['Datasheet_Link']
+                            elif 'Technical_Datasheet' in product and pd.notna(product['Technical_Datasheet']) and product['Technical_Datasheet']:
+                                datasheet_link = product['Technical_Datasheet']
+                            elif 'Product_Link' in product and pd.notna(product['Product_Link']) and product['Product_Link']:
+                                datasheet_link = product['Product_Link']
                             
-                            datasheet_found = False
-                            for col in datasheet_cols:
-                                if col in product and pd.notna(product[col]) and product[col]:
-                                    datasheet_found = True
-                                    st.markdown(f"**{col.replace('_', ' ')}:** {product[col]}")
-                            
-                            if not datasheet_found:
-                                st.info("📄 Datasheet information not available for this product. Please contact your sales representative for technical documentation.")
+                            if datasheet_link:
+                                st.markdown(f"📄 **Datasheet available:** [Click here to view/download datasheet]({datasheet_link})")
                                 
-                                # Option to upload datasheet
-                                uploaded_file = st.file_uploader(
-                                    f"Upload datasheet for {product['Article_Number']} - {product['Product_Name']}", 
-                                    type=['pdf', 'docx', 'txt'],
-                                    key=f"datasheet_{product['Article_Number']}"
-                                )
-                                if uploaded_file is not None:
-                                    st.success(f"✅ Datasheet '{uploaded_file.name}' ready for download")
-                                    st.download_button(
-                                        label="📥 Download Datasheet",
-                                        data=uploaded_file,
-                                        file_name=f"datasheet_{product['Article_Number']}_{product['Product_Name']}.pdf",
-                                        mime="application/pdf"
-                                    )
+                                # Try to embed if it's a Google Drive link
+                                if 'drive.google.com' in datasheet_link:
+                                    # Convert to embed URL
+                                    file_id = datasheet_link.split('/d/')[1].split('/')[0] if '/d/' in datasheet_link else None
+                                    if file_id:
+                                        embed_url = f"https://drive.google.com/file/d/{file_id}/preview"
+                                        st.markdown(f'<iframe src="{embed_url}" width="100%" height="500" style="border: none;"></iframe>', unsafe_allow_html=True)
+                                    else:
+                                        st.markdown(f"[Open in new tab]({datasheet_link})")
+                                else:
+                                    st.markdown(f"[Open in new tab]({datasheet_link})")
+                            else:
+                                st.info("📄 No datasheet available for this product. Please contact your sales representative.")
                         
                         with product_tab3:
                             st.markdown("### 📊 Technical Specifications")
                             
-                            spec_cols = ['Weight_KG', 'Dimensions', 'Cartons_Per_Pallet', 'Pallet_Weight', 'Country_of_Origin', 'HS_Code', 'Tariff_Code']
+                            # Display specifications from sheet columns
+                            spec_cols = ['Weight_KG', 'Dimensions', 'Cartons_Per_Pallet', 'Pallet_Weight', 'Country_of_Origin', 'HS_Code', 'Tariff_Code', 'Shelf_Life', 'Storage_Conditions']
                             
                             spec_found = False
                             for col in spec_cols:
@@ -1250,7 +1250,6 @@ def products_logistics_tab():
                             if not spec_found:
                                 st.info("📊 Detailed specifications not available. Check back later or contact support.")
                             
-                            # Add a simple spec table if you have standard values
                             st.markdown("---")
                             st.markdown("### 📦 Logistics Information")
                             
