@@ -1183,24 +1183,85 @@ def products_logistics_tab():
             st.markdown(f"**Found {len(filtered_catalog)} products**")
             
             if not filtered_catalog.empty:
-                for _, product in filtered_catalog.head(30).iterrows():
-                    card_class = "price-card-primary" if product.get('Supplier') == 'Backaldrin' else "price-card-secondary"
-                    with st.expander(f"📦 {product['Article_Number']} - {product['Product_Name']}", expanded=False):
-                        st.markdown(f'<div class="{card_class}">', unsafe_allow_html=True)
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.markdown(f"**Article:** {product['Article_Number']}")
-                            st.markdown(f"**Product:** {product['Product_Name']}")
-                            if 'Supplier' in product:
-                                st.markdown(f"**Supplier:** {product['Supplier']}")
-                        with col2:
-                            if 'Category' in product and product['Category']:
-                                st.markdown(f"**Category:** {product['Category']}")
-                            if 'UOM' in product and product['UOM']:
-                                st.markdown(f"**UOM:** {product['UOM']}")
-                        if 'Common_Description' in product and product['Common_Description']:
-                            st.markdown(f"**Description:** {product['Common_Description']}")
-                        st.markdown('</div>', unsafe_allow_html=True)
+for _, product in filtered_catalog.head(30).iterrows():
+    with st.expander(f"📦 {product['Article_Number']} - {product['Product_Name']}", expanded=False):
+        # Create tabs for this product
+        product_tab1, product_tab2, product_tab3 = st.tabs(["📋 Details", "📄 Datasheet", "📊 Specifications"])
+        
+        with product_tab1:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown(f"**Article Number:** {product['Article_Number']}")
+                st.markdown(f"**Product Name:** {product['Product_Name']}")
+                if 'Supplier' in product and product['Supplier']:
+                    st.markdown(f"**Supplier:** {product['Supplier']}")
+            with col2:
+                if 'Category' in product and product['Category']:
+                    st.markdown(f"**Category:** {product['Category']}")
+                if 'UOM' in product and product['UOM']:
+                    st.markdown(f"**UOM:** {product['UOM']}")
+                if 'Packaging' in product and product['Packaging']:
+                    st.markdown(f"**Packaging:** {product['Packaging']}")
+            if 'Common_Description' in product and product['Common_Description']:
+                st.markdown("---")
+                st.markdown(f"**Description:** {product['Common_Description']}")
+        
+        with product_tab2:
+            st.markdown("### 📄 Product Datasheet")
+            
+            # Check if datasheet info exists in your catalog
+            datasheet_cols = ['Technical_Info', 'Storage_Conditions', 'Shelf_Life', 'Allergens', 'Nutritional_Info', 'Country_of_Origin', 'HS_Code']
+            
+            datasheet_found = False
+            for col in datasheet_cols:
+                if col in product and pd.notna(product[col]) and product[col]:
+                    datasheet_found = True
+                    st.markdown(f"**{col.replace('_', ' ')}:** {product[col]}")
+            
+            if not datasheet_found:
+                st.info("📄 Datasheet information not available for this product. Please contact your sales representative for technical documentation.")
+                
+                # Option to upload datasheet
+                uploaded_file = st.file_uploader(
+                    f"Upload datasheet for {product['Article_Number']} - {product['Product_Name']}", 
+                    type=['pdf', 'docx', 'txt'],
+                    key=f"datasheet_{product['Article_Number']}"
+                )
+                if uploaded_file is not None:
+                    st.success(f"✅ Datasheet '{uploaded_file.name}' ready for download")
+                    st.download_button(
+                        label="📥 Download Datasheet",
+                        data=uploaded_file,
+                        file_name=f"datasheet_{product['Article_Number']}_{product['Product_Name']}.pdf",
+                        mime="application/pdf"
+                    )
+        
+        with product_tab3:
+            st.markdown("### 📊 Technical Specifications")
+            
+            spec_cols = ['Weight_KG', 'Dimensions', 'Cartons_Per_Pallet', 'Pallet_Weight', 'Country_of_Origin', 'HS_Code', 'Tariff_Code']
+            
+            spec_found = False
+            for col in spec_cols:
+                if col in product and pd.notna(product[col]) and product[col]:
+                    spec_found = True
+                    st.markdown(f"**{col.replace('_', ' ')}:** {product[col]}")
+            
+            if not spec_found:
+                st.info("📊 Detailed specifications not available. Check back later or contact support.")
+            
+            # Add a simple spec table if you have standard values
+            st.markdown("---")
+            st.markdown("### 📦 Logistics Information")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown(f"**Article Number:** {product['Article_Number']}")
+                if 'UOM' in product and product['UOM']:
+                    st.markdown(f"**Unit of Measure:** {product['UOM']}")
+            with col2:
+                if 'Supplier' in product and product['Supplier']:
+                    st.markdown(f"**Supplier:** {product['Supplier']}")
                 
                 if len(filtered_catalog) > 30:
                     st.info(f"Showing 30 of {len(filtered_catalog)} products. Use filters to narrow down.")
