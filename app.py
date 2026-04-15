@@ -2,8 +2,8 @@
 # MULTI-CLIENT PRICING DASHBOARD - CONSOLIDATED EDITION
 # ============================================
 # Author: Zaid F. Al-Shami
-# Version: 7.0 (with Commission Tab)
-# Last Updated: 09 April 2026
+# Version: 8.0 (with Client Details Tab)
+# Last Updated: 15 April 2026
 # ============================================
 
 import streamlit as st
@@ -268,6 +268,25 @@ st.markdown("""
         from { opacity: 0; }
         to { opacity: 1; }
     }
+    
+    .client-detail-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s ease;
+    }
+    
+    .client-detail-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+    
+    .empty-field {
+        color: #94a3b8;
+        font-style: italic;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -277,6 +296,7 @@ st.markdown("""
 API_KEY = "AIzaSyA3P-ZpLjDdVtGB82_1kaWuO7lNbKDj9HU"
 CDC_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"
 COMMISSION_SHEET_ID = "1cfYGlnagnN7oF3toaSeXtxQ_HiJpHcVGSB8lzMBn41s"  # Your new commission sheet
+CLIENT_DETAILS_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"  # Same as CDC_SHEET_ID or your specific sheet ID
 
 # User authentication - "ALL" means load all clients from sheet
 USERS = {
@@ -304,6 +324,7 @@ CLIENT_SHEETS = {
 PRODUCT_CATALOG_SHEET = "FullProductList"
 PRICES_SHEET = "Prices"
 GENERAL_PRICES_SHEET = "General_prices"
+CLIENT_DETAILS_SHEET = "Client_details"
 
 # ============================================
 # HELPER FUNCTIONS
@@ -341,6 +362,20 @@ def load_sheet_data(sheet_name, start_row=0, sheet_id=CDC_SHEET_ID):
         return pd.DataFrame()
     except Exception as e:
         st.error(f"Error loading {sheet_name}: {str(e)}")
+        return pd.DataFrame()
+
+@st.cache_data(ttl=300)
+def load_client_details():
+    """Load client details from Client_details sheet"""
+    try:
+        df = load_sheet_data(CLIENT_DETAILS_SHEET, sheet_id=CLIENT_DETAILS_SHEET_ID)
+        if not df.empty:
+            # Clean up column names (remove extra spaces)
+            df.columns = df.columns.str.strip()
+            return df
+        return pd.DataFrame()
+    except Exception as e:
+        st.error(f"Error loading client details: {str(e)}")
         return pd.DataFrame()
 
 @st.cache_data(ttl=300)
@@ -1755,7 +1790,7 @@ def price_tracking_tab():
         st.info("👆 Enter an article number or product name above to start tracking price history")
 
 # ============================================
-# TAB 7: COMMISSION (NEW)
+# TAB 7: COMMISSION
 # ============================================
 
 def commission_tab():
@@ -1985,7 +2020,7 @@ def commission_tab():
                         timestamps_to_delete = set(filtered_df['timestamp'].tolist())
                         original_count = len(st.session_state.commission_records)
                         st.session_state.commission_records = [
-                            r for r in st.session_state.comission_records 
+                            r for r in st.session_state.commission_records 
                             if r['timestamp'] not in timestamps_to_delete
                         ]
                         st.success(f"✅ Deleted {original_count - len(st.session_state.commission_records)} records!")
@@ -2160,11 +2195,210 @@ def commission_tab():
             st.info("No data available. Add some commission records first to generate the Excel report.")
 
 # ============================================
+# TAB 8: CLIENT DETAILS (NEW)
+# ============================================
+
+def client_details_tab():
+    """Display client details from Client_details sheet with support for partial data"""
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
+        <h2 style="margin:0; color: white;">👥 Client Details</h2>
+        <p style="margin:0; opacity:0.9; color: white;">Complete client information • Contact details • Business information</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    with st.spinner("Loading client details..."):
+        client_details_df = load_client_details()
+    
+    if client_details_df.empty:
+        st.warning("No client details found. Please make sure the 'Client_details' sheet exists and contains data.")
+        st.info("The sheet should have columns like: Client Name, Contact Person, Email, Phone, Address, Country, etc.")
+        return
+    
+    st.success(f"✅ Loaded {len(client_details_df)} client records")
+    
+    # Summary metrics
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Total Clients", len(client_details_df))
+    with col2:
+        # Count clients with email
+        email_col = next((col for col in client_details_df.columns if 'email' in col.lower() or 'Email' in col), None)
+        if email_col:
+            email_count = client_details_df[email_col].notna().sum()
+            st.metric("With Email", email_count)
+        else:
+            st.metric("With Email", "N/A")
+    with col3:
+        # Count clients with phone
+        phone_col = next((col for col in client_details_df.columns if 'phone' in col.lower() or 'Phone' in col or 'mobile' in col.lower()), None)
+        if phone_col:
+            phone_count = client_details_df[phone_col].notna().sum()
+            st.metric("With Phone", phone_count)
+        else:
+            st.metric("With Phone", "N/A")
+    with col4:
+        # Count clients with address
+        address_col = next((col for col in client_details_df.columns if 'address' in col.lower() or 'Address' in col), None)
+        if address_col:
+            address_count = client_details_df[address_col].notna().sum()
+            st.metric("With Address", address_count)
+        else:
+            st.metric("With Address", "N/A")
+    
+    # Search and filter section
+    st.markdown("---")
+    col1, col2, col3 = st.columns([2, 1, 1])
+    
+    with col1:
+        search_term = st.text_input("🔍 Search Clients:", placeholder="Search by name, contact person, email, country...", key="client_search")
+    
+    with col2:
+        # Find a country column if exists
+        country_col = next((col for col in client_details_df.columns if 'country' in col.lower() or 'Country' in col), None)
+        if country_col:
+            countries = ["All"] + sorted(client_details_df[country_col].dropna().unique().tolist())
+            country_filter = st.selectbox("Filter by Country:", countries, key="client_country_filter")
+        else:
+            country_filter = "All"
+    
+    with col3:
+        # Show complete info toggle
+        show_complete_only = st.checkbox("Show Complete Info Only", value=False, help="Show only clients with all major fields filled")
+    
+    # Filter data
+    filtered_df = client_details_df.copy()
+    
+    if search_term:
+        search_lower = search_term.lower()
+        mask = filtered_df.astype(str).apply(lambda x: x.str.contains(search_lower, case=False, na=False)).any(axis=1)
+        filtered_df = filtered_df[mask]
+    
+    if country_filter != "All" and country_col:
+        filtered_df = filtered_df[filtered_df[country_col] == country_filter]
+    
+    if show_complete_only:
+        # Define major fields - adjust based on your actual columns
+        major_fields = []
+        for col in filtered_df.columns:
+            if any(keyword in col.lower() for keyword in ['name', 'email', 'phone', 'address', 'contact']):
+                major_fields.append(col)
+        
+        if major_fields:
+            # Keep only rows where all major fields are filled
+            for field in major_fields:
+                filtered_df = filtered_df[filtered_df[field].notna()]
+    
+    st.markdown(f"### 📋 Client Directory ({len(filtered_df)} clients)")
+    
+    # Display clients in a grid or expandable cards
+    if not filtered_df.empty:
+        # Option to switch between grid and table view
+        view_type = st.radio("View as:", ["Cards", "Table"], horizontal=True, key="client_view_type")
+        
+        if view_type == "Cards":
+            # Display as cards in a grid (3 columns)
+            cols_per_row = 3
+            for i in range(0, len(filtered_df), cols_per_row):
+                cols = st.columns(cols_per_row)
+                for j in range(cols_per_row):
+                    if i + j < len(filtered_df):
+                        client = filtered_df.iloc[i + j]
+                        with cols[j]:
+                            # Get client name - try different possible column names
+                            name_col = next((col for col in client.index if 'name' in col.lower() or 'Name' in col), None)
+                            client_name = client[name_col] if name_col and pd.notna(client[name_col]) else f"Client {i+j+1}"
+                            
+                            st.markdown(f"""
+                            <div class="client-detail-card">
+                                <h4 style="margin: 0 0 0.5rem 0; color: #1e293b;">🏢 {client_name}</h4>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            # Display all non-empty fields
+                            for col in client.index:
+                                value = client[col]
+                                if pd.notna(value) and str(value).strip():
+                                    # Format the label nicely
+                                    label = col.replace('_', ' ').title()
+                                    st.markdown(f"**{label}:** {value}")
+                            
+                            st.markdown("---")
+        else:
+            # Display as table
+            # Select which columns to show (prioritize important ones)
+            important_cols = []
+            for col in filtered_df.columns:
+                if any(keyword in col.lower() for keyword in ['name', 'contact', 'email', 'phone', 'mobile', 'address', 'country', 'city']):
+                    important_cols.append(col)
+            
+            if not important_cols:
+                important_cols = filtered_df.columns.tolist()
+            
+            # Limit to first 10 important columns for better display
+            display_cols = important_cols[:10]
+            
+            # Create display dataframe with proper formatting
+            display_df = filtered_df[display_cols].copy()
+            
+            # Replace NaN/NA with empty string for cleaner display
+            display_df = display_df.fillna('')
+            
+            # Rename columns for better readability
+            display_df.columns = [col.replace('_', ' ').title() for col in display_df.columns]
+            
+            st.dataframe(display_df, use_container_width=True, height=400)
+    
+    else:
+        st.info("No clients match your search criteria")
+    
+    # Export option
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("📥 Export Client Details to CSV", use_container_width=True):
+            csv = filtered_df.to_csv(index=False)
+            st.download_button(
+                label="Download CSV",
+                data=csv,
+                file_name=f"client_details_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+    
+    with col2:
+        if st.button("🔄 Refresh Data", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
+    
+    # Show data completeness summary
+    with st.expander("📊 Data Completeness Summary"):
+        st.markdown("### Field Completion Rates")
+        
+        completion_data = []
+        for col in client_details_df.columns:
+            non_null_count = client_details_df[col].notna().sum()
+            completion_pct = (non_null_count / len(client_details_df)) * 100
+            completion_data.append({
+                'Field': col,
+                'Filled Records': non_null_count,
+                'Empty Records': len(client_details_df) - non_null_count,
+                'Completion Rate': f"{completion_pct:.1f}%"
+            })
+        
+        completion_df = pd.DataFrame(completion_data)
+        completion_df = completion_df.sort_values('Filled Records', ascending=False)
+        
+        st.dataframe(completion_df, use_container_width=True, hide_index=True)
+        
+        st.info("💡 Tip: Add more data to the 'Client_details' sheet to see more information here. Empty cells are handled gracefully.")
+
+# ============================================
 # MAIN DASHBOARD
 # ============================================
 
 def main_dashboard():
-    """Main dashboard with 7 consolidated tabs"""
+    """Main dashboard with 8 consolidated tabs"""
     
     with st.sidebar:
         st.markdown("### 📋 Navigation")
@@ -2176,7 +2410,8 @@ def main_dashboard():
             "📦 PRODUCTS & LOGISTICS",
             "📅 ORDER TRACKING",
             "📈 PRICE TRACKING",
-            "💰 COMMISSION"  # New tab
+            "💰 COMMISSION",
+            "👥 CLIENT DETAILS"  # New tab added here
         ]
         
         for tab in tabs:
@@ -2205,10 +2440,11 @@ def main_dashboard():
         st.markdown("---")
         st.markdown("### 📢 Updates")
         announcements = [
-            "✅ NEW! Commission tab added!",
-            "💰 Track sales commissions",
-            "📊 Download Excel reports",
-            "👥 Staff-specific client access"
+            "✅ NEW! Client Details tab added!",
+            "👥 Complete client information",
+            "📊 Data completeness tracking",
+            "🔍 Search and filter clients",
+            "💰 Commission tracking available"
         ]
         for announcement in announcements:
             st.markdown(f'<div class="announcement-item">{announcement}</div>', unsafe_allow_html=True)
@@ -2232,10 +2468,12 @@ def main_dashboard():
         price_tracking_tab()
     elif st.session_state.active_tab == "💰 COMMISSION":
         commission_tab()
+    elif st.session_state.active_tab == "👥 CLIENT DETAILS":
+        client_details_tab()
     
     st.markdown(f"""
     <div class="dashboard-footer">
-        Multi-Client Dashboard v7.0 (with Commission Tab) | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        Multi-Client Dashboard v8.0 (with Client Details Tab) | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
     </div>
     """, unsafe_allow_html=True)
 
