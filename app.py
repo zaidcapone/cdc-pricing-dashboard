@@ -2578,11 +2578,12 @@ def sales_history_tab():
                 supplier_data = client_data.get(supplier, {})
                 for article_num, article_data in supplier_data.items():
                     product_name = article_data.get('names', ['N/A'])[0]
-                    items_list.append({
-                        'article': article_num,
-                        'product': product_name,
-                        'supplier': supplier
-                    })
+                    if product_name and product_name != 'N/A' and product_name != 'nan':
+                        items_list.append({
+                            'article': article_num,
+                            'product': product_name,
+                            'supplier': supplier
+                        })
             
             if not items_list:
                 st.warning(f"No items found for {selected_client}")
@@ -2656,22 +2657,32 @@ def sales_history_tab():
                         prices = []
                         
                         for order in filtered_orders:
+                            # Safe quantity extraction
                             try:
-                                qty = float(str(order.get('quantity', '0')).replace(',', '').strip()) if order.get('quantity') else 0
+                                qty_str = str(order.get('quantity', '0')).replace(',', '').strip()
+                                qty_str = re.sub(r'[^0-9.-]', '', qty_str)
+                                qty = float(qty_str) if qty_str and qty_str != 'nan' else 0
                                 total_quantity += qty
                             except:
                                 pass
                             
+                            # Safe weight extraction
                             try:
-                                weight = float(str(order.get('total_weight', '0')).replace(',', '').strip()) if order.get('total_weight') else 0
+                                weight_str = str(order.get('total_weight', '0')).replace(',', '').strip()
+                                weight_str = re.sub(r'[^0-9.-]', '', weight_str)
+                                weight = float(weight_str) if weight_str and weight_str != 'nan' else 0
                                 total_weight += weight
                             except:
                                 pass
                             
+                            # Safe price extraction
                             try:
-                                price = float(str(order.get('price', '0')).replace('$', '').replace(',', '').strip()) if order.get('price') else 0
-                                prices.append(price)
-                                total_value += price * weight if weight > 0 else 0
+                                price_str = str(order.get('price', '0')).replace('$', '').replace(',', '').strip()
+                                price_str = re.sub(r'[^0-9.-]', '', price_str)
+                                price = float(price_str) if price_str and price_str != 'nan' and price_str != '' else 0
+                                if price > 0:
+                                    prices.append(price)
+                                    total_value += price * weight if weight > 0 else 0
                             except:
                                 pass
                         
@@ -2679,76 +2690,114 @@ def sales_history_tab():
                         with col1:
                             st.metric("Total Orders", len(filtered_orders))
                         with col2:
-                            st.metric("Total Quantity", f"{total_quantity:,.0f}")
+                            st.metric("Total Quantity", f"{total_quantity:,.0f}" if total_quantity > 0 else "N/A")
                         with col3:
-                            st.metric("Total Weight", f"{total_weight:,.0f} kg")
+                            st.metric("Total Weight", f"{total_weight:,.0f} kg" if total_weight > 0 else "N/A")
                         with col4:
-                            st.metric("Total Value", f"${total_value:,.2f}")
+                            st.metric("Total Value", f"${total_value:,.2f}" if total_value > 0 else "N/A")
                         
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("Min Price", f"${min(prices):.2f}" if prices else "N/A")
-                        with col2:
-                            st.metric("Max Price", f"${max(prices):.2f}" if prices else "N/A")
-                        with col3:
-                            st.metric("Avg Price", f"${sum(prices)/len(prices):.2f}" if prices else "N/A")
+                        if prices:
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("Min Price", f"${min(prices):.2f}")
+                            with col2:
+                                st.metric("Max Price", f"${max(prices):.2f}")
+                            with col3:
+                                st.metric("Avg Price", f"${sum(prices)/len(prices):.2f}")
                         
                         # Create chart data
                         chart_data = []
                         for order in filtered_orders:
                             try:
-                                price_val = float(str(order.get('price', '0')).replace('$', '').replace(',', '').strip()) if order.get('price') else 0
-                                weight_val = float(str(order.get('total_weight', '0')).replace(',', '').strip()) if order.get('total_weight') else 0
-                                chart_data.append({
-                                    'Date': order.get('parsed_date'),
-                                    'Price (USD/kg)': price_val,
-                                    'Weight (kg)': weight_val,
-                                    'Order #': order.get('order_no', 'N/A')
-                                })
+                                price_str = str(order.get('price', '0')).replace('$', '').replace(',', '').strip()
+                                price_str = re.sub(r'[^0-9.-]', '', price_str)
+                                price_val = float(price_str) if price_str and price_str != 'nan' and price_str != '' else 0
+                                
+                                weight_str = str(order.get('total_weight', '0')).replace(',', '').strip()
+                                weight_str = re.sub(r'[^0-9.-]', '', weight_str)
+                                weight_val = float(weight_str) if weight_str and weight_str != 'nan' and weight_str != '' else 0
+                                
+                                if price_val > 0 or weight_val > 0:
+                                    chart_data.append({
+                                        'Date': order.get('parsed_date'),
+                                        'Price (USD/kg)': price_val,
+                                        'Weight (kg)': weight_val,
+                                        'Order #': order.get('order_no', 'N/A')
+                                    })
                             except:
                                 continue
                         
                         if chart_data:
                             chart_df = pd.DataFrame(chart_data)
                             
-                            st.markdown("### 📈 Price Trend")
-                            price_chart = alt.Chart(chart_df).mark_line(point=True, color='#f97316', strokeWidth=2).encode(
-                                x=alt.X('Date:T', title='Order Date'),
-                                y=alt.Y('Price (USD/kg):Q', title='Price (USD/kg)'),
-                                tooltip=['Date:T', 'Price (USD/kg):Q', 'Weight (kg):Q', 'Order #:N']
-                            ).properties(height=350)
-                            st.altair_chart(price_chart, use_container_width=True)
-                            
-                            st.markdown("### 📦 Sales Volume")
-                            volume_chart = alt.Chart(chart_df).mark_bar(color='#f97316').encode(
-                                x=alt.X('Date:T', title='Order Date'),
-                                y=alt.Y('Weight (kg):Q', title='Weight (kg)'),
-                                tooltip=['Date:T', 'Weight (kg):Q', 'Order #:N']
-                            ).properties(height=300)
-                            st.altair_chart(volume_chart, use_container_width=True)
+                            if len(chart_df) > 0:
+                                st.markdown("### 📈 Price Trend")
+                                price_chart = alt.Chart(chart_df).mark_line(point=True, color='#f97316', strokeWidth=2).encode(
+                                    x=alt.X('Date:T', title='Order Date'),
+                                    y=alt.Y('Price (USD/kg):Q', title='Price (USD/kg)'),
+                                    tooltip=['Date:T', 'Price (USD/kg):Q', 'Weight (kg):Q', 'Order #:N']
+                                ).properties(height=350)
+                                st.altair_chart(price_chart, use_container_width=True)
+                                
+                                st.markdown("### 📦 Sales Volume")
+                                volume_chart = alt.Chart(chart_df).mark_bar(color='#f97316').encode(
+                                    x=alt.X('Date:T', title='Order Date'),
+                                    y=alt.Y('Weight (kg):Q', title='Weight (kg)'),
+                                    tooltip=['Date:T', 'Weight (kg):Q', 'Order #:N']
+                                ).properties(height=300)
+                                st.altair_chart(volume_chart, use_container_width=True)
                         
                         # Detailed orders table
                         st.markdown("### 📋 Order Details")
-                        orders_df = pd.DataFrame([{
-                            'Order Date': order.get('date', 'N/A'),
-                            'Order #': order.get('order_no', 'N/A'),
-                            'Quantity': order.get('quantity', 'N/A'),
-                            'Weight (kg)': order.get('total_weight', 'N/A'),
-                            'Price ($/kg)': f"${float(str(order.get('price', '0')).replace('$', '').replace(',', '').strip()):.2f}" if order.get('price') else 'N/A',
-                            'Total Value ($)': f"${float(str(order.get('total_price', '0')).replace('$', '').replace(',', '').strip()):.2f}" if order.get('total_price') else 'N/A'
-                        } for order in filtered_orders])
+                        orders_list = []
+                        for order in filtered_orders:
+                            # Safe price formatting
+                            price_display = 'N/A'
+                            price_value = None
+                            try:
+                                price_str = str(order.get('price', '')).replace('$', '').replace(',', '').strip()
+                                price_str = re.sub(r'[^0-9.-]', '', price_str)
+                                if price_str and price_str != 'nan' and price_str != '':
+                                    price_value = float(price_str)
+                                    price_display = f"${price_value:.2f}"
+                            except:
+                                pass
+                            
+                            # Safe total price formatting
+                            total_price_display = 'N/A'
+                            try:
+                                total_price_str = str(order.get('total_price', '')).replace('$', '').replace(',', '').strip()
+                                total_price_str = re.sub(r'[^0-9.-]', '', total_price_str)
+                                if total_price_str and total_price_str != 'nan' and total_price_str != '':
+                                    total_price_value = float(total_price_str)
+                                    total_price_display = f"${total_price_value:.2f}"
+                            except:
+                                pass
+                            
+                            orders_list.append({
+                                'Order Date': order.get('date', 'N/A'),
+                                'Order #': order.get('order_no', 'N/A'),
+                                'Quantity': order.get('quantity', 'N/A') if order.get('quantity') else 'N/A',
+                                'Weight (kg)': order.get('total_weight', 'N/A') if order.get('total_weight') else 'N/A',
+                                'Price ($/kg)': price_display,
+                                'Total Value ($)': total_price_display
+                            })
                         
-                        st.dataframe(orders_df, use_container_width=True, hide_index=True)
-                        
-                        # Export option
-                        csv = orders_df.to_csv(index=False)
-                        st.download_button(
-                            label="📥 Export Sales History to CSV",
-                            data=csv,
-                            file_name=f"sales_history_{selected_article}_{selected_client}_{start_date}_{end_date}.csv",
-                            mime="text/csv",
-                            use_container_width=True
-                        )
+                        if orders_list:
+                            orders_df = pd.DataFrame(orders_list)
+                            st.dataframe(orders_df, use_container_width=True, hide_index=True)
+                            
+                            # Export option
+                            csv = orders_df.to_csv(index=False)
+                            st.download_button(
+                                label="📥 Export Sales History to CSV",
+                                data=csv,
+                                file_name=f"sales_history_{selected_article}_{selected_client}_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.csv",
+                                mime="text/csv",
+                                use_container_width=True
+                            )
+                        else:
+                            st.info("No valid data to display in table")
                         
                     else:
                         st.warning(f"No orders found for this item between {start_date} and {end_date}")
