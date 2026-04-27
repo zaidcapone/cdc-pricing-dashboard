@@ -320,7 +320,7 @@ CDC_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"
 COMMISSION_SHEET_ID = "1cfYGlnagnN7oF3toaSeXtxQ_HiJpHcVGSB8lzMBn41s"
 CLIENT_DETAILS_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"
 
-# User authentication
+# User authentication - "ALL" means load all clients from sheet
 USERS = {
     "admin": {"password": "123456", "clients": "ALL"},
     "ceo": {"password": "123456", "clients": "ALL"},
@@ -328,7 +328,8 @@ USERS = {
     "mohammad": {"password": "123456", "clients": ["CoteDivoire"]},
     "Khalid": {"password": "123456", "clients": ["CakeArt", "SweetHouse"]},
     "Rotana": {"password": "123456", "clients": ["CDC"]},
-    "Abed": {"password": "123456", "clients": ["Qzine", "MEPT"]}
+    "Abed": {"password": "123456", "clients": ["Qzine", "MEPT"]},
+    "Shaltaf": {"password": "123456", "clients": ["Sweet House General Trading L.LC", "WoodBurry", "Cake Arts", "Safwet Al Fursan"]}
 }
 
 # Client data sheets mapping
