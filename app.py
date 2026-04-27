@@ -448,7 +448,7 @@ def get_all_clients_from_master():
 
 @st.cache_data(ttl=300)
 def get_google_sheets_data(client="CDC"):
-    """Load client data from Clients_CoC master sheet"""
+    """Load client data from Clients_CoC master sheet with currency support"""
     try:
         master_df = load_sheet_data("Clients_CoC")
         
@@ -489,17 +489,34 @@ def get_google_sheets_data(client="CDC"):
                     continue
                     
                 if article not in result:
-                    result[article] = {'names': [], 'prices': [], 'orders': [], 'article': article}
+                    result[article] = {'names': [], 'prices': [], 'prices_with_currency': [], 'orders': [], 'article': article}
                 
                 product_name = str(row.get(product_col, '')).strip()
                 if product_name and product_name != 'nan' and product_name not in result[article]['names']:
                     result[article]['names'].append(product_name)
                 
+                # Extract price and currency
                 price_str = str(row.get(price_col, '')).strip()
+                price_value = None
+                currency = "USD"  # default
+                
                 if price_str and price_str != 'nan':
+                    # Detect currency from price string
+                    if '€' in price_str or 'EUR' in price_str.upper():
+                        currency = "EUR"
+                        # Remove currency符号
+                        price_clean = price_str.replace('€', '').replace('EUR', '').strip()
+                    elif 'ريال' in price_str or 'SAR' in price_str.upper() or 'ر.س' in price_str:
+                        currency = "SAR"
+                        price_clean = re.sub(r'[ريالSARر.س\s]', '', price_str).strip()
+                    else:
+                        currency = "USD"
+                        price_clean = price_str.replace('$', '').replace('USD', '').strip()
+                    
                     try:
-                        price_float = float(price_str)
-                        result[article]['prices'].append(price_float)
+                        price_value = float(price_clean.replace(',', ''))
+                        result[article]['prices'].append(price_value)
+                        result[article]['prices_with_currency'].append({'value': price_value, 'currency': currency})
                     except:
                         pass
                 
@@ -513,7 +530,9 @@ def get_google_sheets_data(client="CDC"):
                     'packaging': str(row.get(packaging_col, '')).strip() if packaging_col in df else '',
                     'quantity': str(row.get(quantity_col, '')).strip() if quantity_col in df else '',
                     'total_weight': str(row.get(weight_col, '')).strip() if weight_col in df else '',
-                    'price': str(row.get(price_col, '')).strip() if price_col in df else '',
+                    'price': price_str,
+                    'price_value': price_value,
+                    'currency': currency,
                     'total_price': str(row.get(total_price_col, '')).strip() if total_price_col in df else ''
                 }
                 result[article]['orders'].append(order_details)
@@ -2354,11 +2373,11 @@ def client_details_tab():
 # ============================================
 
 def price_checker_tab():
-    """Check the last/most recent price for any item by client"""
+    """Check the last/most recent price for any item by client with currency support"""
     st.markdown("""
     <div style="background: linear-gradient(135deg, #ec4899, #db2777); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
         <h2 style="margin:0; color: white;">💰 Price Checker</h2>
-        <p style="margin:0; opacity:0.9; color: white;">Get the latest price for any product • Search by Article or Product Name</p>
+        <p style="margin:0; opacity:0.9; color: white;">Get the latest price for any product • Supports USD, EUR, SAR</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -2374,6 +2393,13 @@ def price_checker_tab():
     
     with col2:
         selected_client = st.selectbox("Select Client:", available_clients, key="price_checker_client")
+    
+    # Currency symbol mapping
+    currency_symbols = {
+        "USD": "$",
+        "EUR": "€",
+        "SAR": "ر.س"
+    }
     
     if search_mode == "🔍 Search Specific Item":
         col1, col2 = st.columns([2, 1])
@@ -2408,27 +2434,35 @@ def price_checker_tab():
                             if orders:
                                 # Sort orders by date to find the latest
                                 sorted_orders = sorted(orders, key=lambda x: str(x.get('date', '')), reverse=True)
-                                for order in sorted_orders:
-                                    price_str = order.get('price', '')
-                                    try:
-                                        price_val = float(str(price_str).replace('$', '').replace(',', '').strip())
-                                        latest_price = price_val
-                                        latest_date = order.get('date', 'Unknown')
-                                        break
-                                    except:
-                                        latest_price = price_str
-                                        latest_date = order.get('date', 'Unknown')
-                                        break
+                                latest_order = sorted_orders[0] if sorted_orders else None
                                 
-                                results.append({
-                                    'Article': article_num,
-                                    'Product Name': article_data.get('names', ['N/A'])[0],
-                                    'Supplier': supplier,
-                                    'Latest Price': f"${latest_price:.2f}" if isinstance(latest_price, (int, float)) else latest_price,
-                                    'Last Order Date': latest_date,
-                                    'Total Orders': len(orders),
-                                    'Price History': [f"${p:.2f}" for p in article_data.get('prices', [])] if article_data.get('prices') else []
-                                })
+                                if latest_order:
+                                    price_value = latest_order.get('price_value')
+                                    currency = latest_order.get('currency', 'USD')
+                                    latest_date = latest_order.get('date', 'Unknown')
+                                    symbol = currency_symbols.get(currency, "$")
+                                    
+                                    if price_value:
+                                        latest_price_display = f"{symbol}{price_value:.2f}"
+                                    else:
+                                        latest_price_display = latest_order.get('price', 'N/A')
+                                    
+                                    # Get price history
+                                    price_history = []
+                                    for p in article_data.get('prices_with_currency', []):
+                                        sym = currency_symbols.get(p['currency'], "$")
+                                        price_history.append(f"{sym}{p['value']:.2f}")
+                                    
+                                    results.append({
+                                        'Article': article_num,
+                                        'Product Name': article_data.get('names', ['N/A'])[0],
+                                        'Supplier': supplier,
+                                        'Latest Price': latest_price_display,
+                                        'Currency': currency,
+                                        'Last Order Date': latest_date,
+                                        'Total Orders': len(orders),
+                                        'Price History': price_history
+                                    })
                 
                 if results:
                     st.success(f"✅ Found {len(results)} matching items")
@@ -2440,6 +2474,7 @@ def price_checker_tab():
                                 st.markdown(f"**Article Number:** {result['Article']}")
                                 st.markdown(f"**Product Name:** {result['Product Name']}")
                                 st.markdown(f"**Supplier:** {result['Supplier']}")
+                                st.markdown(f"**Currency:** {result['Currency']}")
                             with col2:
                                 st.markdown(f"**💰 Latest Price:** <span style='font-size: 1.5rem; font-weight: 700; color: #059669;'>{result['Latest Price']}/kg</span>", unsafe_allow_html=True)
                                 st.markdown(f"**📅 Last Order Date:** {result['Last Order Date']}")
@@ -2468,23 +2503,28 @@ def price_checker_tab():
                     orders = article_data.get('orders', [])
                     if orders:
                         sorted_orders = sorted(orders, key=lambda x: str(x.get('date', '')), reverse=True)
-                        latest_price = None
-                        latest_date = None
-                        for order in sorted_orders:
-                            price_str = order.get('price', '')
-                            try:
-                                latest_price = float(str(price_str).replace('$', '').replace(',', '').strip())
-                                latest_date = order.get('date', 'Unknown')
-                                break
-                            except:
-                                continue
+                        latest_order = sorted_orders[0] if sorted_orders else None
                         
-                        if latest_price:
+                        if latest_order:
+                            price_value = latest_order.get('price_value')
+                            currency = latest_order.get('currency', 'USD')
+                            latest_date = latest_order.get('date', 'Unknown')
+                            symbol = currency_symbols.get(currency, "$")
+                            
+                            if price_value:
+                                latest_price_display = price_value
+                                latest_price_formatted = f"{symbol}{price_value:.2f}"
+                            else:
+                                latest_price_display = 0
+                                latest_price_formatted = latest_order.get('price', 'N/A')
+                            
                             all_items.append({
                                 'Article': article_num,
                                 'Product Name': article_data.get('names', ['N/A'])[0],
                                 'Supplier': supplier,
-                                'Latest Price': latest_price,
+                                'Latest Price': latest_price_display,
+                                'Latest Price Formatted': latest_price_formatted,
+                                'Currency': currency,
                                 'Last Order Date': latest_date,
                                 'Total Orders': len(orders)
                             })
@@ -2499,11 +2539,16 @@ def price_checker_tab():
                 with col1:
                     st.metric("Total Items", len(df))
                 with col2:
-                    st.metric("Avg Price", f"${df['Latest Price'].mean():.2f}")
+                    # Calculate average by converting to USD (simple approach - show note)
+                    usd_prices = [item['Latest Price'] for item in all_items if item['Currency'] == 'USD' and item['Latest Price'] > 0]
+                    if usd_prices:
+                        st.metric("Avg Price (USD only)", f"${sum(usd_prices)/len(usd_prices):.2f}")
+                    else:
+                        st.metric("Avg Price", "Multiple currencies")
                 with col3:
-                    st.metric("Min Price", f"${df['Latest Price'].min():.2f}")
+                    st.metric("USD Items", len([i for i in all_items if i['Currency'] == 'USD']))
                 with col4:
-                    st.metric("Max Price", f"${df['Latest Price'].max():.2f}")
+                    st.metric("EUR/SAR Items", len([i for i in all_items if i['Currency'] in ['EUR', 'SAR']]))
                 
                 col1, col2 = st.columns(2)
                 with col1:
@@ -2521,17 +2566,13 @@ def price_checker_tab():
                 
                 st.markdown(f"**Showing {len(filtered_df)} items**")
                 
-                st.dataframe(
-                    filtered_df,
-                    column_config={
-                        "Latest Price": st.column_config.NumberColumn("Latest Price ($)", format="$%.2f"),
-                        "Total Orders": st.column_config.NumberColumn("Total Orders", format="%d"),
-                    },
-                    use_container_width=True,
-                    hide_index=True
-                )
+                # Display with formatted prices
+                display_df = filtered_df[['Article', 'Product Name', 'Supplier', 'Latest Price Formatted', 'Currency', 'Last Order Date', 'Total Orders']].copy()
+                display_df.columns = ['Article', 'Product Name', 'Supplier', 'Latest Price', 'Currency', 'Last Order Date', 'Total Orders']
                 
-                csv = df.to_csv(index=False)
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
+                
+                csv = filtered_df[['Article', 'Product Name', 'Supplier', 'Latest Price Formatted', 'Currency', 'Last Order Date', 'Total Orders']].to_csv(index=False)
                 st.download_button(
                     label="📥 Export All Prices to CSV",
                     data=csv,
@@ -2547,11 +2588,11 @@ def price_checker_tab():
 # ============================================
 
 def sales_history_tab():
-    """View sales history for a specific item over a selected date range"""
+    """View sales history for a specific item over a selected date range with currency support"""
     st.markdown("""
     <div style="background: linear-gradient(135deg, #f97316, #ea580c); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
         <h2 style="margin:0; color: white;">📈 Sales History</h2>
-        <p style="margin:0; opacity:0.9; color: white;">Track sales performance • Filter by date range • Visualize trends</p>
+        <p style="margin:0; opacity:0.9; color: white;">Track sales performance • Filter by date range • Supports USD, EUR, SAR</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -2567,6 +2608,13 @@ def sales_history_tab():
     
     with col2:
         search_type = st.radio("Select by:", ["Article Number", "Product Name"], horizontal=True, key="sales_history_search_type")
+    
+    # Currency symbol mapping
+    currency_symbols = {
+        "USD": "$",
+        "EUR": "€",
+        "SAR": "ر.س"
+    }
     
     if selected_client:
         with st.spinner(f"Loading items for {selected_client}..."):
@@ -2597,7 +2645,6 @@ def sales_history_tab():
             else:
                 item_options = sorted([f"{item['product'][:60]} - {item['article']}" for item in items_list])
                 selected_item_display = st.selectbox("Select Item:", item_options, key="sales_history_item")
-                # Extract article from display
                 selected_article = selected_item_display.split(" - ")[-1] if selected_item_display else None
             
             # Date range selection
@@ -2653,8 +2700,11 @@ def sales_history_tab():
                         # Summary statistics
                         total_quantity = 0
                         total_weight = 0
-                        total_value = 0
+                        total_value_usd = 0  # Track in USD for consistency
+                        total_value_eur = 0
+                        total_value_sar = 0
                         prices = []
+                        currencies_used = set()
                         
                         for order in filtered_orders:
                             # Safe quantity extraction
@@ -2675,57 +2725,89 @@ def sales_history_tab():
                             except:
                                 pass
                             
-                            # Safe price extraction
-                            try:
-                                price_str = str(order.get('price', '0')).replace('$', '').replace(',', '').strip()
-                                price_str = re.sub(r'[^0-9.-]', '', price_str)
-                                price = float(price_str) if price_str and price_str != 'nan' and price_str != '' else 0
-                                if price > 0:
-                                    prices.append(price)
-                                    total_value += price * weight if weight > 0 else 0
-                            except:
-                                pass
+                            # Safe price extraction with currency
+                            currency = order.get('currency', 'USD')
+                            currencies_used.add(currency)
+                            price_value = order.get('price_value')
+                            
+                            if price_value and price_value > 0:
+                                prices.append({'value': price_value, 'currency': currency})
+                                
+                                # Track by currency
+                                if currency == "USD":
+                                    total_value_usd += price_value * weight if weight > 0 else 0
+                                elif currency == "EUR":
+                                    total_value_eur += price_value * weight if weight > 0 else 0
+                                elif currency == "SAR":
+                                    total_value_sar += price_value * weight if weight > 0 else 0
                         
-                        col1, col2, col3, col4 = st.columns(4)
+                        # Display metrics
+                        col1, col2, col3 = st.columns(3)
                         with col1:
                             st.metric("Total Orders", len(filtered_orders))
                         with col2:
                             st.metric("Total Quantity", f"{total_quantity:,.0f}" if total_quantity > 0 else "N/A")
                         with col3:
                             st.metric("Total Weight", f"{total_weight:,.0f} kg" if total_weight > 0 else "N/A")
-                        with col4:
-                            st.metric("Total Value", f"${total_value:,.2f}" if total_value > 0 else "N/A")
                         
+                        # Display value metrics by currency
+                        value_cols = st.columns(len(currencies_used) if currencies_used else 1)
+                        value_idx = 0
+                        if total_value_usd > 0:
+                            with value_cols[value_idx]:
+                                st.metric("Total Value (USD)", f"${total_value_usd:,.2f}")
+                            value_idx += 1
+                        if total_value_eur > 0:
+                            with value_cols[value_idx]:
+                                st.metric("Total Value (EUR)", f"€{total_value_eur:,.2f}")
+                            value_idx += 1
+                        if total_value_sar > 0:
+                            with value_cols[value_idx]:
+                                st.metric("Total Value (SAR)", f"ر.س{total_value_sar:,.2f}")
+                            value_idx += 1
+                        
+                        # Price statistics
                         if prices:
                             col1, col2, col3 = st.columns(3)
-                            with col1:
-                                st.metric("Min Price", f"${min(prices):.2f}")
-                            with col2:
-                                st.metric("Max Price", f"${max(prices):.2f}")
-                            with col3:
-                                st.metric("Avg Price", f"${sum(prices)/len(prices):.2f}")
+                            usd_prices = [p['value'] for p in prices if p['currency'] == 'USD']
+                            eur_prices = [p['value'] for p in prices if p['currency'] == 'EUR']
+                            sar_prices = [p['value'] for p in prices if p['currency'] == 'SAR']
+                            
+                            price_stats_text = ""
+                            if usd_prices:
+                                price_stats_text += f"USD: ${min(usd_prices):.2f} - ${max(usd_prices):.2f} (avg ${sum(usd_prices)/len(usd_prices):.2f})"
+                            if eur_prices:
+                                if price_stats_text: price_stats_text += " | "
+                                price_stats_text += f"EUR: €{min(eur_prices):.2f} - €{max(eur_prices):.2f} (avg €{sum(eur_prices)/len(eur_prices):.2f})"
+                            if sar_prices:
+                                if price_stats_text: price_stats_text += " | "
+                                price_stats_text += f"SAR: ر.س{min(sar_prices):.2f} - ر.س{max(sar_prices):.2f} (avg ر.س{sum(sar_prices)/len(sar_prices):.2f})"
+                            
+                            st.info(f"**Price Range:** {price_stats_text}")
                         
                         # Create chart data
                         chart_data = []
                         for order in filtered_orders:
+                            price_value = order.get('price_value')
+                            currency = order.get('currency', 'USD')
+                            weight_val = 0
+                            
                             try:
-                                price_str = str(order.get('price', '0')).replace('$', '').replace(',', '').strip()
-                                price_str = re.sub(r'[^0-9.-]', '', price_str)
-                                price_val = float(price_str) if price_str and price_str != 'nan' and price_str != '' else 0
-                                
                                 weight_str = str(order.get('total_weight', '0')).replace(',', '').strip()
                                 weight_str = re.sub(r'[^0-9.-]', '', weight_str)
-                                weight_val = float(weight_str) if weight_str and weight_str != 'nan' and weight_str != '' else 0
-                                
-                                if price_val > 0 or weight_val > 0:
-                                    chart_data.append({
-                                        'Date': order.get('parsed_date'),
-                                        'Price (USD/kg)': price_val,
-                                        'Weight (kg)': weight_val,
-                                        'Order #': order.get('order_no', 'N/A')
-                                    })
+                                weight_val = float(weight_str) if weight_str and weight_str != 'nan' else 0
                             except:
-                                continue
+                                pass
+                            
+                            if price_value and price_value > 0:
+                                chart_data.append({
+                                    'Date': order.get('parsed_date'),
+                                    'Price': price_value,
+                                    'Currency': currency,
+                                    'Weight (kg)': weight_val,
+                                    'Order #': order.get('order_no', 'N/A'),
+                                    'Price Label': f"{currency_symbols.get(currency, '$')}{price_value:.2f}"
+                                })
                         
                         if chart_data:
                             chart_df = pd.DataFrame(chart_data)
@@ -2734,8 +2816,9 @@ def sales_history_tab():
                                 st.markdown("### 📈 Price Trend")
                                 price_chart = alt.Chart(chart_df).mark_line(point=True, color='#f97316', strokeWidth=2).encode(
                                     x=alt.X('Date:T', title='Order Date'),
-                                    y=alt.Y('Price (USD/kg):Q', title='Price (USD/kg)'),
-                                    tooltip=['Date:T', 'Price (USD/kg):Q', 'Weight (kg):Q', 'Order #:N']
+                                    y=alt.Y('Price:Q', title='Price'),
+                                    color=alt.Color('Currency:N', title='Currency'),
+                                    tooltip=['Date:T', 'Price Label:N', 'Weight (kg):Q', 'Order #:N']
                                 ).properties(height=350)
                                 st.altair_chart(price_chart, use_container_width=True)
                                 
@@ -2751,36 +2834,23 @@ def sales_history_tab():
                         st.markdown("### 📋 Order Details")
                         orders_list = []
                         for order in filtered_orders:
-                            # Safe price formatting
-                            price_display = 'N/A'
-                            price_value = None
-                            try:
-                                price_str = str(order.get('price', '')).replace('$', '').replace(',', '').strip()
-                                price_str = re.sub(r'[^0-9.-]', '', price_str)
-                                if price_str and price_str != 'nan' and price_str != '':
-                                    price_value = float(price_str)
-                                    price_display = f"${price_value:.2f}"
-                            except:
-                                pass
+                            price_display = order.get('price', 'N/A')
+                            currency = order.get('currency', 'USD')
+                            symbol = currency_symbols.get(currency, "$")
                             
-                            # Safe total price formatting
-                            total_price_display = 'N/A'
-                            try:
-                                total_price_str = str(order.get('total_price', '')).replace('$', '').replace(',', '').strip()
-                                total_price_str = re.sub(r'[^0-9.-]', '', total_price_str)
-                                if total_price_str and total_price_str != 'nan' and total_price_str != '':
-                                    total_price_value = float(total_price_str)
-                                    total_price_display = f"${total_price_value:.2f}"
-                            except:
-                                pass
+                            # If we have parsed price value, format nicely
+                            price_value = order.get('price_value')
+                            if price_value:
+                                price_display = f"{symbol}{price_value:.2f}"
                             
                             orders_list.append({
                                 'Order Date': order.get('date', 'N/A'),
                                 'Order #': order.get('order_no', 'N/A'),
                                 'Quantity': order.get('quantity', 'N/A') if order.get('quantity') else 'N/A',
                                 'Weight (kg)': order.get('total_weight', 'N/A') if order.get('total_weight') else 'N/A',
-                                'Price ($/kg)': price_display,
-                                'Total Value ($)': total_price_display
+                                'Price': price_display,
+                                'Currency': currency,
+                                'Total Price': order.get('total_price', 'N/A') if order.get('total_price') else 'N/A'
                             })
                         
                         if orders_list:
