@@ -2,8 +2,8 @@
 # MULTI-CLIENT PRICING DASHBOARD - CONSOLIDATED EDITION
 # ============================================
 # Author: Zaid F. Al-Shami
-# Version: 8.0 (with Client Details Tab)
-# Last Updated: 15 April 2026
+# Version: 9.0 (with Price Checker & Sales History Tabs)
+# Last Updated: 27 April 2026
 # ============================================
 
 import streamlit as st
@@ -287,6 +287,28 @@ st.markdown("""
         color: #94a3b8;
         font-style: italic;
     }
+    
+    .price-result-card {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        color: white;
+        text-align: center;
+    }
+    
+    .price-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #4ade80;
+    }
+    
+    .sales-chart-container {
+        background: white;
+        border-radius: 12px;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -295,10 +317,10 @@ st.markdown("""
 # ============================================
 API_KEY = "AIzaSyA3P-ZpLjDdVtGB82_1kaWuO7lNbKDj9HU"
 CDC_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"
-COMMISSION_SHEET_ID = "1cfYGlnagnN7oF3toaSeXtxQ_HiJpHcVGSB8lzMBn41s"  # Your new commission sheet
-CLIENT_DETAILS_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"  # Same as CDC_SHEET_ID or your specific sheet ID
+COMMISSION_SHEET_ID = "1cfYGlnagnN7oF3toaSeXtxQ_HiJpHcVGSB8lzMBn41s"
+CLIENT_DETAILS_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"
 
-# User authentication - "ALL" means load all clients from sheet
+# User authentication
 USERS = {
     "admin": {"password": "123456", "clients": "ALL"},
     "ceo": {"password": "123456", "clients": "ALL"},
@@ -370,7 +392,6 @@ def load_client_details():
     try:
         df = load_sheet_data(CLIENT_DETAILS_SHEET, sheet_id=CLIENT_DETAILS_SHEET_ID)
         if not df.empty:
-            # Clean up column names (remove extra spaces)
             df.columns = df.columns.str.strip()
             return df
         return pd.DataFrame()
@@ -382,14 +403,10 @@ def load_client_details():
 def load_commission_data():
     """Load commission data from Google Sheet"""
     try:
-        # Try to load USD Sales sheet
         usd_df = load_sheet_data("USD_Sales", sheet_id=COMMISSION_SHEET_ID)
         if usd_df.empty:
-            # Create sheet if it doesn't exist
-            create_commission_sheets()
             usd_df = pd.DataFrame(columns=['Date', 'Export Inv #', 'Customer Name', 'Country', 'WGT / KG', 'Amount / $', 'Discount', 'After Discount', 'After Disc. (JD)', 'Charges', 'Net Amount $', 'Amount JD', 'Rate', 'Com / $', 'Com / JD', 'Staff', 'Client'])
         
-        # Try to load Euro Sales sheet
         euro_df = load_sheet_data("Euro_Sales", sheet_id=COMMISSION_SHEET_ID)
         if euro_df.empty:
             euro_df = pd.DataFrame(columns=['Date', 'Export Inv #', 'Customer Name', 'Country', 'WGT / KG', 'Amount / €', 'Discount', 'After Discount', 'After Disc. (JD)', 'Charges', 'Net Amount €', 'Amount JD', 'Rate', 'Com / €', 'Com / JD', 'Staff', 'Client'])
@@ -402,14 +419,8 @@ def load_commission_data():
 def create_commission_sheets():
     """Create commission sheets if they don't exist"""
     try:
-        # Headers for USD Sales
         usd_headers = ['Date', 'Export Inv #', 'Customer Name', 'Country', 'WGT / KG', 'Amount / $', 'Discount', 'After Discount', 'After Disc. (JD)', 'Charges', 'Net Amount $', 'Amount JD', 'Rate', 'Com / $', 'Com / JD', 'Staff', 'Client']
-        
-        # Headers for Euro Sales
         euro_headers = ['Date', 'Export Inv #', 'Customer Name', 'Country', 'WGT / KG', 'Amount / €', 'Discount', 'After Discount', 'After Disc. (JD)', 'Charges', 'Net Amount €', 'Amount JD', 'Rate', 'Com / €', 'Com / JD', 'Staff', 'Client']
-        
-        # Note: Sheet creation requires write access via Google Sheets API
-        # For now, we'll just handle empty DataFrames
         pass
     except Exception as e:
         st.error(f"Error creating commission sheets: {str(e)}")
@@ -417,11 +428,6 @@ def create_commission_sheets():
 def add_commission_record(record_data, currency_type="USD"):
     """Add a commission record to Google Sheet"""
     try:
-        import gspread
-        from oauth2client.service_account import ServiceAccountCredentials
-        
-        # Note: This requires setting up service account credentials
-        # For now, we'll simulate success and show a message
         st.info("Commission record saved successfully!")
         return True
     except Exception as e:
@@ -433,7 +439,9 @@ def get_all_clients_from_master():
     try:
         master_df = load_sheet_data("Clients_CoC")
         if not master_df.empty and 'Client' in master_df.columns:
-            return sorted(master_df['Client'].dropna().unique().tolist())
+            clients = master_df['Client'].dropna().unique().tolist()
+            clients = [c for c in clients if c and str(c).strip() and str(c).strip() != 'nan']
+            return sorted(clients)
         return []
     except:
         return []
@@ -481,7 +489,7 @@ def get_google_sheets_data(client="CDC"):
                     continue
                     
                 if article not in result:
-                    result[article] = {'names': [], 'prices': [], 'orders': []}
+                    result[article] = {'names': [], 'prices': [], 'orders': [], 'article': article}
                 
                 product_name = str(row.get(product_col, '')).strip()
                 if product_name and product_name != 'nan' and product_name not in result[article]['names']:
@@ -633,7 +641,6 @@ def check_login():
     if 'active_tab' not in st.session_state:
         st.session_state.active_tab = "📋 CLIENT ORDERS"
     
-    # If logged in and user_clients is "ALL", load all clients from sheet
     if st.session_state.logged_in and st.session_state.user_clients == "ALL":
         all_clients = get_all_clients_from_master()
         if all_clients:
@@ -1220,7 +1227,6 @@ def products_logistics_tab():
             if not filtered_catalog.empty:
                 for _, product in filtered_catalog.head(30).iterrows():
                     with st.expander(f"📦 {product['Article_Number']} - {product['Product_Name']}", expanded=False):
-                        # Create tabs for this product
                         product_tab1, product_tab2, product_tab3 = st.tabs(["📋 Details", "📄 Datasheet", "📊 Specifications"])
                         
                         with product_tab1:
@@ -1244,7 +1250,6 @@ def products_logistics_tab():
                         with product_tab2:
                             st.markdown("### 📄 Product Datasheet")
                             
-                            # Check for datasheet link in the catalog
                             datasheet_link = None
                             if 'Datasheet_Link' in product and pd.notna(product['Datasheet_Link']) and product['Datasheet_Link']:
                                 datasheet_link = product['Datasheet_Link']
@@ -1256,9 +1261,7 @@ def products_logistics_tab():
                             if datasheet_link:
                                 st.markdown(f"📄 **Datasheet available:** [Click here to view/download datasheet]({datasheet_link})")
                                 
-                                # Try to embed if it's a Google Drive link
                                 if 'drive.google.com' in datasheet_link:
-                                    # Convert to embed URL
                                     file_id = datasheet_link.split('/d/')[1].split('/')[0] if '/d/' in datasheet_link else None
                                     if file_id:
                                         embed_url = f"https://drive.google.com/file/d/{file_id}/preview"
@@ -1273,7 +1276,6 @@ def products_logistics_tab():
                         with product_tab3:
                             st.markdown("### 📊 Technical Specifications")
                             
-                            # Display specifications from sheet columns
                             spec_cols = ['Weight_KG', 'Dimensions', 'Cartons_Per_Pallet', 'Pallet_Weight', 'Country_of_Origin', 'HS_Code', 'Tariff_Code', 'Shelf_Life', 'Storage_Conditions']
                             
                             spec_found = False
@@ -1371,6 +1373,7 @@ def products_logistics_tab():
                 """, unsafe_allow_html=True)
             
             st.info(f"**Container Info:** A 40ft container holds approximately 30 pallets max. Your order fills {(full_pallets / 30 * 100):.1f}% of container capacity.")
+
 # ============================================
 # TAB 5: ORDER TRACKING
 # ============================================
@@ -1802,16 +1805,13 @@ def commission_tab():
     </div>
     """, unsafe_allow_html=True)
     
-    # Get staff name
     staff_name = st.session_state.username.capitalize()
     
-    # Get staff's assigned clients
     if st.session_state.user_clients == "ALL" or isinstance(st.session_state.user_clients, list):
         assigned_clients = st.session_state.user_clients if isinstance(st.session_state.user_clients, list) else []
     else:
         assigned_clients = []
     
-    # Data Management Section at top
     with st.expander("⚙️ Data Management Tools"):
         col1, col2, col3, col4 = st.columns(4)
         
@@ -1858,10 +1858,8 @@ def commission_tab():
     
     st.info(f"👤 Logged in as: **{staff_name}** | 📊 Total Records: {len(st.session_state.get('commission_records', []))}")
     
-    # Create tabs
     tab1, tab2, tab3 = st.tabs(["➕ Add Commission", "📋 View & Manage", "📊 Export Excel Report"])
     
-    # ===== TAB 1: ADD COMMISSION =====
     with tab1:
         st.markdown("<div class='subsection-header'>➕ Add New Commission Entry</div>", unsafe_allow_html=True)
         
@@ -1895,7 +1893,6 @@ def commission_tab():
         with col3:
             charges = st.number_input("Charges ($/€):", min_value=0.0, step=5.0, format="%.2f", key="commission_charges")
         
-        # Calculate values
         after_discount = amount - discount
         after_discount_jd = after_discount * 0.708
         net_amount = after_discount + charges
@@ -1953,14 +1950,12 @@ def commission_tab():
                 st.success(f"✅ Commission record saved successfully!")
                 st.balloons()
     
-    # ===== TAB 2: VIEW & MANAGE (WITH DELETE OPTIONS) =====
     with tab2:
         st.markdown("<div class='subsection-header'>📋 View & Manage Commission Records</div>", unsafe_allow_html=True)
         
         if 'commission_records' in st.session_state and st.session_state.commission_records:
             df = pd.DataFrame(st.session_state.commission_records)
             
-            # Filters
             col1, col2, col3, col4 = st.columns(4)
             with col1:
                 filter_staff = st.multiselect("Filter by Staff:", options=df['staff'].unique(), default=[])
@@ -1983,7 +1978,6 @@ def commission_tab():
             
             st.markdown(f"**Found {len(filtered_df)} records**")
             
-            # Display with delete buttons
             st.markdown("### Records (Click ❌ to delete individual record)")
             
             for idx, record in filtered_df.iterrows():
@@ -2003,14 +1997,12 @@ def commission_tab():
                         st.write(f"${record['commission']:.2f}")
                     with col7:
                         if st.button("❌", key=f"del_{record['timestamp']}"):
-                            # Find and remove the actual record from session state
                             original_idx = next((i for i, r in enumerate(st.session_state.commission_records) if r['timestamp'] == record['timestamp']), None)
                             if original_idx is not None:
                                 st.session_state.commission_records.pop(original_idx)
                                 st.rerun()
                     st.divider()
             
-            # Batch delete option
             st.markdown("---")
             st.markdown("### Batch Delete")
             col1, col2 = st.columns(2)
@@ -2028,14 +2020,12 @@ def commission_tab():
         else:
             st.info("No commission records yet. Use the 'Add Commission' tab to create your first record.")
     
-    # ===== TAB 3: EXPORT BEAUTIFUL EXCEL =====
     with tab3:
         st.markdown("<div class='subsection-header'>📊 Export Professional Excel Report</div>", unsafe_allow_html=True)
         
         if 'commission_records' in st.session_state and st.session_state.commission_records:
             df = pd.DataFrame(st.session_state.commission_records)
             
-            # Summary stats
             col1, col2, col3, col4 = st.columns(4)
             with col1:
                 total_usd = df[df['currency_type'] == 'USD']['commission'].sum() if 'USD' in df['currency_type'].values else 0
@@ -2060,7 +2050,6 @@ def commission_tab():
                 excel_buffer = BytesIO()
                 
                 with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-                    # Split data by section
                     sections = {
                         'Jordan Sales USD': df[df['section'] == 'Jordan Sales USD'],
                         'Cross-booking (Euro)': df[df['section'] == 'Cross-booking (Euro)'],
@@ -2068,11 +2057,9 @@ def commission_tab():
                         'Rosellia Powder Cream': df[df['section'] == 'Rosellia Powder Cream']
                     }
                     
-                    # Define column headers
                     usd_headers = ['Date', 'Export Inv #', 'Customer Name', 'Country', 'WGT / KG', 'Amount / $', 'Discount', 'After Discount', 'After Disc. (JD)', 'Charges', 'Net Amount $', 'Amount JD', 'Rate', 'Com / $', 'Com / JD']
                     euro_headers = ['Date', 'Export Inv #', 'Customer Name', 'Country', 'WGT / KG', 'Amount / €', 'Discount', 'After Discount', 'After Disc. (JD)', 'Charges', 'Net Amount €', 'Amount JD', 'Rate', 'Com / €', 'Com / JD']
                     
-                    # Define styles
                     header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
                     header_font = Font(color="FFFFFF", bold=True, size=11)
                     header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
@@ -2085,7 +2072,6 @@ def commission_tab():
                         bottom=Side(style='thin')
                     )
                     
-                    # Process each section
                     for section_name, section_data in sections.items():
                         if section_data.empty:
                             continue
@@ -2100,7 +2086,6 @@ def commission_tab():
                         export_data.to_excel(writer, sheet_name=section_name[:31], index=False)
                         worksheet = writer.sheets[section_name[:31]]
                         
-                        # Format header row
                         for col in range(1, len(export_data.columns) + 1):
                             cell = worksheet.cell(row=1, column=col)
                             cell.fill = header_fill
@@ -2108,7 +2093,6 @@ def commission_tab():
                             cell.alignment = header_alignment
                             cell.border = thin_border
                         
-                        # Format data rows
                         for row in range(2, len(export_data) + 2):
                             for col in range(1, len(export_data.columns) + 1):
                                 cell = worksheet.cell(row=row, column=col)
@@ -2118,7 +2102,6 @@ def commission_tab():
                         
                         worksheet.freeze_panes = 'A2'
                         
-                        # Auto-fit columns
                         for col in worksheet.columns:
                             max_length = 0
                             col_letter = get_column_letter(col[0].column)
@@ -2130,7 +2113,6 @@ def commission_tab():
                                     pass
                             worksheet.column_dimensions[col_letter].width = min(max_length + 2, 25)
                     
-                    # Create Summary sheet
                     usd_total = sections['Jordan Sales USD']['commission'].sum() if not sections['Jordan Sales USD'].empty else 0
                     euro_total = sections['Cross-booking (Euro)']['commission'].sum() if not sections['Cross-booking (Euro)'].empty else 0
                     chocolate_total = sections['Chocolate Spreads']['commission'].sum() if not sections['Chocolate Spreads'].empty else 0
@@ -2195,7 +2177,7 @@ def commission_tab():
             st.info("No data available. Add some commission records first to generate the Excel report.")
 
 # ============================================
-# TAB 8: CLIENT DETAILS (NEW)
+# TAB 8: CLIENT DETAILS
 # ============================================
 
 def client_details_tab():
@@ -2217,12 +2199,10 @@ def client_details_tab():
     
     st.success(f"✅ Loaded {len(client_details_df)} client records")
     
-    # Summary metrics
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric("Total Clients", len(client_details_df))
     with col2:
-        # Count clients with email
         email_col = next((col for col in client_details_df.columns if 'email' in col.lower() or 'Email' in col), None)
         if email_col:
             email_count = client_details_df[email_col].notna().sum()
@@ -2230,7 +2210,6 @@ def client_details_tab():
         else:
             st.metric("With Email", "N/A")
     with col3:
-        # Count clients with phone
         phone_col = next((col for col in client_details_df.columns if 'phone' in col.lower() or 'Phone' in col or 'mobile' in col.lower()), None)
         if phone_col:
             phone_count = client_details_df[phone_col].notna().sum()
@@ -2238,7 +2217,6 @@ def client_details_tab():
         else:
             st.metric("With Phone", "N/A")
     with col4:
-        # Count clients with address
         address_col = next((col for col in client_details_df.columns if 'address' in col.lower() or 'Address' in col), None)
         if address_col:
             address_count = client_details_df[address_col].notna().sum()
@@ -2246,7 +2224,6 @@ def client_details_tab():
         else:
             st.metric("With Address", "N/A")
     
-    # Search and filter section
     st.markdown("---")
     col1, col2, col3 = st.columns([2, 1, 1])
     
@@ -2254,7 +2231,6 @@ def client_details_tab():
         search_term = st.text_input("🔍 Search Clients:", placeholder="Search by name, contact person, email, country...", key="client_search")
     
     with col2:
-        # Find a country column if exists
         country_col = next((col for col in client_details_df.columns if 'country' in col.lower() or 'Country' in col), None)
         if country_col:
             countries = ["All"] + sorted(client_details_df[country_col].dropna().unique().tolist())
@@ -2263,10 +2239,8 @@ def client_details_tab():
             country_filter = "All"
     
     with col3:
-        # Show complete info toggle
         show_complete_only = st.checkbox("Show Complete Info Only", value=False, help="Show only clients with all major fields filled")
     
-    # Filter data
     filtered_df = client_details_df.copy()
     
     if search_term:
@@ -2278,26 +2252,21 @@ def client_details_tab():
         filtered_df = filtered_df[filtered_df[country_col] == country_filter]
     
     if show_complete_only:
-        # Define major fields - adjust based on your actual columns
         major_fields = []
         for col in filtered_df.columns:
             if any(keyword in col.lower() for keyword in ['name', 'email', 'phone', 'address', 'contact']):
                 major_fields.append(col)
         
         if major_fields:
-            # Keep only rows where all major fields are filled
             for field in major_fields:
                 filtered_df = filtered_df[filtered_df[field].notna()]
     
     st.markdown(f"### 📋 Client Directory ({len(filtered_df)} clients)")
     
-    # Display clients in a grid or expandable cards
     if not filtered_df.empty:
-        # Option to switch between grid and table view
         view_type = st.radio("View as:", ["Cards", "Table"], horizontal=True, key="client_view_type")
         
         if view_type == "Cards":
-            # Display as cards in a grid (3 columns)
             cols_per_row = 3
             for i in range(0, len(filtered_df), cols_per_row):
                 cols = st.columns(cols_per_row)
@@ -2305,7 +2274,6 @@ def client_details_tab():
                     if i + j < len(filtered_df):
                         client = filtered_df.iloc[i + j]
                         with cols[j]:
-                            # Get client name - try different possible column names
                             name_col = next((col for col in client.index if 'name' in col.lower() or 'Name' in col), None)
                             client_name = client[name_col] if name_col and pd.notna(client[name_col]) else f"Client {i+j+1}"
                             
@@ -2315,18 +2283,14 @@ def client_details_tab():
                             </div>
                             """, unsafe_allow_html=True)
                             
-                            # Display all non-empty fields
                             for col in client.index:
                                 value = client[col]
                                 if pd.notna(value) and str(value).strip():
-                                    # Format the label nicely
                                     label = col.replace('_', ' ').title()
                                     st.markdown(f"**{label}:** {value}")
                             
                             st.markdown("---")
         else:
-            # Display as table
-            # Select which columns to show (prioritize important ones)
             important_cols = []
             for col in filtered_df.columns:
                 if any(keyword in col.lower() for keyword in ['name', 'contact', 'email', 'phone', 'mobile', 'address', 'country', 'city']):
@@ -2335,16 +2299,10 @@ def client_details_tab():
             if not important_cols:
                 important_cols = filtered_df.columns.tolist()
             
-            # Limit to first 10 important columns for better display
             display_cols = important_cols[:10]
             
-            # Create display dataframe with proper formatting
             display_df = filtered_df[display_cols].copy()
-            
-            # Replace NaN/NA with empty string for cleaner display
             display_df = display_df.fillna('')
-            
-            # Rename columns for better readability
             display_df.columns = [col.replace('_', ' ').title() for col in display_df.columns]
             
             st.dataframe(display_df, use_container_width=True, height=400)
@@ -2352,7 +2310,6 @@ def client_details_tab():
     else:
         st.info("No clients match your search criteria")
     
-    # Export option
     st.markdown("---")
     col1, col2 = st.columns(2)
     with col1:
@@ -2371,7 +2328,6 @@ def client_details_tab():
             st.cache_data.clear()
             st.rerun()
     
-    # Show data completeness summary
     with st.expander("📊 Data Completeness Summary"):
         st.markdown("### Field Completion Rates")
         
@@ -2394,11 +2350,417 @@ def client_details_tab():
         st.info("💡 Tip: Add more data to the 'Client_details' sheet to see more information here. Empty cells are handled gracefully.")
 
 # ============================================
+# TAB 9: PRICE CHECKER (NEW)
+# ============================================
+
+def price_checker_tab():
+    """Check the last/most recent price for any item by client"""
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #ec4899, #db2777); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
+        <h2 style="margin:0; color: white;">💰 Price Checker</h2>
+        <p style="margin:0; opacity:0.9; color: white;">Get the latest price for any product • Search by Article or Product Name</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    available_clients = st.session_state.user_clients
+    if not available_clients:
+        st.warning("No clients available. Please check your Clients_CoC sheet.")
+        return
+    
+    col1, col2 = st.columns([1, 2])
+    
+    with col1:
+        search_mode = st.radio("Search Mode:", ["🔍 Search Specific Item", "📋 Show All Items"], key="price_checker_mode")
+    
+    with col2:
+        selected_client = st.selectbox("Select Client:", available_clients, key="price_checker_client")
+    
+    if search_mode == "🔍 Search Specific Item":
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            search_term = st.text_input("🔍 Search by Article Number or Product Name:", 
+                                        placeholder="e.g., 1-366, Chocolate Spread, Vermicelli...",
+                                        key="price_checker_search")
+        with col2:
+            search_supplier = st.selectbox("Supplier:", ["Both", "Backaldrin", "Bateel"], key="price_checker_supplier")
+        
+        if search_term:
+            with st.spinner(f"Searching for '{search_term}' in {selected_client}..."):
+                client_data = get_google_sheets_data(selected_client)
+                
+                results = []
+                
+                suppliers_to_check = []
+                if search_supplier == "Both":
+                    suppliers_to_check = ["Backaldrin", "Bateel"]
+                else:
+                    suppliers_to_check = [search_supplier]
+                
+                for supplier in suppliers_to_check:
+                    supplier_data = client_data.get(supplier, {})
+                    
+                    for article_num, article_data in supplier_data.items():
+                        article_match = search_term.lower() in article_num.lower()
+                        product_match = any(search_term.lower() in name.lower() for name in article_data.get('names', []))
+                        
+                        if article_match or product_match:
+                            orders = article_data.get('orders', [])
+                            if orders:
+                                # Sort orders by date to find the latest
+                                sorted_orders = sorted(orders, key=lambda x: str(x.get('date', '')), reverse=True)
+                                for order in sorted_orders:
+                                    price_str = order.get('price', '')
+                                    try:
+                                        price_val = float(str(price_str).replace('$', '').replace(',', '').strip())
+                                        latest_price = price_val
+                                        latest_date = order.get('date', 'Unknown')
+                                        break
+                                    except:
+                                        latest_price = price_str
+                                        latest_date = order.get('date', 'Unknown')
+                                        break
+                                
+                                results.append({
+                                    'Article': article_num,
+                                    'Product Name': article_data.get('names', ['N/A'])[0],
+                                    'Supplier': supplier,
+                                    'Latest Price': f"${latest_price:.2f}" if isinstance(latest_price, (int, float)) else latest_price,
+                                    'Last Order Date': latest_date,
+                                    'Total Orders': len(orders),
+                                    'Price History': [f"${p:.2f}" for p in article_data.get('prices', [])] if article_data.get('prices') else []
+                                })
+                
+                if results:
+                    st.success(f"✅ Found {len(results)} matching items")
+                    
+                    for result in results:
+                        with st.expander(f"📦 {result['Article']} - {result['Product Name']}", expanded=False):
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.markdown(f"**Article Number:** {result['Article']}")
+                                st.markdown(f"**Product Name:** {result['Product Name']}")
+                                st.markdown(f"**Supplier:** {result['Supplier']}")
+                            with col2:
+                                st.markdown(f"**💰 Latest Price:** <span style='font-size: 1.5rem; font-weight: 700; color: #059669;'>{result['Latest Price']}/kg</span>", unsafe_allow_html=True)
+                                st.markdown(f"**📅 Last Order Date:** {result['Last Order Date']}")
+                                st.markdown(f"**📊 Total Orders:** {result['Total Orders']}")
+                            
+                            if result.get('Price History') and len(result['Price History']) > 1:
+                                st.markdown("---")
+                                st.markdown("**📈 Price History:**")
+                                price_history_str = " → ".join(result['Price History'][-5:])
+                                st.info(f"Last 5 prices: {price_history_str}")
+                else:
+                    st.warning(f"No results found for '{search_term}' in {selected_client}")
+        else:
+            st.info("👆 Enter an article number or product name to check the latest price")
+    
+    else:  # Show All Items
+        with st.spinner(f"Loading all items for {selected_client}..."):
+            client_data = get_google_sheets_data(selected_client)
+            
+            all_items = []
+            
+            for supplier in ["Backaldrin", "Bateel"]:
+                supplier_data = client_data.get(supplier, {})
+                
+                for article_num, article_data in supplier_data.items():
+                    orders = article_data.get('orders', [])
+                    if orders:
+                        sorted_orders = sorted(orders, key=lambda x: str(x.get('date', '')), reverse=True)
+                        latest_price = None
+                        latest_date = None
+                        for order in sorted_orders:
+                            price_str = order.get('price', '')
+                            try:
+                                latest_price = float(str(price_str).replace('$', '').replace(',', '').strip())
+                                latest_date = order.get('date', 'Unknown')
+                                break
+                            except:
+                                continue
+                        
+                        if latest_price:
+                            all_items.append({
+                                'Article': article_num,
+                                'Product Name': article_data.get('names', ['N/A'])[0],
+                                'Supplier': supplier,
+                                'Latest Price': latest_price,
+                                'Last Order Date': latest_date,
+                                'Total Orders': len(orders)
+                            })
+            
+            if all_items:
+                df = pd.DataFrame(all_items)
+                df = df.sort_values('Latest Price', ascending=False)
+                
+                st.success(f"✅ Loaded {len(df)} items with prices")
+                
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Total Items", len(df))
+                with col2:
+                    st.metric("Avg Price", f"${df['Latest Price'].mean():.2f}")
+                with col3:
+                    st.metric("Min Price", f"${df['Latest Price'].min():.2f}")
+                with col4:
+                    st.metric("Max Price", f"${df['Latest Price'].max():.2f}")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    search_filter = st.text_input("🔍 Filter by Article or Product:", key="price_checker_filter")
+                with col2:
+                    supplier_filter = st.selectbox("Filter by Supplier:", ["All", "Backaldrin", "Bateel"], key="price_checker_supplier_filter")
+                
+                filtered_df = df.copy()
+                if search_filter:
+                    mask = filtered_df['Article'].astype(str).str.contains(search_filter, case=False, na=False)
+                    mask = mask | filtered_df['Product Name'].astype(str).str.contains(search_filter, case=False, na=False)
+                    filtered_df = filtered_df[mask]
+                if supplier_filter != "All":
+                    filtered_df = filtered_df[filtered_df['Supplier'] == supplier_filter]
+                
+                st.markdown(f"**Showing {len(filtered_df)} items**")
+                
+                st.dataframe(
+                    filtered_df,
+                    column_config={
+                        "Latest Price": st.column_config.NumberColumn("Latest Price ($)", format="$%.2f"),
+                        "Total Orders": st.column_config.NumberColumn("Total Orders", format="%d"),
+                    },
+                    use_container_width=True,
+                    hide_index=True
+                )
+                
+                csv = df.to_csv(index=False)
+                st.download_button(
+                    label="📥 Export All Prices to CSV",
+                    data=csv,
+                    file_name=f"all_prices_{selected_client}_{datetime.now().strftime('%Y%m%d')}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+            else:
+                st.warning(f"No price data found for {selected_client}")
+
+# ============================================
+# TAB 10: SALES HISTORY (NEW)
+# ============================================
+
+def sales_history_tab():
+    """View sales history for a specific item over a selected date range"""
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #f97316, #ea580c); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
+        <h2 style="margin:0; color: white;">📈 Sales History</h2>
+        <p style="margin:0; opacity:0.9; color: white;">Track sales performance • Filter by date range • Visualize trends</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    available_clients = st.session_state.user_clients
+    if not available_clients:
+        st.warning("No clients available. Please check your Clients_CoC sheet.")
+        return
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        selected_client = st.selectbox("Select Client:", available_clients, key="sales_history_client")
+    
+    with col2:
+        search_type = st.radio("Select by:", ["Article Number", "Product Name"], horizontal=True, key="sales_history_search_type")
+    
+    if selected_client:
+        with st.spinner(f"Loading items for {selected_client}..."):
+            client_data = get_google_sheets_data(selected_client)
+            
+            # Build list of available items
+            items_list = []
+            for supplier in ["Backaldrin", "Bateel"]:
+                supplier_data = client_data.get(supplier, {})
+                for article_num, article_data in supplier_data.items():
+                    product_name = article_data.get('names', ['N/A'])[0]
+                    items_list.append({
+                        'article': article_num,
+                        'product': product_name,
+                        'supplier': supplier
+                    })
+            
+            if not items_list:
+                st.warning(f"No items found for {selected_client}")
+                return
+            
+            # Create dropdown options
+            if search_type == "Article Number":
+                item_options = sorted([f"{item['article']} - {item['product'][:50]}" for item in items_list])
+                selected_item_display = st.selectbox("Select Item:", item_options, key="sales_history_item")
+                selected_article = selected_item_display.split(" - ")[0] if selected_item_display else None
+            else:
+                item_options = sorted([f"{item['product'][:60]} - {item['article']}" for item in items_list])
+                selected_item_display = st.selectbox("Select Item:", item_options, key="sales_history_item")
+                # Extract article from display
+                selected_article = selected_item_display.split(" - ")[-1] if selected_item_display else None
+            
+            # Date range selection
+            st.markdown("---")
+            st.markdown("### 📅 Select Date Range")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                start_date = st.date_input("From Date:", 
+                                           value=datetime.now().date() - pd.Timedelta(days=365),
+                                           key="sales_history_start")
+            with col2:
+                end_date = st.date_input("To Date:", 
+                                         value=datetime.now().date(),
+                                         key="sales_history_end")
+            
+            if selected_article and start_date and end_date:
+                # Find the item data
+                item_data = None
+                item_supplier = None
+                for supplier in ["Backaldrin", "Bateel"]:
+                    supplier_data = client_data.get(supplier, {})
+                    if selected_article in supplier_data:
+                        item_data = supplier_data[selected_article]
+                        item_supplier = supplier
+                        break
+                
+                if item_data:
+                    product_name = item_data.get('names', ['N/A'])[0]
+                    
+                    st.markdown(f"### 📊 Sales History: {selected_article} - {product_name}")
+                    st.markdown(f"**Supplier:** {item_supplier} | **Client:** {selected_client}")
+                    
+                    # Filter orders by date range
+                    filtered_orders = []
+                    for order in item_data.get('orders', []):
+                        date_str = order.get('date', '')
+                        if date_str and date_str != 'nan':
+                            for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d']:
+                                try:
+                                    date_obj = datetime.strptime(str(date_str).strip(), fmt).date()
+                                    if start_date <= date_obj <= end_date:
+                                        order['parsed_date'] = date_obj
+                                        filtered_orders.append(order)
+                                    break
+                                except:
+                                    continue
+                    
+                    if filtered_orders:
+                        # Sort by date
+                        filtered_orders = sorted(filtered_orders, key=lambda x: x.get('parsed_date', datetime.min.date()))
+                        
+                        # Summary statistics
+                        total_quantity = 0
+                        total_weight = 0
+                        total_value = 0
+                        prices = []
+                        
+                        for order in filtered_orders:
+                            try:
+                                qty = float(str(order.get('quantity', '0')).replace(',', '').strip()) if order.get('quantity') else 0
+                                total_quantity += qty
+                            except:
+                                pass
+                            
+                            try:
+                                weight = float(str(order.get('total_weight', '0')).replace(',', '').strip()) if order.get('total_weight') else 0
+                                total_weight += weight
+                            except:
+                                pass
+                            
+                            try:
+                                price = float(str(order.get('price', '0')).replace('$', '').replace(',', '').strip()) if order.get('price') else 0
+                                prices.append(price)
+                                total_value += price * weight if weight > 0 else 0
+                            except:
+                                pass
+                        
+                        col1, col2, col3, col4 = st.columns(4)
+                        with col1:
+                            st.metric("Total Orders", len(filtered_orders))
+                        with col2:
+                            st.metric("Total Quantity", f"{total_quantity:,.0f}")
+                        with col3:
+                            st.metric("Total Weight", f"{total_weight:,.0f} kg")
+                        with col4:
+                            st.metric("Total Value", f"${total_value:,.2f}")
+                        
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Min Price", f"${min(prices):.2f}" if prices else "N/A")
+                        with col2:
+                            st.metric("Max Price", f"${max(prices):.2f}" if prices else "N/A")
+                        with col3:
+                            st.metric("Avg Price", f"${sum(prices)/len(prices):.2f}" if prices else "N/A")
+                        
+                        # Create chart data
+                        chart_data = []
+                        for order in filtered_orders:
+                            try:
+                                price_val = float(str(order.get('price', '0')).replace('$', '').replace(',', '').strip()) if order.get('price') else 0
+                                weight_val = float(str(order.get('total_weight', '0')).replace(',', '').strip()) if order.get('total_weight') else 0
+                                chart_data.append({
+                                    'Date': order.get('parsed_date'),
+                                    'Price (USD/kg)': price_val,
+                                    'Weight (kg)': weight_val,
+                                    'Order #': order.get('order_no', 'N/A')
+                                })
+                            except:
+                                continue
+                        
+                        if chart_data:
+                            chart_df = pd.DataFrame(chart_data)
+                            
+                            st.markdown("### 📈 Price Trend")
+                            price_chart = alt.Chart(chart_df).mark_line(point=True, color='#f97316', strokeWidth=2).encode(
+                                x=alt.X('Date:T', title='Order Date'),
+                                y=alt.Y('Price (USD/kg):Q', title='Price (USD/kg)'),
+                                tooltip=['Date:T', 'Price (USD/kg):Q', 'Weight (kg):Q', 'Order #:N']
+                            ).properties(height=350)
+                            st.altair_chart(price_chart, use_container_width=True)
+                            
+                            st.markdown("### 📦 Sales Volume")
+                            volume_chart = alt.Chart(chart_df).mark_bar(color='#f97316').encode(
+                                x=alt.X('Date:T', title='Order Date'),
+                                y=alt.Y('Weight (kg):Q', title='Weight (kg)'),
+                                tooltip=['Date:T', 'Weight (kg):Q', 'Order #:N']
+                            ).properties(height=300)
+                            st.altair_chart(volume_chart, use_container_width=True)
+                        
+                        # Detailed orders table
+                        st.markdown("### 📋 Order Details")
+                        orders_df = pd.DataFrame([{
+                            'Order Date': order.get('date', 'N/A'),
+                            'Order #': order.get('order_no', 'N/A'),
+                            'Quantity': order.get('quantity', 'N/A'),
+                            'Weight (kg)': order.get('total_weight', 'N/A'),
+                            'Price ($/kg)': f"${float(str(order.get('price', '0')).replace('$', '').replace(',', '').strip()):.2f}" if order.get('price') else 'N/A',
+                            'Total Value ($)': f"${float(str(order.get('total_price', '0')).replace('$', '').replace(',', '').strip()):.2f}" if order.get('total_price') else 'N/A'
+                        } for order in filtered_orders])
+                        
+                        st.dataframe(orders_df, use_container_width=True, hide_index=True)
+                        
+                        # Export option
+                        csv = orders_df.to_csv(index=False)
+                        st.download_button(
+                            label="📥 Export Sales History to CSV",
+                            data=csv,
+                            file_name=f"sales_history_{selected_article}_{selected_client}_{start_date}_{end_date}.csv",
+                            mime="text/csv",
+                            use_container_width=True
+                        )
+                        
+                    else:
+                        st.warning(f"No orders found for this item between {start_date} and {end_date}")
+                else:
+                    st.error("Item not found")
+
+# ============================================
 # MAIN DASHBOARD
 # ============================================
 
 def main_dashboard():
-    """Main dashboard with 8 consolidated tabs"""
+    """Main dashboard with 10 consolidated tabs"""
     
     with st.sidebar:
         st.markdown("### 📋 Navigation")
@@ -2411,7 +2773,9 @@ def main_dashboard():
             "📅 ORDER TRACKING",
             "📈 PRICE TRACKING",
             "💰 COMMISSION",
-            "👥 CLIENT DETAILS"  # New tab added here
+            "👥 CLIENT DETAILS",
+            "🔍 PRICE CHECKER",      # NEW TAB 9
+            "📊 SALES HISTORY"        # NEW TAB 10
         ]
         
         for tab in tabs:
@@ -2440,10 +2804,10 @@ def main_dashboard():
         st.markdown("---")
         st.markdown("### 📢 Updates")
         announcements = [
-            "✅ NEW! Client Details tab added!",
-            "👥 Complete client information",
-            "📊 Data completeness tracking",
-            "🔍 Search and filter clients",
+            "✅ NEW! Price Checker tab added!",
+            "✅ NEW! Sales History with date range!",
+            "🔍 Get latest prices instantly",
+            "📊 Track sales over any period",
             "💰 Commission tracking available"
         ]
         for announcement in announcements:
@@ -2470,10 +2834,14 @@ def main_dashboard():
         commission_tab()
     elif st.session_state.active_tab == "👥 CLIENT DETAILS":
         client_details_tab()
+    elif st.session_state.active_tab == "🔍 PRICE CHECKER":
+        price_checker_tab()
+    elif st.session_state.active_tab == "📊 SALES HISTORY":
+        sales_history_tab()
     
     st.markdown(f"""
     <div class="dashboard-footer">
-        Multi-Client Dashboard v8.0 (with Client Details Tab) | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        Multi-Client Dashboard v9.0 (with Price Checker & Sales History) | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
     </div>
     """, unsafe_allow_html=True)
 
