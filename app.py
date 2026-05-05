@@ -1797,14 +1797,14 @@ def price_tracking_tab():
                 
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
                 
-csv = df.to_csv(index=False, encoding='utf-8-sig')
-st.download_button(
-    label="📥 Export Price History to CSV",
-    data=csv.encode('utf-8-sig'),
-    file_name=f"price_history_{search_item}_{selected_client}.csv",
-    mime="text/csv",
-    use_container_width=True
-)
+                csv_data = df.to_csv(index=False, encoding='utf-8-sig')
+                st.download_button(
+                    label="📥 Export Price History to CSV",
+                    data=csv_data.encode('utf-8-sig'),
+                    file_name=f"price_history_{search_item}_{selected_client}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
                 
             else:
                 st.warning(f"No price data found for '{search_item}' in {selected_client}")
@@ -2333,15 +2333,15 @@ def client_details_tab():
     st.markdown("---")
     col1, col2 = st.columns(2)
     with col1:
-if st.button("📥 Export Client Details to CSV", use_container_width=True):
-    csv = filtered_df.to_csv(index=False, encoding='utf-8-sig')
-    st.download_button(
-        label="Download CSV",
-        data=csv.encode('utf-8-sig'),
-        file_name=f"client_details_{datetime.now().strftime('%Y%m%d')}.csv",
-        mime="text/csv",
-        use_container_width=True
-    )
+    if st.button("📥 Export Client Details to CSV", use_container_width=True):
+        csv_data = filtered_df.to_csv(index=False, encoding='utf-8-sig')
+        st.download_button(
+            label="Download CSV",
+            data=csv_data.encode('utf-8-sig'),
+            file_name=f"client_details_{datetime.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
     
     with col2:
         if st.button("🔄 Refresh Data", use_container_width=True):
@@ -2573,14 +2573,14 @@ def price_checker_tab():
                 
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
                 
-csv = filtered_df[['Article', 'Product Name', 'Supplier', 'Latest Price Formatted', 'Currency', 'Last Order Date', 'Total Orders']].to_csv(index=False, encoding='utf-8-sig')
-st.download_button(
-    label="📥 Export All Prices to CSV",
-    data=csv.encode('utf-8-sig'),
-    file_name=f"all_prices_{selected_client}_{datetime.now().strftime('%Y%m%d')}.csv",
-    mime="text/csv",
-    use_container_width=True
-)
+                csv_data = filtered_df[['Article', 'Product Name', 'Supplier', 'Latest Price Formatted', 'Currency', 'Last Order Date', 'Total Orders']].to_csv(index=False, encoding='utf-8-sig')
+                st.download_button(
+                    label="📥 Export All Prices to CSV",
+                    data=csv_data.encode('utf-8-sig'),
+                    file_name=f"all_prices_{selected_client}_{datetime.now().strftime('%Y%m%d')}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
             else:
                 st.warning(f"No price data found for {selected_client}")
 
@@ -2859,14 +2859,14 @@ def sales_history_tab():
                             st.dataframe(orders_df, use_container_width=True, hide_index=True)
                             
                             # Export option
-csv = orders_df.to_csv(index=False, encoding='utf-8-sig')
-st.download_button(
-    label="📥 Export Sales History to CSV",
-    data=csv.encode('utf-8-sig'),
-    file_name=f"sales_history_{selected_article}_{selected_client}_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.csv",
-    mime="text/csv",
-    use_container_width=True
-)
+                            csv_data = orders_df.to_csv(index=False, encoding='utf-8-sig')
+                            st.download_button(
+                                label="📥 Export Sales History to CSV",
+                                data=csv_data.encode('utf-8-sig'),
+                                file_name=f"sales_history_{selected_article}_{selected_client}_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.csv",
+                                mime="text/csv",
+                                use_container_width=True
+                            )
                         else:
                             st.info("No valid data to display in table")
                         
