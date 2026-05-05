@@ -2333,15 +2333,15 @@ def client_details_tab():
     st.markdown("---")
     col1, col2 = st.columns(2)
     with col1:
-    if st.button("📥 Export Client Details to CSV", use_container_width=True):
-        csv_data = filtered_df.to_csv(index=False, encoding='utf-8-sig')
-        st.download_button(
-            label="Download CSV",
-            data=csv_data.encode('utf-8-sig'),
-            file_name=f"client_details_{datetime.now().strftime('%Y%m%d')}.csv",
-            mime="text/csv",
-            use_container_width=True
-        )
+        if st.button("📥 Export Client Details to CSV", use_container_width=True):
+            csv_data = filtered_df.to_csv(index=False, encoding='utf-8-sig')
+            st.download_button(
+                label="Download CSV",
+                data=csv_data.encode('utf-8-sig'),
+                file_name=f"client_details_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
     
     with col2:
         if st.button("🔄 Refresh Data", use_container_width=True):
@@ -2370,7 +2370,7 @@ def client_details_tab():
         st.info("💡 Tip: Add more data to the 'Client_details' sheet to see more information here. Empty cells are handled gracefully.")
 
 # ============================================
-# TAB 9: PRICE CHECKER (NEW)
+# TAB 9: PRICE CHECKER
 # ============================================
 
 def price_checker_tab():
@@ -2585,7 +2585,7 @@ def price_checker_tab():
                 st.warning(f"No price data found for {selected_client}")
 
 # ============================================
-# TAB 10: SALES HISTORY (NEW)
+# TAB 10: SALES HISTORY
 # ============================================
 
 def sales_history_tab():
@@ -2701,7 +2701,7 @@ def sales_history_tab():
                         # Summary statistics
                         total_quantity = 0
                         total_weight = 0
-                        total_value_usd = 0  # Track in USD for consistency
+                        total_value_usd = 0
                         total_value_eur = 0
                         total_value_sar = 0
                         prices = []
@@ -2752,24 +2752,15 @@ def sales_history_tab():
                             st.metric("Total Weight", f"{total_weight:,.0f} kg" if total_weight > 0 else "N/A")
                         
                         # Display value metrics by currency
-                        value_cols = st.columns(len(currencies_used) if currencies_used else 1)
-                        value_idx = 0
                         if total_value_usd > 0:
-                            with value_cols[value_idx]:
-                                st.metric("Total Value (USD)", f"${total_value_usd:,.2f}")
-                            value_idx += 1
+                            st.metric("Total Value (USD)", f"${total_value_usd:,.2f}")
                         if total_value_eur > 0:
-                            with value_cols[value_idx]:
-                                st.metric("Total Value (EUR)", f"€{total_value_eur:,.2f}")
-                            value_idx += 1
+                            st.metric("Total Value (EUR)", f"€{total_value_eur:,.2f}")
                         if total_value_sar > 0:
-                            with value_cols[value_idx]:
-                                st.metric("Total Value (SAR)", f"ر.س{total_value_sar:,.2f}")
-                            value_idx += 1
+                            st.metric("Total Value (SAR)", f"ر.س{total_value_sar:,.2f}")
                         
                         # Price statistics
                         if prices:
-                            col1, col2, col3 = st.columns(3)
                             usd_prices = [p['value'] for p in prices if p['currency'] == 'USD']
                             eur_prices = [p['value'] for p in prices if p['currency'] == 'EUR']
                             sar_prices = [p['value'] for p in prices if p['currency'] == 'SAR']
@@ -2894,8 +2885,8 @@ def main_dashboard():
             "📈 PRICE TRACKING",
             "💰 COMMISSION",
             "👥 CLIENT DETAILS",
-            "🔍 PRICE CHECKER",      # NEW TAB 9
-            "📊 SALES HISTORY"        # NEW TAB 10
+            "🔍 PRICE CHECKER",
+            "📊 SALES HISTORY"
         ]
         
         for tab in tabs:
