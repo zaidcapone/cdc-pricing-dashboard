@@ -2442,6 +2442,7 @@ def price_checker_tab():
                                     currency = latest_order.get('currency', 'USD')
                                     latest_date = latest_order.get('date', 'Unknown')
                                     symbol = currency_symbols.get(currency, "$")
+                                    hs_code = latest_order.get('hs_code', 'N/A')
                                     
                                     if price_value:
                                         latest_price_display = f"{symbol}{price_value:.2f}"
@@ -2457,6 +2458,7 @@ def price_checker_tab():
                                     results.append({
                                         'Article': article_num,
                                         'Product Name': article_data.get('names', ['N/A'])[0],
+                                        'HS Code': hs_code,
                                         'Supplier': supplier,
                                         'Latest Price': latest_price_display,
                                         'Currency': currency,
@@ -2474,6 +2476,7 @@ def price_checker_tab():
                             with col1:
                                 st.markdown(f"**Article Number:** {result['Article']}")
                                 st.markdown(f"**Product Name:** {result['Product Name']}")
+                                st.markdown(f"**HS Code:** {result['HS Code']}")
                                 st.markdown(f"**Supplier:** {result['Supplier']}")
                                 st.markdown(f"**Currency:** {result['Currency']}")
                             with col2:
@@ -2511,6 +2514,7 @@ def price_checker_tab():
                             currency = latest_order.get('currency', 'USD')
                             latest_date = latest_order.get('date', 'Unknown')
                             symbol = currency_symbols.get(currency, "$")
+                            hs_code = latest_order.get('hs_code', 'N/A')
                             
                             if price_value:
                                 latest_price_display = price_value
@@ -2522,6 +2526,7 @@ def price_checker_tab():
                             all_items.append({
                                 'Article': article_num,
                                 'Product Name': article_data.get('names', ['N/A'])[0],
+                                'HS Code': hs_code,
                                 'Supplier': supplier,
                                 'Latest Price': latest_price_display,
                                 'Latest Price Formatted': latest_price_formatted,
@@ -2567,13 +2572,13 @@ def price_checker_tab():
                 
                 st.markdown(f"**Showing {len(filtered_df)} items**")
                 
-                # Display with formatted prices
-                display_df = filtered_df[['Article', 'Product Name', 'Supplier', 'Latest Price Formatted', 'Currency', 'Last Order Date', 'Total Orders']].copy()
-                display_df.columns = ['Article', 'Product Name', 'Supplier', 'Latest Price', 'Currency', 'Last Order Date', 'Total Orders']
+                # Display with formatted prices and HS Code
+                display_df = filtered_df[['Article', 'Product Name', 'HS Code', 'Supplier', 'Latest Price Formatted', 'Currency', 'Last Order Date', 'Total Orders']].copy()
+                display_df.columns = ['Article', 'Product Name', 'HS Code', 'Supplier', 'Latest Price', 'Currency', 'Last Order Date', 'Total Orders']
                 
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
                 
-                csv_data = filtered_df[['Article', 'Product Name', 'Supplier', 'Latest Price Formatted', 'Currency', 'Last Order Date', 'Total Orders']].to_csv(index=False, encoding='utf-8-sig')
+                csv_data = filtered_df[['Article', 'Product Name', 'HS Code', 'Supplier', 'Latest Price Formatted', 'Currency', 'Last Order Date', 'Total Orders']].to_csv(index=False, encoding='utf-8-sig')
                 st.download_button(
                     label="📥 Export All Prices to CSV",
                     data=csv_data.encode('utf-8-sig'),
