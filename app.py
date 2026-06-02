@@ -1403,7 +1403,7 @@ def order_tracking_tab():
     st.markdown("""
     <div style="background: linear-gradient(135deg, #059669, #047857); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
         <h2 style="margin:0; color: white;">📅 Order Tracking</h2>
-        <p style="margin:0; opacity:0.9; color: white;">ETD management • Order status • Sample requests</p>
+        <p style="margin:0; opacity:0.9; color: white;">ETD management • Order status • Track shipments by month</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -1413,7 +1413,7 @@ def order_tracking_tab():
         st.markdown("<div class='subsection-header'>🚢 ETD Dashboard</div>", unsafe_allow_html=True)
         
         ETD_SHEET_ID = "1eA-mtD3aK_n9VYNV_bxnmqm58IywF0f5-7vr3PT51hs"
-        AVAILABLE_MONTHS = ["October 2025", "November 2025"]
+        AVAILABLE_MONTHS = ["May 2026", "June 2026"]
         
         selected_month = st.selectbox("Select Month:", AVAILABLE_MONTHS, key="etd_month")
         
@@ -1422,64 +1422,129 @@ def order_tracking_tab():
         
         if etd_data.empty:
             st.warning(f"No ETD data found for {selected_month}")
+            st.info("💡 Make sure the sheet exists and has headers in row 14 (A14). Required columns: Client Name, Status, ETD_Backaldrine, ETD_bateel, Scheduled Date For Loading, Order No., Confirmation Date, Concerned Employee")
         else:
-            st.success(f"Loaded {len(etd_data)} orders for {selected_month}")
+            st.success(f"✅ Loaded {len(etd_data)} orders for {selected_month}")
             
+            # Summary metrics
             col1, col2, col3, col4 = st.columns(4)
-            col1.metric("Total Orders", len(etd_data))
-            if 'Status' in etd_data.columns:
-                shipped = len(etd_data[etd_data['Status'].str.lower() == 'shipped'])
-                col2.metric("Shipped", shipped)
-                production = len(etd_data[etd_data['Status'].str.lower().str.contains('production', na=False)])
-                col3.metric("In Production", production)
+            with col1:
+                st.metric("Total Orders", len(etd_data))
+            with col2:
+                if 'Status' in etd_data.columns:
+                    shipped = len(etd_data[etd_data['Status'].astype(str).str.lower() == 'shipped'])
+                    st.metric("Shipped", shipped)
+                else:
+                    st.metric("Status Column", "Not Found")
+            with col3:
+                if 'Status' in etd_data.columns:
+                    production = len(etd_data[etd_data['Status'].astype(str).str.lower().str.contains('production', na=False)])
+                    st.metric("In Production", production)
+                else:
+                    st.metric("In Production", "N/A")
+            with col4:
+                if 'ETD_Backaldrine' in etd_data.columns:
+                    need_etd = len(etd_data[etd_data['ETD_Backaldrine'].astype(str).str.upper().str.contains('NEED ETD', na=False)])
+                    st.metric("Need ETD", need_etd)
+                else:
+                    st.metric("Need ETD", "N/A")
             
+            # Filters
             col1, col2 = st.columns(2)
             with col1:
                 if 'Client Name' in etd_data.columns:
-                    clients = ["All"] + sorted(etd_data['Client Name'].dropna().unique())
+                    clients = ["All"] + sorted(etd_data['Client Name'].dropna().unique().tolist())
                     client_filter = st.selectbox("Filter by Client:", clients, key="etd_client")
                 else:
                     client_filter = "All"
-            with col2:
-                status_filter = st.selectbox("Filter by Status:", ["All", "Shipped", "In Production", "Pending", "Need ETD"], key="etd_status")
+                    st.warning("Column 'Client Name' not found in sheet")
             
+            with col2:
+                if 'Status' in etd_data.columns:
+                    status_options = ["All"] + sorted(etd_data['Status'].dropna().unique().tolist())
+                    status_filter = st.selectbox("Filter by Status:", status_options, key="etd_status")
+                else:
+                    status_filter = "All"
+            
+            # Apply filters
             filtered_etd = etd_data.copy()
             if client_filter != "All" and 'Client Name' in etd_data.columns:
                 filtered_etd = filtered_etd[filtered_etd['Client Name'] == client_filter]
-            if status_filter != "All" and status_filter != "Need ETD" and 'Status' in etd_data.columns:
+            if status_filter != "All" and 'Status' in etd_data.columns:
                 filtered_etd = filtered_etd[filtered_etd['Status'] == status_filter]
             
             st.markdown(f"**Found {len(filtered_etd)} orders**")
             
             if not filtered_etd.empty:
-                for _, order in filtered_etd.iterrows():
+                for idx, order in filtered_etd.iterrows():
+                    # Get status with emoji
                     status = order.get('Status', 'Unknown')
-                    status_icon = {'Shipped': '🟢', 'In Production': '🟡', 'Pending': '🟠'}.get(status, '⚫')
+                    status_icon = {
+                        'Shipped': '🟢', 
+                        'In Production': '🟡', 
+                        'Pending': '🟠',
+                        'Delivered': '✅',
+                        'Cancelled': '❌'
+                    }.get(status, '⚫')
                     
-                    with st.expander(f"{status_icon} Order {order.get('Order No.', 'N/A')} - {order.get('Client Name', 'N/A')}", expanded=False):
+                    # Get client name
+                    client_name = order.get('Client Name', 'N/A')
+                    order_no = order.get('Order No.', 'N/A')
+                    
+                    with st.expander(f"{status_icon} Order {order_no} - {client_name}", expanded=False):
                         col1, col2, col3 = st.columns(3)
                         with col1:
-                            st.markdown(f"**Client:** {order.get('Client Name', 'N/A')}")
+                            st.markdown(f"**Client:** {client_name}")
                             st.markdown(f"**Employee:** {order.get('Concerned Employee', 'N/A')}")
+                            st.markdown(f"**Order No.:** {order_no}")
                         with col2:
                             st.markdown(f"**Status:** {status}")
-                            st.markdown(f"**Confirmation:** {order.get('Confirmation Date', 'N/A')}")
+                            st.markdown(f"**Confirmation Date:** {order.get('Confirmation Date', 'N/A')}")
+                            st.markdown(f"**Loading Date:** {order.get('Scheduled Date For Loading', 'N/A')}")
                         with col3:
-                            st.markdown(f"**Loading:** {order.get('Scheduled Date For Loading', 'N/A')}")
+                            st.markdown(f"**Transport Company:** {order.get('transport Company', 'N/A')}")
+                            st.markdown(f"**Stock Notes:** {order.get('Stock Notes', 'N/A')}")
                         
                         st.markdown("---")
-                        st.markdown("**Supplier ETD Status**")
+                        st.markdown("**🚢 Supplier ETD Status**")
                         
-                        for supplier in ['Backaldrine', 'bateel']:
-                            etd_col = f"ETD _{supplier}" if supplier != 'bateel' else 'ETD_bateel'
-                            etd_value = order.get(etd_col, '')
-                            
-                            if pd.isna(etd_value) or str(etd_value).strip() == '':
-                                st.markdown(f"**{supplier}:** ❌ No ETD")
-                            elif 'NEED ETD' in str(etd_value).upper():
-                                st.markdown(f"**{supplier}:** <span class='badge-danger'>NEED ETD</span>", unsafe_allow_html=True)
+                        # Supplier ETD columns
+                        suppliers = [
+                            ('Backaldrine', 'ETD_Backaldrine'),
+                            ('Bateel', 'ETD_bateel'),
+                            ('Kasih', 'ETD _ Kasih'),
+                            ('PMC', 'ETD_PMC')
+                        ]
+                        
+                        for supplier_name, column_name in suppliers:
+                            if column_name in order.index:
+                                etd_value = order.get(column_name, '')
+                                if pd.isna(etd_value) or str(etd_value).strip() == '':
+                                    st.markdown(f"**{supplier_name}:** ⚪ No ETD")
+                                elif 'NEED ETD' in str(etd_value).upper():
+                                    st.markdown(f"**{supplier_name}:** 🔴 <span class='badge-danger'>NEED ETD</span>", unsafe_allow_html=True)
+                                else:
+                                    st.markdown(f"**{supplier_name}:** 📅 {etd_value}")
                             else:
-                                st.markdown(f"**{supplier}:** 📅 {etd_value}")
+                                st.markdown(f"**{supplier_name}:** ⚪ Column not found")
+                        
+                        # Show chick list doc if available
+                        chick_list = order.get('Chick List Doc', '')
+                        if chick_list and pd.notna(chick_list) and str(chick_list).strip():
+                            st.markdown("---")
+                            st.markdown(f"**📄 Chick List Doc:** {chick_list}")
+                
+                # Export option
+                csv_data = filtered_etd.to_csv(index=False, encoding='utf-8-sig')
+                st.download_button(
+                    label="📥 Export ETD Data to CSV",
+                    data=csv_data.encode('utf-8-sig'),
+                    file_name=f"etd_{selected_month}_{datetime.now().strftime('%Y%m%d')}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+            else:
+                st.info("No orders match your filters")
     
     with sub_tab2:
         st.markdown("<div class='subsection-header'>🎁 Samples Request Form</div>", unsafe_allow_html=True)
