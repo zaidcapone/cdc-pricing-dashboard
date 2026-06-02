@@ -2810,14 +2810,16 @@ def sales_history_tab():
                             usd_prices = [p['value'] for p in prices if p['currency'] == 'USD']
                             eur_prices = [p['value'] for p in prices if p['currency'] == 'EUR']
                             sar_prices = [p['value'] for p in prices if p['currency'] == 'SAR']
-                                                        price_stats_text = ""
+                            price_stats_text = ""
                             if usd_prices:
                                 price_stats_text += f"USD: ${min(usd_prices):.2f} - ${max(usd_prices):.2f} (avg ${sum(usd_prices)/len(usd_prices):.2f})"
                             if eur_prices:
-                                if price_stats_text: price_stats_text += " | "
+                                if price_stats_text: 
+                                    price_stats_text += " | "
                                 price_stats_text += f"EUR: €{min(eur_prices):.2f} - €{max(eur_prices):.2f} (avg €{sum(eur_prices)/len(eur_prices):.2f})"
                             if sar_prices:
-                                if price_stats_text: price_stats_text += " | "
+                                if price_stats_text: 
+                                    price_stats_text += " | "
                                 price_stats_text += f"SAR: ر.س{min(sar_prices):.2f} - ر.س{max(sar_prices):.2f} (avg ر.س{sum(sar_prices)/len(sar_prices):.2f})"
                             
                             st.info(f"**Price Range:** {price_stats_text}")
