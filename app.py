@@ -2,8 +2,8 @@
 # MULTI-CLIENT PRICING DASHBOARD - CONSOLIDATED EDITION
 # ============================================
 # Author: Zaid F. Al-Shami
-# Version: 9.0 (with Price Checker & Sales History Tabs)
-# Last Updated: 27 April 2026
+# Version: 10.0 (Fully Updated - ETD, Price Checker, Date Sorting)
+# Last Updated: June 2026
 # ============================================
 
 import streamlit as st
@@ -45,16 +45,12 @@ st.set_page_config(
 # ============================================
 st.markdown("""
 <style>
-    /* ===== GLOBAL STYLES ===== */
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    
     .main { padding: 0rem 1rem; }
-    
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
     ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 10px; }
     ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
-    
     .dashboard-header {
         background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
         padding: 1.5rem 2rem;
@@ -62,7 +58,6 @@ st.markdown("""
         margin-bottom: 2rem;
         box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     }
-    
     .dashboard-title {
         font-size: 1.75rem;
         font-weight: 700;
@@ -72,13 +67,11 @@ st.markdown("""
         align-items: center;
         gap: 0.75rem;
     }
-    
     .dashboard-subtitle {
         color: #94a3b8;
         margin: 0.5rem 0 0 0;
         font-size: 0.9rem;
     }
-    
     .modern-card {
         background: white;
         border-radius: 12px;
@@ -87,7 +80,6 @@ st.markdown("""
         border: 1px solid #e2e8f0;
         margin-bottom: 1rem;
     }
-    
     .stat-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border-radius: 16px;
@@ -95,10 +87,8 @@ st.markdown("""
         color: white;
         text-align: center;
     }
-    
     .stat-value { font-size: 2rem; font-weight: 700; margin: 0.5rem 0; }
     .stat-label { font-size: 0.85rem; opacity: 0.9; text-transform: uppercase; }
-    
     .section-header {
         font-size: 1.25rem;
         font-weight: 600;
@@ -107,14 +97,12 @@ st.markdown("""
         padding-bottom: 0.5rem;
         border-bottom: 2px solid #e2e8f0;
     }
-    
     .subsection-header {
         font-size: 1rem;
         font-weight: 600;
         color: #475569;
         margin: 1rem 0 0.75rem 0;
     }
-    
     .price-card-primary {
         background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
         border-left: 4px solid #dc2626;
@@ -123,7 +111,6 @@ st.markdown("""
         margin-bottom: 0.75rem;
         color: #1e293b !important;
     }
-    
     .price-card-secondary {
         background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
         border-left: 4px solid #f59e0b;
@@ -132,7 +119,6 @@ st.markdown("""
         margin-bottom: 0.75rem;
         color: #1e293b !important;
     }
-    
     .price-card-info {
         background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
         border-left: 4px solid #3b82f6;
@@ -141,39 +127,32 @@ st.markdown("""
         margin-bottom: 0.75rem;
         color: #1e293b !important;
     }
-    
     .badge-success { background: #d1fae5; color: #065f46; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; }
     .badge-warning { background: #fed7aa; color: #9a3412; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; }
     .badge-danger { background: #fee2e2; color: #991b1b; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; }
     .badge-info { background: #dbeafe; color: #1e40af; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; }
-    
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
         border-right: 1px solid #334155 !important;
     }
-    
     [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, [data-testid="stSidebar"] p {
         color: #f1f5f9 !important;
     }
-    
     [data-testid="stSidebar"] .stButton button {
         background: transparent !important;
         color: #cbd5e1 !important;
         border: 1px solid #334155 !important;
         text-align: left !important;
     }
-    
     [data-testid="stSidebar"] .stButton button:hover {
         background: #334155 !important;
         color: white !important;
     }
-    
     [data-testid="stSidebar"] .stButton button[kind="primary"] {
         background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
         color: white !important;
         border: none !important;
     }
-    
     .announcement-item {
         background: linear-gradient(135deg, #1e3a5f 0%, #1e293b 100%) !important;
         border-left: 3px solid #3b82f6 !important;
@@ -182,7 +161,6 @@ st.markdown("""
         margin: 0.5rem 0;
         color: #bae6fd !important;
     }
-    
     .dashboard-footer {
         text-align: center;
         padding: 1.5rem;
@@ -191,84 +169,41 @@ st.markdown("""
         border-top: 1px solid #e2e8f0;
         margin-top: 2rem;
     }
-    
     .price-card-primary div, .price-card-primary p, .price-card-primary strong, .price-card-primary span,
     .price-card-secondary div, .price-card-secondary p, .price-card-secondary strong, .price-card-secondary span,
     .price-card-info div, .price-card-info p, .price-card-info strong, .price-card-info span {
         color: #1e293b !important;
     }
-    
     .streamlit-expanderContent {
         animation: slideDown 0.3s ease-out;
     }
-    
     @keyframes slideDown {
-        from {
-            opacity: 0;
-            transform: translateY(-10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
-    
     .modern-card, .price-card-primary, .price-card-secondary, .price-card-info, .stat-card {
         animation: fadeInUp 0.4s ease-out;
     }
-    
     @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
     }
-    
-    .stButton button {
-        transition: all 0.2s ease !important;
-    }
-    
-    .stButton button:hover {
-        transform: translateY(-2px);
-        transition: all 0.2s ease !important;
-    }
-    
+    .stButton button { transition: all 0.2s ease !important; }
+    .stButton button:hover { transform: translateY(-2px); transition: all 0.2s ease !important; }
     .modern-card:hover, .price-card-primary:hover, .price-card-secondary:hover, .price-card-info:hover {
         transform: translateY(-3px);
         transition: all 0.2s ease;
         box-shadow: 0 10px 30px rgba(0,0,0,0.1);
     }
-    
-    [data-testid="stSidebar"] .stButton button {
-        transition: all 0.2s ease !important;
-    }
-    
-    [data-testid="stSidebar"] .stButton button:hover {
-        transform: translateX(5px);
-        transition: all 0.2s ease !important;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        transition: all 0.2s ease;
-    }
-    
-    .stTabs [data-baseweb="tab"]:hover {
-        transform: translateY(-2px);
-    }
-    
-    .main > div {
-        animation: fadeIn 0.4s ease-out;
-    }
-    
+    [data-testid="stSidebar"] .stButton button { transition: all 0.2s ease !important; }
+    [data-testid="stSidebar"] .stButton button:hover { transform: translateX(5px); transition: all 0.2s ease !important; }
+    .stTabs [data-baseweb="tab"] { transition: all 0.2s ease; }
+    .stTabs [data-baseweb="tab"]:hover { transform: translateY(-2px); }
+    .main > div { animation: fadeIn 0.4s ease-out; }
     @keyframes fadeIn {
         from { opacity: 0; }
         to { opacity: 1; }
     }
-    
     .client-detail-card {
         background: white;
         border-radius: 12px;
@@ -277,17 +212,11 @@ st.markdown("""
         border: 1px solid #e2e8f0;
         transition: all 0.2s ease;
     }
-    
     .client-detail-card:hover {
         box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         transform: translateY(-2px);
     }
-    
-    .empty-field {
-        color: #94a3b8;
-        font-style: italic;
-    }
-    
+    .empty-field { color: #94a3b8; font-style: italic; }
     .price-result-card {
         background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
         border-radius: 16px;
@@ -296,13 +225,7 @@ st.markdown("""
         color: white;
         text-align: center;
     }
-    
-    .price-value {
-        font-size: 2.5rem;
-        font-weight: 700;
-        color: #4ade80;
-    }
-    
+    .price-value { font-size: 2.5rem; font-weight: 700; color: #4ade80; }
     .sales-chart-container {
         background: white;
         border-radius: 12px;
@@ -319,8 +242,9 @@ API_KEY = "AIzaSyA3P-ZpLjDdVtGB82_1kaWuO7lNbKDj9HU"
 CDC_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"
 COMMISSION_SHEET_ID = "1cfYGlnagnN7oF3toaSeXtxQ_HiJpHcVGSB8lzMBn41s"
 CLIENT_DETAILS_SHEET_ID = "1qWgVT0l76VsxQzYExpLfioBHprd3IvxJzjQWv3RryJI"
+ETD_SHEET_ID = "1eA-mtD3aK_n9VYNV_bxnmqm58IywF0f5-7vr3PT51hs"
 
-# User authentication - "ALL" means load all clients from sheet
+# User authentication
 USERS = {
     "admin": {"password": "123456", "clients": "ALL"},
     "ceo": {"password": "123456", "clients": "ALL"},
@@ -499,13 +423,11 @@ def get_google_sheets_data(client="CDC"):
                 # Extract price and currency
                 price_str = str(row.get(price_col, '')).strip()
                 price_value = None
-                currency = "USD"  # default
+                currency = "USD"
                 
                 if price_str and price_str != 'nan':
-                    # Detect currency from price string
                     if '€' in price_str or 'EUR' in price_str.upper():
                         currency = "EUR"
-                        # Remove currency符号
                         price_clean = price_str.replace('€', '').replace('EUR', '').strip()
                     elif 'ريال' in price_str or 'SAR' in price_str.upper() or 'ر.س' in price_str:
                         currency = "SAR"
@@ -616,20 +538,15 @@ def load_etd_data(sheet_id, sheet_name):
             values = data.get('values', [])
             
             if not values:
-                st.warning(f"No data found in sheet '{sheet_name}'")
                 return pd.DataFrame()
             
-            # Headers are at row 14 (index 13, since Python starts at 0)
+            # Headers are at row 14 (index 13)
             if len(values) > 13:
-                headers = values[13]  # Row 14
-                
-                # Clean up headers (remove empty strings and clean spaces)
+                headers = values[13]
                 headers = [str(h).strip() if h else f"Column_{i}" for i, h in enumerate(headers)]
                 
-                # Data starts from row 15 (index 14)
                 rows = values[14:] if len(values) > 14 else []
                 
-                # Pad rows to match header count
                 padded_rows = []
                 for row in rows:
                     if len(row) < len(headers):
@@ -640,36 +557,11 @@ def load_etd_data(sheet_id, sheet_name):
                 
                 df = pd.DataFrame(padded_rows, columns=headers)
                 df = df.replace('', pd.NA)
-                
-                # Debug: Show available columns
-                st.session_state['etd_debug_columns'] = list(df.columns)
-                
                 return df
             else:
-                st.warning(f"Sheet '{sheet_name}' has less than 14 rows. Headers should be at row 14.")
                 return pd.DataFrame()
         else:
-            st.error(f"Failed to load sheet: HTTP {response.status_code}")
             return pd.DataFrame()
-    except Exception as e:
-        st.error(f"Error loading ETD data: {str(e)}")
-        return pd.DataFrame()
-    """Load ETD data"""
-    try:
-        import urllib.parse
-        encoded_sheet = urllib.parse.quote(sheet_name)
-        url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{encoded_sheet}!A:Z?key={API_KEY}"
-        response = requests.get(url)
-        
-        if response.status_code == 200:
-            data = response.json()
-            values = data.get('values', [])
-            if values and len(values) > 13:
-                headers = values[13]
-                rows = values[14:] if len(values) > 14 else []
-                df = pd.DataFrame(rows, columns=headers)
-                return df
-        return pd.DataFrame()
     except Exception as e:
         return pd.DataFrame()
 
@@ -1445,11 +1337,11 @@ def products_logistics_tab():
             st.info(f"**Container Info:** A 40ft container holds approximately 30 pallets max. Your order fills {(full_pallets / 30 * 100):.1f}% of container capacity.")
 
 # ============================================
-# TAB 5: ORDER TRACKING
+# TAB 5: ORDER TRACKING (UPDATED FOR 2026)
 # ============================================
 
 def order_tracking_tab():
-    """Consolidated Order Tracking"""
+    """Consolidated Order Tracking - Updated for May/June 2026"""
     st.markdown("""
     <div style="background: linear-gradient(135deg, #059669, #047857); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
         <h2 style="margin:0; color: white;">📅 Order Tracking</h2>
@@ -1462,7 +1354,6 @@ def order_tracking_tab():
     with sub_tab1:
         st.markdown("<div class='subsection-header'>🚢 ETD Dashboard</div>", unsafe_allow_html=True)
         
-        ETD_SHEET_ID = "1eA-mtD3aK_n9VYNV_bxnmqm58IywF0f5-7vr3PT51hs"
         AVAILABLE_MONTHS = ["May 2026", "June 2026"]
         
         selected_month = st.selectbox("Select Month:", AVAILABLE_MONTHS, key="etd_month")
@@ -1470,31 +1361,9 @@ def order_tracking_tab():
         with st.spinner(f"Loading {selected_month} ETD data..."):
             etd_data = load_etd_data(ETD_SHEET_ID, selected_month)
         
-if etd_data.empty:
-    st.warning(f"No ETD data found for {selected_month}")
-    st.info("💡 Make sure the sheet exists and has headers in row 14 (A14).")
-    
-    # Show debug info
-    with st.expander("🔧 Debug Information"):
-        st.write("**Sheet Name:**", selected_month)
-        st.write("**Sheet ID:**", ETD_SHEET_ID)
-        if 'etd_debug_columns' in st.session_state:
-            st.write("**Columns found in sheet:**")
-            st.write(st.session_state.etd_debug_columns)
-        else:
-            st.write("Could not detect columns. Check if sheet is accessible.")
-        
-        st.write("**Expected columns (case sensitive):**")
-        st.write("- Client Name")
-        st.write("- Status")
-        st.write("- ETD_Backaldrine")
-        st.write("- ETD_bateel")
-        st.write("- Scheduled Date For Loading")
-        st.write("- Order No.")
-        st.write("- Confirmation Date")
-        st.write("- Concerned Employee")
-else:
-    # Continue with normal display...
+        if etd_data.empty:
+            st.warning(f"No ETD data found for {selected_month}")
+            st.info("💡 Make sure the sheet exists and has headers in row 14 (A14).")
         else:
             st.success(f"✅ Loaded {len(etd_data)} orders for {selected_month}")
             
@@ -1549,7 +1418,6 @@ else:
             
             if not filtered_etd.empty:
                 for idx, order in filtered_etd.iterrows():
-                    # Get status with emoji
                     status = order.get('Status', 'Unknown')
                     status_icon = {
                         'Shipped': '🟢', 
@@ -1559,7 +1427,6 @@ else:
                         'Cancelled': '❌'
                     }.get(status, '⚫')
                     
-                    # Get client name
                     client_name = order.get('Client Name', 'N/A')
                     order_no = order.get('Order No.', 'N/A')
                     
@@ -1580,7 +1447,6 @@ else:
                         st.markdown("---")
                         st.markdown("**🚢 Supplier ETD Status**")
                         
-                        # Supplier ETD columns
                         suppliers = [
                             ('Backaldrine', 'ETD_Backaldrine'),
                             ('Bateel', 'ETD_bateel'),
@@ -1600,13 +1466,11 @@ else:
                             else:
                                 st.markdown(f"**{supplier_name}:** ⚪ Column not found")
                         
-                        # Show chick list doc if available
                         chick_list = order.get('Chick List Doc', '')
                         if chick_list and pd.notna(chick_list) and str(chick_list).strip():
                             st.markdown("---")
                             st.markdown(f"**📄 Chick List Doc:** {chick_list}")
                 
-                # Export option
                 csv_data = filtered_etd.to_csv(index=False, encoding='utf-8-sig')
                 st.download_button(
                     label="📥 Export ETD Data to CSV",
@@ -2507,7 +2371,7 @@ def client_details_tab():
         st.info("💡 Tip: Add more data to the 'Client_details' sheet to see more information here. Empty cells are handled gracefully.")
 
 # ============================================
-# TAB 9: PRICE CHECKER
+# TAB 9: PRICE CHECKER (UPDATED with HS Code & Packaging)
 # ============================================
 
 def price_checker_tab():
@@ -2592,7 +2456,6 @@ def price_checker_tab():
                                             latest_date = order_date
                                             latest_order = order
                                 
-                                # If no valid date found, take the first order
                                 if latest_order is None and orders:
                                     latest_order = orders[0]
                                     latest_date = latest_order.get('date', 'Unknown')
@@ -2680,7 +2543,6 @@ def price_checker_tab():
                                     latest_date = order_date
                                     latest_order = order
                         
-                        # If no valid date found, take the first order
                         if latest_order is None and orders:
                             latest_order = orders[0]
                         
@@ -2748,7 +2610,6 @@ def price_checker_tab():
                 
                 st.markdown(f"**Showing {len(filtered_df)} items**")
                 
-                # Display with formatted prices, HS Code, and Packaging
                 display_df = filtered_df[['Article', 'Product Name', 'HS Code', 'Packaging', 'Supplier', 'Latest Price Formatted', 'Currency', 'Last Order Date', 'Total Orders']].copy()
                 display_df.columns = ['Article', 'Product Name', 'HS Code', 'Packaging', 'Supplier', 'Latest Price', 'Currency', 'Last Order Date', 'Total Orders']
                 
@@ -2764,6 +2625,289 @@ def price_checker_tab():
                 )
             else:
                 st.warning(f"No price data found for {selected_client}")
+
+# ============================================
+# TAB 10: SALES HISTORY (UPDATED with proper date sorting)
+# ============================================
+
+def sales_history_tab():
+    """View sales history for a specific item over a selected date range with currency support"""
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #f97316, #ea580c); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
+        <h2 style="margin:0; color: white;">📈 Sales History</h2>
+        <p style="margin:0; opacity:0.9; color: white;">Track sales performance • Filter by date range • Supports USD, EUR, SAR</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    available_clients = st.session_state.user_clients
+    if not available_clients:
+        st.warning("No clients available. Please check your Clients_CoC sheet.")
+        return
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        selected_client = st.selectbox("Select Client:", available_clients, key="sales_history_client")
+    
+    with col2:
+        search_type = st.radio("Select by:", ["Article Number", "Product Name"], horizontal=True, key="sales_history_search_type")
+    
+    # Helper function to parse dates
+    def parse_date(date_str):
+        if not date_str or date_str == 'nan' or str(date_str).strip() == '':
+            return None
+        for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d', '%d.%m.%y', '%d/%m/%y', '%Y/%m/%d']:
+            try:
+                return datetime.strptime(str(date_str).strip(), fmt).date()
+            except:
+                continue
+        return None
+    
+    # Currency symbol mapping
+    currency_symbols = {
+        "USD": "$",
+        "EUR": "€",
+        "SAR": "ر.س"
+    }
+    
+    if selected_client:
+        with st.spinner(f"Loading items for {selected_client}..."):
+            client_data = get_google_sheets_data(selected_client)
+            
+            # Build list of available items
+            items_list = []
+            for supplier in ["Backaldrin", "Bateel"]:
+                supplier_data = client_data.get(supplier, {})
+                for article_num, article_data in supplier_data.items():
+                    product_name = article_data.get('names', ['N/A'])[0]
+                    if product_name and product_name != 'N/A' and product_name != 'nan':
+                        items_list.append({
+                            'article': article_num,
+                            'product': product_name,
+                            'supplier': supplier
+                        })
+            
+            if not items_list:
+                st.warning(f"No items found for {selected_client}")
+                return
+            
+            # Create dropdown options
+            if search_type == "Article Number":
+                item_options = sorted([f"{item['article']} - {item['product'][:50]}" for item in items_list])
+                selected_item_display = st.selectbox("Select Item:", item_options, key="sales_history_item")
+                selected_article = selected_item_display.split(" - ")[0] if selected_item_display else None
+            else:
+                item_options = sorted([f"{item['product'][:60]} - {item['article']}" for item in items_list])
+                selected_item_display = st.selectbox("Select Item:", item_options, key="sales_history_item")
+                selected_article = selected_item_display.split(" - ")[-1] if selected_item_display else None
+            
+            # Date range selection
+            st.markdown("---")
+            st.markdown("### 📅 Select Date Range")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                start_date = st.date_input("From Date:", 
+                                           value=datetime.now().date() - pd.Timedelta(days=365),
+                                           key="sales_history_start")
+            with col2:
+                end_date = st.date_input("To Date:", 
+                                         value=datetime.now().date(),
+                                         key="sales_history_end")
+            
+            if selected_article and start_date and end_date:
+                # Find the item data
+                item_data = None
+                item_supplier = None
+                for supplier in ["Backaldrin", "Bateel"]:
+                    supplier_data = client_data.get(supplier, {})
+                    if selected_article in supplier_data:
+                        item_data = supplier_data[selected_article]
+                        item_supplier = supplier
+                        break
+                
+                if item_data:
+                    product_name = item_data.get('names', ['N/A'])[0]
+                    
+                    st.markdown(f"### 📊 Sales History: {selected_article} - {product_name}")
+                    st.markdown(f"**Supplier:** {item_supplier} | **Client:** {selected_client}")
+                    
+                    # Filter orders by date range
+                    filtered_orders = []
+                    for order in item_data.get('orders', []):
+                        date_str = order.get('date', '')
+                        if date_str and date_str != 'nan':
+                            date_obj = parse_date(date_str)
+                            if date_obj and start_date <= date_obj <= end_date:
+                                order['parsed_date'] = date_obj
+                                filtered_orders.append(order)
+                    
+                    if filtered_orders:
+                        # Sort by date
+                        filtered_orders = sorted(filtered_orders, key=lambda x: x.get('parsed_date', datetime.min.date()))
+                        
+                        # Summary statistics
+                        total_quantity = 0
+                        total_weight = 0
+                        total_value_usd = 0
+                        total_value_eur = 0
+                        total_value_sar = 0
+                        prices = []
+                        currencies_used = set()
+                        
+                        for order in filtered_orders:
+                            # Safe quantity extraction
+                            try:
+                                qty_str = str(order.get('quantity', '0')).replace(',', '').strip()
+                                qty_str = re.sub(r'[^0-9.-]', '', qty_str)
+                                qty = float(qty_str) if qty_str and qty_str != 'nan' else 0
+                                total_quantity += qty
+                            except:
+                                pass
+                            
+                            # Safe weight extraction
+                            try:
+                                weight_str = str(order.get('total_weight', '0')).replace(',', '').strip()
+                                weight_str = re.sub(r'[^0-9.-]', '', weight_str)
+                                weight = float(weight_str) if weight_str and weight_str != 'nan' else 0
+                                total_weight += weight
+                            except:
+                                pass
+                            
+                            # Safe price extraction with currency
+                            currency = order.get('currency', 'USD')
+                            currencies_used.add(currency)
+                            price_value = order.get('price_value')
+                            
+                            if price_value and price_value > 0:
+                                prices.append({'value': price_value, 'currency': currency})
+                                
+                                if currency == "USD":
+                                    total_value_usd += price_value * weight if weight > 0 else 0
+                                elif currency == "EUR":
+                                    total_value_eur += price_value * weight if weight > 0 else 0
+                                elif currency == "SAR":
+                                    total_value_sar += price_value * weight if weight > 0 else 0
+                        
+                        # Display metrics
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Total Orders", len(filtered_orders))
+                        with col2:
+                            st.metric("Total Quantity", f"{total_quantity:,.0f}" if total_quantity > 0 else "N/A")
+                        with col3:
+                            st.metric("Total Weight", f"{total_weight:,.0f} kg" if total_weight > 0 else "N/A")
+                        
+                        if total_value_usd > 0:
+                            st.metric("Total Value (USD)", f"${total_value_usd:,.2f}")
+                        if total_value_eur > 0:
+                            st.metric("Total Value (EUR)", f"€{total_value_eur:,.2f}")
+                        if total_value_sar > 0:
+                            st.metric("Total Value (SAR)", f"ر.س{total_value_sar:,.2f}")
+                        
+                        # Price statistics
+                        if prices:
+                            usd_prices = [p['value'] for p in prices if p['currency'] == 'USD']
+                            eur_prices = [p['value'] for p in prices if p['currency'] == 'EUR']
+                            sar_prices = [p['value'] for p in prices if p['currency'] == 'SAR']
+                                                        price_stats_text = ""
+                            if usd_prices:
+                                price_stats_text += f"USD: ${min(usd_prices):.2f} - ${max(usd_prices):.2f} (avg ${sum(usd_prices)/len(usd_prices):.2f})"
+                            if eur_prices:
+                                if price_stats_text: price_stats_text += " | "
+                                price_stats_text += f"EUR: €{min(eur_prices):.2f} - €{max(eur_prices):.2f} (avg €{sum(eur_prices)/len(eur_prices):.2f})"
+                            if sar_prices:
+                                if price_stats_text: price_stats_text += " | "
+                                price_stats_text += f"SAR: ر.س{min(sar_prices):.2f} - ر.س{max(sar_prices):.2f} (avg ر.س{sum(sar_prices)/len(sar_prices):.2f})"
+                            
+                            st.info(f"**Price Range:** {price_stats_text}")
+                        
+                        # Create chart data
+                        chart_data = []
+                        for order in filtered_orders:
+                            price_value = order.get('price_value')
+                            currency = order.get('currency', 'USD')
+                            weight_val = 0
+                            
+                            try:
+                                weight_str = str(order.get('total_weight', '0')).replace(',', '').strip()
+                                weight_str = re.sub(r'[^0-9.-]', '', weight_str)
+                                weight_val = float(weight_str) if weight_str and weight_str != 'nan' else 0
+                            except:
+                                pass
+                            
+                            if price_value and price_value > 0:
+                                chart_data.append({
+                                    'Date': order.get('parsed_date'),
+                                    'Price': price_value,
+                                    'Currency': currency,
+                                    'Weight (kg)': weight_val,
+                                    'Order #': order.get('order_no', 'N/A'),
+                                    'Price Label': f"{currency_symbols.get(currency, '$')}{price_value:.2f}"
+                                })
+                        
+                        if chart_data:
+                            chart_df = pd.DataFrame(chart_data)
+                            
+                            if len(chart_df) > 0:
+                                st.markdown("### 📈 Price Trend")
+                                price_chart = alt.Chart(chart_df).mark_line(point=True, color='#f97316', strokeWidth=2).encode(
+                                    x=alt.X('Date:T', title='Order Date'),
+                                    y=alt.Y('Price:Q', title='Price'),
+                                    color=alt.Color('Currency:N', title='Currency'),
+                                    tooltip=['Date:T', 'Price Label:N', 'Weight (kg):Q', 'Order #:N']
+                                ).properties(height=350)
+                                st.altair_chart(price_chart, use_container_width=True)
+                                
+                                st.markdown("### 📦 Sales Volume")
+                                volume_chart = alt.Chart(chart_df).mark_bar(color='#f97316').encode(
+                                    x=alt.X('Date:T', title='Order Date'),
+                                    y=alt.Y('Weight (kg):Q', title='Weight (kg)'),
+                                    tooltip=['Date:T', 'Weight (kg):Q', 'Order #:N']
+                                ).properties(height=300)
+                                st.altair_chart(volume_chart, use_container_width=True)
+                        
+                        # Detailed orders table
+                        st.markdown("### 📋 Order Details")
+                        orders_list = []
+                        for order in filtered_orders:
+                            price_display = order.get('price', 'N/A')
+                            currency = order.get('currency', 'USD')
+                            symbol = currency_symbols.get(currency, "$")
+                            
+                            price_value = order.get('price_value')
+                            if price_value:
+                                price_display = f"{symbol}{price_value:.2f}"
+                            
+                            orders_list.append({
+                                'Order Date': order.get('date', 'N/A'),
+                                'Order #': order.get('order_no', 'N/A'),
+                                'Quantity': order.get('quantity', 'N/A') if order.get('quantity') else 'N/A',
+                                'Weight (kg)': order.get('total_weight', 'N/A') if order.get('total_weight') else 'N/A',
+                                'Price': price_display,
+                                'Currency': currency,
+                                'Total Price': order.get('total_price', 'N/A') if order.get('total_price') else 'N/A'
+                            })
+                        
+                        if orders_list:
+                            orders_df = pd.DataFrame(orders_list)
+                            st.dataframe(orders_df, use_container_width=True, hide_index=True)
+                            
+                            csv_data = orders_df.to_csv(index=False, encoding='utf-8-sig')
+                            st.download_button(
+                                label="📥 Export Sales History to CSV",
+                                data=csv_data.encode('utf-8-sig'),
+                                file_name=f"sales_history_{selected_article}_{selected_client}_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.csv",
+                                mime="text/csv",
+                                use_container_width=True
+                            )
+                        else:
+                            st.info("No valid data to display in table")
+                        
+                    else:
+                        st.warning(f"No orders found for this item between {start_date} and {end_date}")
+                else:
+                    st.error("Item not found")
 
 # ============================================
 # MAIN DASHBOARD
@@ -2814,11 +2958,11 @@ def main_dashboard():
         st.markdown("---")
         st.markdown("### 📢 Updates")
         announcements = [
-            "✅ NEW! Price Checker tab added!",
-            "✅ NEW! Sales History with date range!",
-            "🔍 Get latest prices instantly",
-            "📊 Track sales over any period",
-            "💰 Commission tracking available"
+            "✅ ETD updated for May/June 2026",
+            "✅ Price Checker now includes HS Code & Packaging",
+            "✅ Fixed date sorting (2024 vs 2025 issue)",
+            "✅ Arabic CSV exports fixed",
+            "✅ Multi-currency support (USD, EUR, SAR)"
         ]
         for announcement in announcements:
             st.markdown(f'<div class="announcement-item">{announcement}</div>', unsafe_allow_html=True)
@@ -2851,7 +2995,7 @@ def main_dashboard():
     
     st.markdown(f"""
     <div class="dashboard-footer">
-        Multi-Client Dashboard v9.0 (with Price Checker & Sales History) | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        Multi-Client Dashboard v10.0 | ETD Updated (May/June 2026) | Price Checker with HS Code & Packaging | Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
     </div>
     """, unsafe_allow_html=True)
 
@@ -2863,3 +3007,4 @@ if __name__ == "__main__":
         login_page()
     else:
         main_dashboard()
+                
