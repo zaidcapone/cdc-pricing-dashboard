@@ -1341,11 +1341,11 @@ def products_logistics_tab():
 # ============================================
 
 def order_tracking_tab():
-    """Consolidated Order Tracking - Updated for May/June 2026"""
+    """Consolidated Order Tracking - Updated for May/June 2026 with advanced filters"""
     st.markdown("""
     <div style="background: linear-gradient(135deg, #059669, #047857); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
         <h2 style="margin:0; color: white;">📅 Order Tracking</h2>
-        <p style="margin:0; opacity:0.9; color: white;">ETD management • Order status • Track shipments by month</p>
+        <p style="margin:0; opacity:0.9; color: white;">ETD management • Order status • Advanced filtering • Track shipments by month</p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -1354,8 +1354,8 @@ def order_tracking_tab():
     with sub_tab1:
         st.markdown("<div class='subsection-header'>🚢 ETD Dashboard</div>", unsafe_allow_html=True)
         
+        # Month selection
         AVAILABLE_MONTHS = ["May 2026", "June 2026"]
-        
         selected_month = st.selectbox("Select Month:", AVAILABLE_MONTHS, key="etd_month")
         
         with st.spinner(f"Loading {selected_month} ETD data..."):
@@ -1364,125 +1364,276 @@ def order_tracking_tab():
         if etd_data.empty:
             st.warning(f"No ETD data found for {selected_month}")
             st.info("💡 Make sure the sheet exists and has headers in row 14 (A14).")
-        else:
-            st.success(f"✅ Loaded {len(etd_data)} orders for {selected_month}")
-            
-            # Summary metrics
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("Total Orders", len(etd_data))
-            with col2:
-                if 'Status' in etd_data.columns:
-                    shipped = len(etd_data[etd_data['Status'].astype(str).str.lower() == 'shipped'])
-                    st.metric("Shipped", shipped)
-                else:
-                    st.metric("Status Column", "Not Found")
-            with col3:
-                if 'Status' in etd_data.columns:
-                    production = len(etd_data[etd_data['Status'].astype(str).str.lower().str.contains('production', na=False)])
-                    st.metric("In Production", production)
-                else:
-                    st.metric("In Production", "N/A")
-            with col4:
-                if 'ETD_Backaldrine' in etd_data.columns:
-                    need_etd = len(etd_data[etd_data['ETD_Backaldrine'].astype(str).str.upper().str.contains('NEED ETD', na=False)])
-                    st.metric("Need ETD", need_etd)
-                else:
-                    st.metric("Need ETD", "N/A")
-            
-            # Filters
+            return
+        
+        st.success(f"✅ Loaded {len(etd_data)} orders for {selected_month}")
+        
+        # ========== ADVANCED FILTERS SECTION ==========
+        st.markdown("---")
+        st.markdown("### 🔍 Advanced Filters")
+        
+        # Create expandable filter section
+        with st.expander("📊 Click to expand filters", expanded=False):
             col1, col2 = st.columns(2)
+            
             with col1:
+                st.markdown("**📝 Text Search**")
+                search_text = st.text_input("Search across Order #, Client, Employee, Transport:", 
+                                            placeholder="Type to search...", key="etd_search")
+                
+                st.markdown("**👥 Client Filter**")
                 if 'Client Name' in etd_data.columns:
                     clients = ["All"] + sorted(etd_data['Client Name'].dropna().unique().tolist())
-                    client_filter = st.selectbox("Filter by Client:", clients, key="etd_client")
+                    client_filter = st.selectbox("Select Client:", clients, key="etd_client")
                 else:
                     client_filter = "All"
-                    st.warning("Column 'Client Name' not found in sheet")
+                    st.warning("Column 'Client Name' not found")
+                
+                st.markdown("**👤 Employee Filter**")
+                if 'Concerned Employee' in etd_data.columns:
+                    employees = ["All"] + sorted(etd_data['Concerned Employee'].dropna().unique().tolist())
+                    employee_filter = st.selectbox("Select Employee:", employees, key="etd_employee")
+                else:
+                    employee_filter = "All"
             
             with col2:
+                st.markdown("**📅 Date Range (Confirmation Date)**")
+                if 'Confirmation Date' in etd_data.columns:
+                    # Try to parse dates
+                    date_options = ["All", "Last 7 days", "Last 30 days", "Custom Range"]
+                    date_filter_type = st.selectbox("Date Filter:", date_options, key="etd_date_type")
+                    
+                    if date_filter_type == "Custom Range":
+                        date_col1, date_col2 = st.columns(2)
+                        with date_col1:
+                            start_date = st.date_input("From Date:", key="etd_start_date")
+                        with date_col2:
+                            end_date = st.date_input("To Date:", key="etd_end_date")
+                    else:
+                        start_date = None
+                        end_date = None
+                else:
+                    date_filter_type = "All"
+                    start_date = None
+                    end_date = None
+                    st.warning("Column 'Confirmation Date' not found")
+                
+                st.markdown("**🚦 Status Filter**")
                 if 'Status' in etd_data.columns:
                     status_options = ["All"] + sorted(etd_data['Status'].dropna().unique().tolist())
-                    status_filter = st.selectbox("Filter by Status:", status_options, key="etd_status")
+                    status_filter = st.selectbox("Select Status:", status_options, key="etd_status")
                 else:
                     status_filter = "All"
             
-            # Apply filters
-            filtered_etd = etd_data.copy()
-            if client_filter != "All" and 'Client Name' in etd_data.columns:
-                filtered_etd = filtered_etd[filtered_etd['Client Name'] == client_filter]
-            if status_filter != "All" and 'Status' in etd_data.columns:
-                filtered_etd = filtered_etd[filtered_etd['Status'] == status_filter]
+            # Supplier ETD Status Filters
+            st.markdown("---")
+            st.markdown("**🚢 Supplier ETD Status**")
+            col1, col2, col3, col4 = st.columns(4)
             
-            st.markdown(f"**Found {len(filtered_etd)} orders**")
+            with col1:
+                need_etd_backaldrin = st.checkbox("⚠️ Backaldrine NEED ETD", key="filter_backaldrin")
+            with col2:
+                need_etd_bateel = st.checkbox("⚠️ Bateel NEED ETD", key="filter_bateel")
+            with col3:
+                need_etd_kasih = st.checkbox("⚠️ Kasih NEED ETD", key="filter_kasih")
+            with col4:
+                need_etd_pmc = st.checkbox("⚠️ PMC NEED ETD", key="filter_pmc")
             
-            if not filtered_etd.empty:
-                for idx, order in filtered_etd.iterrows():
-                    status = order.get('Status', 'Unknown')
-                    status_icon = {
-                        'Shipped': '🟢', 
-                        'In Production': '🟡', 
-                        'Pending': '🟠',
-                        'Delivered': '✅',
-                        'Cancelled': '❌'
-                    }.get(status, '⚫')
-                    
-                    client_name = order.get('Client Name', 'N/A')
-                    order_no = order.get('Order No.', 'N/A')
-                    
-                    with st.expander(f"{status_icon} Order {order_no} - {client_name}", expanded=False):
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.markdown(f"**Client:** {client_name}")
-                            st.markdown(f"**Employee:** {order.get('Concerned Employee', 'N/A')}")
-                            st.markdown(f"**Order No.:** {order_no}")
-                        with col2:
-                            st.markdown(f"**Status:** {status}")
-                            st.markdown(f"**Confirmation Date:** {order.get('Confirmation Date', 'N/A')}")
-                            st.markdown(f"**Loading Date:** {order.get('Scheduled Date For Loading', 'N/A')}")
-                        with col3:
-                            st.markdown(f"**Transport Company:** {order.get('transport Company', 'N/A')}")
-                            st.markdown(f"**Stock Notes:** {order.get('Stock Notes', 'N/A')}")
-                        
-                        st.markdown("---")
-                        st.markdown("**🚢 Supplier ETD Status**")
-                        
-                        suppliers = [
-                            ('Backaldrine', 'ETD_Backaldrine'),
-                            ('Bateel', 'ETD_bateel'),
-                            ('Kasih', 'ETD _ Kasih'),
-                            ('PMC', 'ETD_PMC')
-                        ]
-                        
-                        for supplier_name, column_name in suppliers:
-                            if column_name in order.index:
-                                etd_value = order.get(column_name, '')
-                                if pd.isna(etd_value) or str(etd_value).strip() == '':
-                                    st.markdown(f"**{supplier_name}:** ⚪ No ETD")
-                                elif 'NEED ETD' in str(etd_value).upper():
-                                    st.markdown(f"**{supplier_name}:** 🔴 <span class='badge-danger'>NEED ETD</span>", unsafe_allow_html=True)
-                                else:
-                                    st.markdown(f"**{supplier_name}:** 📅 {etd_value}")
-                            else:
-                                st.markdown(f"**{supplier_name}:** ⚪ Column not found")
-                        
-                        chick_list = order.get('Chick List Doc', '')
-                        if chick_list and pd.notna(chick_list) and str(chick_list).strip():
-                            st.markdown("---")
-                            st.markdown(f"**📄 Chick List Doc:** {chick_list}")
+            # Stock Notes filter
+            st.markdown("**📝 Stock Notes**")
+            col1, col2 = st.columns(2)
+            with col1:
+                stock_notes_filter = st.selectbox("Stock Notes:", ["All", "Has Notes", "Empty"], key="etd_stock_notes")
+            with col2:
+                if 'Stock Notes' in etd_data.columns:
+                    stock_notes_keyword = st.text_input("Search in Stock Notes:", placeholder="Enter keyword...", key="etd_stock_keyword")
+                else:
+                    stock_notes_keyword = ""
+        
+        # ========== APPLY FILTERS ==========
+        filtered_etd = etd_data.copy()
+        
+        # Text search filter
+        if search_text:
+            search_lower = search_text.lower()
+            mask = False
+            for col in ['Order No.', 'Client Name', 'Concerned Employee', 'transport Company']:
+                if col in filtered_etd.columns:
+                    mask = mask | filtered_etd[col].astype(str).str.lower().str.contains(search_lower, na=False)
+            filtered_etd = filtered_etd[mask]
+        
+        # Client filter
+        if client_filter != "All" and 'Client Name' in filtered_etd.columns:
+            filtered_etd = filtered_etd[filtered_etd['Client Name'] == client_filter]
+        
+        # Employee filter
+        if employee_filter != "All" and 'Concerned Employee' in filtered_etd.columns:
+            filtered_etd = filtered_etd[filtered_etd['Concerned Employee'] == employee_filter]
+        
+        # Date filter
+        if date_filter_type != "All" and 'Confirmation Date' in filtered_etd.columns:
+            if date_filter_type == "Last 7 days":
+                cutoff_date = datetime.now().date() - pd.Timedelta(days=7)
+                # Need to parse dates properly
+                valid_rows = []
+                for idx, row in filtered_etd.iterrows():
+                    try:
+                        for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%Y-%m-%d']:
+                            try:
+                                row_date = datetime.strptime(str(row['Confirmation Date']).strip(), fmt).date()
+                                if row_date >= cutoff_date:
+                                    valid_rows.append(idx)
+                                break
+                            except:
+                                continue
+                    except:
+                        continue
+                filtered_etd = filtered_etd.loc[valid_rows] if valid_rows else pd.DataFrame()
+            elif date_filter_type == "Last 30 days":
+                cutoff_date = datetime.now().date() - pd.Timedelta(days=30)
+                valid_rows = []
+                for idx, row in filtered_etd.iterrows():
+                    try:
+                        for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%Y-%m-%d']:
+                            try:
+                                row_date = datetime.strptime(str(row['Confirmation Date']).strip(), fmt).date()
+                                if row_date >= cutoff_date:
+                                    valid_rows.append(idx)
+                                break
+                            except:
+                                continue
+                    except:
+                        continue
+                filtered_etd = filtered_etd.loc[valid_rows] if valid_rows else pd.DataFrame()
+            elif date_filter_type == "Custom Range" and start_date and end_date:
+                valid_rows = []
+                for idx, row in filtered_etd.iterrows():
+                    try:
+                        for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%Y-%m-%d']:
+                            try:
+                                row_date = datetime.strptime(str(row['Confirmation Date']).strip(), fmt).date()
+                                if start_date <= row_date <= end_date:
+                                    valid_rows.append(idx)
+                                break
+                            except:
+                                continue
+                    except:
+                        continue
+                filtered_etd = filtered_etd.loc[valid_rows] if valid_rows else pd.DataFrame()
+        
+        # Status filter
+        if status_filter != "All" and 'Status' in filtered_etd.columns:
+            filtered_etd = filtered_etd[filtered_etd['Status'] == status_filter]
+        
+        # Supplier NEED ETD filters
+        if need_etd_backaldrin and 'ETD_Backaldrine' in filtered_etd.columns:
+            filtered_etd = filtered_etd[filtered_etd['ETD_Backaldrine'].astype(str).str.upper().str.contains('NEED ETD', na=False)]
+        if need_etd_bateel and 'ETD_bateel' in filtered_etd.columns:
+            filtered_etd = filtered_etd[filtered_etd['ETD_bateel'].astype(str).str.upper().str.contains('NEED ETD', na=False)]
+        if need_etd_kasih and 'ETD _ Kasih' in filtered_etd.columns:
+            filtered_etd = filtered_etd[filtered_etd['ETD _ Kasih'].astype(str).str.upper().str.contains('NEED ETD', na=False)]
+        if need_etd_pmc and 'ETD_PMC' in filtered_etd.columns:
+            filtered_etd = filtered_etd[filtered_etd['ETD_PMC'].astype(str).str.upper().str.contains('NEED ETD', na=False)]
+        
+        # Stock Notes filter
+        if stock_notes_filter == "Has Notes" and 'Stock Notes' in filtered_etd.columns:
+            filtered_etd = filtered_etd[filtered_etd['Stock Notes'].notna() & (filtered_etd['Stock Notes'].astype(str).str.strip() != '')]
+        elif stock_notes_filter == "Empty" and 'Stock Notes' in filtered_etd.columns:
+            filtered_etd = filtered_etd[filtered_etd['Stock Notes'].isna() | (filtered_etd['Stock Notes'].astype(str).str.strip() == '')]
+        
+        if stock_notes_keyword and 'Stock Notes' in filtered_etd.columns:
+            filtered_etd = filtered_etd[filtered_etd['Stock Notes'].astype(str).str.lower().str.contains(stock_notes_keyword.lower(), na=False)]
+        
+        # ========== DISPLAY RESULTS ==========
+        st.markdown("---")
+        st.markdown(f"### 📋 Results: **{len(filtered_etd)}** orders found")
+        
+        # Summary metrics
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("📊 Total Orders", len(filtered_etd))
+        with col2:
+            if 'Status' in filtered_etd.columns:
+                shipped = len(filtered_etd[filtered_etd['Status'].astype(str).str.lower() == 'shipped'])
+                st.metric("✅ Shipped", shipped)
+        with col3:
+            if 'Status' in filtered_etd.columns:
+                production = len(filtered_etd[filtered_etd['Status'].astype(str).str.lower().str.contains('production', na=False)])
+                st.metric("🏭 In Production", production)
+        with col4:
+            if 'ETD_Backaldrine' in filtered_etd.columns:
+                need_etd = len(filtered_etd[filtered_etd['ETD_Backaldrine'].astype(str).str.upper().str.contains('NEED ETD', na=False)])
+                st.metric("⚠️ Need ETD", need_etd)
+        
+        if not filtered_etd.empty:
+            for idx, order in filtered_etd.iterrows():
+                status = order.get('Status', 'Unknown')
+                status_icon = {
+                    'Shipped': '🟢', 
+                    'In Production': '🟡', 
+                    'Pending': '🟠',
+                    'Delivered': '✅',
+                    'Cancelled': '❌'
+                }.get(status, '⚫')
                 
-                csv_data = filtered_etd.to_csv(index=False, encoding='utf-8-sig')
-                st.download_button(
-                    label="📥 Export ETD Data to CSV",
-                    data=csv_data.encode('utf-8-sig'),
-                    file_name=f"etd_{selected_month}_{datetime.now().strftime('%Y%m%d')}.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
-            else:
-                st.info("No orders match your filters")
+                client_name = order.get('Client Name', 'N/A')
+                order_no = order.get('Order No.', 'N/A')
+                
+                with st.expander(f"{status_icon} Order {order_no} - {client_name}", expanded=False):
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.markdown(f"**Client:** {client_name}")
+                        st.markdown(f"**Employee:** {order.get('Concerned Employee', 'N/A')}")
+                        st.markdown(f"**Order No.:** {order_no}")
+                    with col2:
+                        st.markdown(f"**Status:** {status}")
+                        st.markdown(f"**Confirmation Date:** {order.get('Confirmation Date', 'N/A')}")
+                        st.markdown(f"**Loading Date:** {order.get('Scheduled Date For Loading', 'N/A')}")
+                    with col3:
+                        st.markdown(f"**Transport Company:** {order.get('transport Company', 'N/A')}")
+                        st.markdown(f"**Stock Notes:** {order.get('Stock Notes', 'N/A')}")
+                    
+                    st.markdown("---")
+                    st.markdown("**🚢 Supplier ETD Status**")
+                    
+                    suppliers = [
+                        ('Backaldrine', 'ETD_Backaldrine'),
+                        ('Bateel', 'ETD_bateel'),
+                        ('Kasih', 'ETD _ Kasih'),
+                        ('PMC', 'ETD_PMC')
+                    ]
+                    
+                    for supplier_name, column_name in suppliers:
+                        if column_name in order.index:
+                            etd_value = order.get(column_name, '')
+                            if pd.isna(etd_value) or str(etd_value).strip() == '':
+                                st.markdown(f"**{supplier_name}:** ⚪ No ETD")
+                            elif 'NEED ETD' in str(etd_value).upper():
+                                st.markdown(f"**{supplier_name}:** 🔴 <span class='badge-danger'>NEED ETD</span>", unsafe_allow_html=True)
+                            else:
+                                st.markdown(f"**{supplier_name}:** 📅 {etd_value}")
+                        else:
+                            st.markdown(f"**{supplier_name}:** ⚪ Column not found")
+                    
+                    chick_list = order.get('Chick List Doc', '')
+                    if chick_list and pd.notna(chick_list) and str(chick_list).strip():
+                        st.markdown("---")
+                        st.markdown(f"**📄 Chick List Doc:** {chick_list}")
+            
+            # Export option
+            csv_data = filtered_etd.to_csv(index=False, encoding='utf-8-sig')
+            st.download_button(
+                label="📥 Export Filtered ETD Data to CSV",
+                data=csv_data.encode('utf-8-sig'),
+                file_name=f"etd_{selected_month}_filtered_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+        else:
+            st.info("No orders match your filters. Try adjusting the filter criteria.")
     
     with sub_tab2:
+        # Samples Request Form (unchanged)
         st.markdown("<div class='subsection-header'>🎁 Samples Request Form</div>", unsafe_allow_html=True)
         
         if 'sample_items' not in st.session_state:
@@ -1580,238 +1731,6 @@ def order_tracking_tab():
                 if st.button("📋 New Request", key="new_sample"):
                     st.session_state.sample_items = []
                     st.rerun()
-
-# ============================================
-# TAB 6: PRICE TRACKING
-# ============================================
-
-def price_tracking_tab():
-    """Track price changes over time for any item"""
-    st.markdown("""
-    <div style="background: linear-gradient(135deg, #dc2626, #b91c1c); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.5rem;">
-        <h2 style="margin:0; color: white;">📈 Price Tracking</h2>
-        <p style="margin:0; opacity:0.9; color: white;">Track historical price changes • Visualize trends</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    available_clients = st.session_state.user_clients
-    if not available_clients:
-        st.warning("No clients available. Please check your Clients_CoC sheet.")
-        return
-    
-    col1, col2, col3 = st.columns([2, 1, 1])
-    
-    with col1:
-        search_item = st.text_input("🔍 Search for an item:", 
-                                    placeholder="e.g., 1-366, Vermicelli, Chocolate...",
-                                    key="price_track_search")
-    
-    with col2:
-        selected_client = st.selectbox("Select Client:", available_clients, key="price_track_client")
-    
-    with col3:
-        selected_supplier = st.selectbox("Select Supplier:", ["Both", "Backaldrin", "Bateel"], key="price_track_supplier")
-    
-    with st.expander("📊 Advanced Options"):
-        col1, col2 = st.columns(2)
-        with col1:
-            group_by = st.selectbox("Group By:", ["Year", "Month", "Quarter", "All Orders"], key="price_track_group")
-        with col2:
-            show_statistics = st.checkbox("Show Statistics", value=True, key="price_track_stats")
-    
-    if search_item:
-        with st.spinner(f"Analyzing price history for '{search_item}'..."):
-            price_data = []
-            
-            client_data = get_google_sheets_data(selected_client)
-            
-            suppliers_to_check = []
-            if selected_supplier == "Both":
-                suppliers_to_check = ["Backaldrin", "Bateel"]
-            else:
-                suppliers_to_check = [selected_supplier]
-            
-            for supplier in suppliers_to_check:
-                supplier_data = client_data.get(supplier, {})
-                
-                for article_num, article_data in supplier_data.items():
-                    article_match = search_item.lower() in article_num.lower()
-                    product_match = any(search_item.lower() in name.lower() for name in article_data.get('names', []))
-                    
-                    if article_match or product_match:
-                        product_name = article_data.get('names', ['N/A'])[0]
-                        
-                        for order in article_data.get('orders', []):
-                            price_str = order.get('price', '')
-                            date_str = order.get('date', '')
-                            
-                            price_value = None
-                            try:
-                                price_value = float(str(price_str).replace('$', '').replace(',', '').strip())
-                            except:
-                                continue
-                            
-                            order_date = None
-                            year = None
-                            month = None
-                            quarter = None
-                            
-                            year_str = order.get('year', '')
-                            if year_str and year_str != 'nan':
-                                try:
-                                    year = int(str(year_str).strip())
-                                    if date_str and date_str != 'nan':
-                                        for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d']:
-                                            try:
-                                                date_obj = datetime.strptime(str(date_str).strip(), fmt)
-                                                month = date_obj.month
-                                                order_date = date_obj
-                                                break
-                                            except:
-                                                continue
-                                except:
-                                    pass
-                            
-                            if not year and date_str and date_str != 'nan':
-                                for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d']:
-                                    try:
-                                        date_obj = datetime.strptime(str(date_str).strip(), fmt)
-                                        year = date_obj.year
-                                        month = date_obj.month
-                                        order_date = date_obj
-                                        break
-                                    except:
-                                        continue
-                            
-                            if year:
-                                if month:
-                                    quarter = (month - 1) // 3 + 1
-                                
-                                price_data.append({
-                                    'article': article_num,
-                                    'product': product_name,
-                                    'supplier': supplier,
-                                    'client': selected_client,
-                                    'price': price_value,
-                                    'year': year,
-                                    'month': month,
-                                    'quarter': quarter,
-                                    'date': order_date,
-                                    'order_no': order.get('order_no', 'N/A'),
-                                    'quantity': order.get('quantity', 'N/A'),
-                                    'total_weight': order.get('total_weight', 'N/A')
-                                })
-            
-            if price_data:
-                df = pd.DataFrame(price_data)
-                
-                if 'date' in df.columns:
-                    df = df.sort_values('date')
-                else:
-                    df = df.sort_values('year')
-                
-                if show_statistics:
-                    st.markdown("### 📊 Price Statistics")
-                    
-                    col1, col2, col3, col4, col5 = st.columns(5)
-                    with col1:
-                        st.metric("First Recorded Price", f"${df['price'].iloc[0]:.2f}" if len(df) > 0 else "N/A")
-                    with col2:
-                        st.metric("Latest Price", f"${df['price'].iloc[-1]:.2f}" if len(df) > 0 else "N/A")
-                    with col3:
-                        price_change = df['price'].iloc[-1] - df['price'].iloc[0] if len(df) > 0 else 0
-                        change_pct = (price_change / df['price'].iloc[0] * 100) if len(df) > 0 and df['price'].iloc[0] > 0 else 0
-                        st.metric("Total Change", f"${price_change:.2f}", delta=f"{change_pct:.1f}%")
-                    with col4:
-                        st.metric("Min Price", f"${df['price'].min():.2f}")
-                    with col5:
-                        st.metric("Max Price", f"${df['price'].max():.2f}")
-                
-                st.markdown("### 📈 Price Trend Visualization")
-                
-                if group_by == "Year":
-                    yearly_avg = df.groupby('year')['price'].agg(['mean', 'min', 'max']).reset_index()
-                    
-                    line_chart = alt.Chart(yearly_avg).mark_line(point=True, strokeWidth=3).encode(
-                        x=alt.X('year:Q', title='Year'),
-                        y=alt.Y('mean:Q', title='Price (USD/kg)'),
-                        tooltip=['year', alt.Tooltip('mean', format='.2f')]
-                    ).properties(height=400)
-                    
-                    points = alt.Chart(yearly_avg).mark_circle(size=100).encode(
-                        x='year:Q',
-                        y='mean:Q',
-                        color=alt.value('#dc2626'),
-                        tooltip=['year', alt.Tooltip('mean', format='.2f')]
-                    )
-                    
-                    st.altair_chart(line_chart + points, use_container_width=True)
-                    
-                    st.markdown("### 📅 Yearly Price Summary")
-                    yearly_display = yearly_avg.copy()
-                    yearly_display['mean'] = yearly_display['mean'].apply(lambda x: f"${x:.2f}")
-                    yearly_display['min'] = yearly_display['min'].apply(lambda x: f"${x:.2f}")
-                    yearly_display['max'] = yearly_display['max'].apply(lambda x: f"${x:.2f}")
-                    yearly_display.columns = ['Year', 'Avg Price', 'Min Price', 'Max Price']
-                    st.dataframe(yearly_display, use_container_width=True, hide_index=True)
-                    
-                elif group_by == "Month" and 'date' in df.columns and df['date'].notna().any():
-                    df['year_month'] = df['date'].dt.strftime('%Y-%m')
-                    monthly_avg = df.groupby('year_month')['price'].mean().reset_index()
-                    
-                    bars = alt.Chart(monthly_avg).mark_bar(color='#dc2626').encode(
-                        x=alt.X('year_month:N', title='Month', sort=None),
-                        y=alt.Y('price:Q', title='Price (USD/kg)'),
-                        tooltip=['year_month', alt.Tooltip('price', format='.2f')]
-                    ).properties(height=400)
-                    
-                    st.altair_chart(bars, use_container_width=True)
-                    
-                elif group_by == "Quarter":
-                    df['year_quarter'] = df['year'].astype(str) + '-Q' + df['quarter'].astype(str)
-                    quarterly_avg = df.groupby('year_quarter')['price'].mean().reset_index()
-                    
-                    bars = alt.Chart(quarterly_avg).mark_bar(color='#dc2626').encode(
-                        x=alt.X('year_quarter:N', title='Quarter', sort=None),
-                        y=alt.Y('price:Q', title='Price (USD/kg)'),
-                        tooltip=['year_quarter', alt.Tooltip('price', format='.2f')]
-                    ).properties(height=400)
-                    
-                    st.altair_chart(bars, use_container_width=True)
-                
-                elif group_by == "All Orders" and 'date' in df.columns:
-                    scatter = alt.Chart(df).mark_circle(size=60, color='#dc2626').encode(
-                        x=alt.X('date:T', title='Order Date'),
-                        y=alt.Y('price:Q', title='Price (USD/kg)'),
-                        tooltip=['date', alt.Tooltip('price', format='.2f'), 'order_no', 'supplier']
-                    ).properties(height=400)
-                    
-                    trend = scatter.transform_regression('date', 'price').mark_line(color='#f59e0b', strokeWidth=2)
-                    
-                    st.altair_chart(scatter + trend, use_container_width=True)
-                
-                st.markdown("### 📋 Detailed Price History")
-                
-                display_df = df[['year', 'date', 'price', 'order_no', 'quantity', 'total_weight', 'supplier']].copy()
-                display_df['price'] = display_df['price'].apply(lambda x: f"${x:.2f}")
-                display_df.columns = ['Year', 'Date', 'Price (USD/kg)', 'Order No', 'Quantity', 'Weight (kg)', 'Supplier']
-                
-                st.dataframe(display_df, use_container_width=True, hide_index=True)
-                
-                csv_data = df.to_csv(index=False, encoding='utf-8-sig')
-                st.download_button(
-                    label="📥 Export Price History to CSV",
-                    data=csv_data.encode('utf-8-sig'),
-                    file_name=f"price_history_{search_item}_{selected_client}.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
-                
-            else:
-                st.warning(f"No price data found for '{search_item}' in {selected_client}")
-                st.info("💡 Make sure your Clients_CoC sheet has:\n- The correct Client name\n- Values in the 'Price' column\n- Values in the 'Year' or 'Order_Date' column")
-    else:
-        st.info("👆 Enter an article number or product name above to start tracking price history")
 
 # ============================================
 # TAB 7: COMMISSION
