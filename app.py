@@ -2395,6 +2395,17 @@ def price_checker_tab():
     with col2:
         selected_client = st.selectbox("Select Client:", available_clients, key="price_checker_client")
     
+    # Helper function to parse dates properly
+    def parse_date(date_str):
+        if not date_str or date_str == 'nan' or str(date_str).strip() == '':
+            return None
+        for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d', '%d.%m.%y', '%d/%m/%y', '%Y/%m/%d']:
+            try:
+                return datetime.strptime(str(date_str).strip(), fmt).date()
+            except:
+                continue
+        return None
+    
     # Currency symbol mapping
     currency_symbols = {
         "USD": "$",
@@ -2433,14 +2444,26 @@ def price_checker_tab():
                         if article_match or product_match:
                             orders = article_data.get('orders', [])
                             if orders:
-                                # Sort orders by date to find the latest
-                                sorted_orders = sorted(orders, key=lambda x: str(x.get('date', '')), reverse=True)
-                                latest_order = sorted_orders[0] if sorted_orders else None
+                                # Find the order with the latest date using proper date parsing
+                                latest_order = None
+                                latest_date = None
+                                
+                                for order in orders:
+                                    order_date = parse_date(order.get('date', ''))
+                                    if order_date:
+                                        if latest_date is None or order_date > latest_date:
+                                            latest_date = order_date
+                                            latest_order = order
+                                
+                                # If no valid date found, take the first order
+                                if latest_order is None and orders:
+                                    latest_order = orders[0]
+                                    latest_date = latest_order.get('date', 'Unknown')
                                 
                                 if latest_order:
                                     price_value = latest_order.get('price_value')
                                     currency = latest_order.get('currency', 'USD')
-                                    latest_date = latest_order.get('date', 'Unknown')
+                                    latest_date_str = latest_order.get('date', 'Unknown')
                                     symbol = currency_symbols.get(currency, "$")
                                     hs_code = latest_order.get('hs_code', 'N/A')
                                     
@@ -2462,7 +2485,7 @@ def price_checker_tab():
                                         'Supplier': supplier,
                                         'Latest Price': latest_price_display,
                                         'Currency': currency,
-                                        'Last Order Date': latest_date,
+                                        'Last Order Date': latest_date_str,
                                         'Total Orders': len(orders),
                                         'Price History': price_history
                                     })
@@ -2506,13 +2529,25 @@ def price_checker_tab():
                 for article_num, article_data in supplier_data.items():
                     orders = article_data.get('orders', [])
                     if orders:
-                        sorted_orders = sorted(orders, key=lambda x: str(x.get('date', '')), reverse=True)
-                        latest_order = sorted_orders[0] if sorted_orders else None
+                        # Find the order with the latest date using proper date parsing
+                        latest_order = None
+                        latest_date = None
+                        
+                        for order in orders:
+                            order_date = parse_date(order.get('date', ''))
+                            if order_date:
+                                if latest_date is None or order_date > latest_date:
+                                    latest_date = order_date
+                                    latest_order = order
+                        
+                        # If no valid date found, take the first order
+                        if latest_order is None and orders:
+                            latest_order = orders[0]
                         
                         if latest_order:
                             price_value = latest_order.get('price_value')
                             currency = latest_order.get('currency', 'USD')
-                            latest_date = latest_order.get('date', 'Unknown')
+                            latest_date_str = latest_order.get('date', 'Unknown')
                             symbol = currency_symbols.get(currency, "$")
                             hs_code = latest_order.get('hs_code', 'N/A')
                             
@@ -2531,7 +2566,7 @@ def price_checker_tab():
                                 'Latest Price': latest_price_display,
                                 'Latest Price Formatted': latest_price_formatted,
                                 'Currency': currency,
-                                'Last Order Date': latest_date,
+                                'Last Order Date': latest_date_str,
                                 'Total Orders': len(orders)
                             })
             
@@ -2545,7 +2580,6 @@ def price_checker_tab():
                 with col1:
                     st.metric("Total Items", len(df))
                 with col2:
-                    # Calculate average by converting to USD (simple approach - show note)
                     usd_prices = [item['Latest Price'] for item in all_items if item['Currency'] == 'USD' and item['Latest Price'] > 0]
                     if usd_prices:
                         st.metric("Avg Price (USD only)", f"${sum(usd_prices)/len(usd_prices):.2f}")
