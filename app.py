@@ -604,6 +604,56 @@ def load_ceo_special_prices(client="CDC"):
 
 @st.cache_data(ttl=180)
 def load_etd_data(sheet_id, sheet_name):
+    """Load ETD data from Google Sheet - headers at row 14 (A14)"""
+    try:
+        import urllib.parse
+        encoded_sheet = urllib.parse.quote(sheet_name)
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/{encoded_sheet}!A:Z?key={API_KEY}"
+        
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            values = data.get('values', [])
+            
+            if not values:
+                st.warning(f"No data found in sheet '{sheet_name}'")
+                return pd.DataFrame()
+            
+            # Headers are at row 14 (index 13, since Python starts at 0)
+            if len(values) > 13:
+                headers = values[13]  # Row 14
+                
+                # Clean up headers (remove empty strings and clean spaces)
+                headers = [str(h).strip() if h else f"Column_{i}" for i, h in enumerate(headers)]
+                
+                # Data starts from row 15 (index 14)
+                rows = values[14:] if len(values) > 14 else []
+                
+                # Pad rows to match header count
+                padded_rows = []
+                for row in rows:
+                    if len(row) < len(headers):
+                        row = row + [''] * (len(headers) - len(row))
+                    elif len(row) > len(headers):
+                        row = row[:len(headers)]
+                    padded_rows.append(row)
+                
+                df = pd.DataFrame(padded_rows, columns=headers)
+                df = df.replace('', pd.NA)
+                
+                # Debug: Show available columns
+                st.session_state['etd_debug_columns'] = list(df.columns)
+                
+                return df
+            else:
+                st.warning(f"Sheet '{sheet_name}' has less than 14 rows. Headers should be at row 14.")
+                return pd.DataFrame()
+        else:
+            st.error(f"Failed to load sheet: HTTP {response.status_code}")
+            return pd.DataFrame()
+    except Exception as e:
+        st.error(f"Error loading ETD data: {str(e)}")
+        return pd.DataFrame()
     """Load ETD data"""
     try:
         import urllib.parse
@@ -1420,9 +1470,31 @@ def order_tracking_tab():
         with st.spinner(f"Loading {selected_month} ETD data..."):
             etd_data = load_etd_data(ETD_SHEET_ID, selected_month)
         
-        if etd_data.empty:
-            st.warning(f"No ETD data found for {selected_month}")
-            st.info("💡 Make sure the sheet exists and has headers in row 14 (A14). Required columns: Client Name, Status, ETD_Backaldrine, ETD_bateel, Scheduled Date For Loading, Order No., Confirmation Date, Concerned Employee")
+if etd_data.empty:
+    st.warning(f"No ETD data found for {selected_month}")
+    st.info("💡 Make sure the sheet exists and has headers in row 14 (A14).")
+    
+    # Show debug info
+    with st.expander("🔧 Debug Information"):
+        st.write("**Sheet Name:**", selected_month)
+        st.write("**Sheet ID:**", ETD_SHEET_ID)
+        if 'etd_debug_columns' in st.session_state:
+            st.write("**Columns found in sheet:**")
+            st.write(st.session_state.etd_debug_columns)
+        else:
+            st.write("Could not detect columns. Check if sheet is accessible.")
+        
+        st.write("**Expected columns (case sensitive):**")
+        st.write("- Client Name")
+        st.write("- Status")
+        st.write("- ETD_Backaldrine")
+        st.write("- ETD_bateel")
+        st.write("- Scheduled Date For Loading")
+        st.write("- Order No.")
+        st.write("- Confirmation Date")
+        st.write("- Concerned Employee")
+else:
+    # Continue with normal display...
         else:
             st.success(f"✅ Loaded {len(etd_data)} orders for {selected_month}")
             
