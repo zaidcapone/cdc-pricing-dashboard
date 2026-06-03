@@ -2316,15 +2316,16 @@ def price_checker_tab():
         selected_client = st.selectbox("Select Client:", available_clients, key="price_checker_client")
     
     # Helper function to parse dates properly
-    def parse_date(date_str):
-        if not date_str or date_str == 'nan' or str(date_str).strip() == '':
-            return None
-        for fmt in ['%d.%m.%Y', '%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d', '%d.%m.%y', '%d/%m/%y', '%Y/%m/%d']:
-            try:
-                return datetime.strptime(str(date_str).strip(), fmt).date()
-            except:
-                continue
+def parse_etd_date(date_str):
+    if not date_str or pd.isna(date_str) or str(date_str).strip() == '':
         return None
+    # Try DD.MM.YYYY first
+    for fmt in ['%d.%m.%Y', '%d.%m.%y', '%d/%m/%Y', '%d/%m/%y', '%d-%m-%Y', '%d-%m-%y', '%Y-%m-%d']:
+        try:
+            return datetime.strptime(str(date_str).strip(), fmt).date()
+        except:
+            continue
+    return None
     
     # Currency symbol mapping
     currency_symbols = {
